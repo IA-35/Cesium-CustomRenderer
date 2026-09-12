@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>Cesium 自定义渲染管线 · 源码演示</title>
+<style>
+  html, body, #scene { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
+  #toolbar { position: absolute; top: 12px; left: 12px; padding: 12px 14px; background: #172534e8; color: #fff;
+    font: 13px/1.6 system-ui, sans-serif; border-radius: 6px; z-index: 1; max-width: 430px; }
+  #toolbar .row { margin-top: 6px; }
+  #toolbar .tag { display: inline-block; width: 34px; color: #7f9bb5; font-size: 12px; }
+  button { margin: 2px 3px 2px 0; padding: 5px 9px; cursor: pointer; }
+  button[aria-pressed="true"] { background: #2f6ea8; border-color: #2f6ea8; color: #fff; }
+  #status { display: block; margin-top: 8px; color: #9fd3ff; }
+  #errors { display: block; color: #ff9c9c; font-size: 11px; }
+  #note { margin-top: 6px; color: #a9b7c6; font-size: 11px; }
+</style>
+<div id="scene"></div>
+<div id="toolbar">
+  <strong>Cesium 自定义渲染管线 · 源码演示</strong>
+  <div class="row">
+    <span class="tag">数据</span>
+    <button data-set="osm">白模 · OSM Buildings</button>
+    <button data-set="sample">3D Tiles · 官方示例</button>
+    <button data-set="points">3D Tiles · 点云</button>
+  </div>
+  <div class="row">
+    <span class="tag">管线</span>
+    <button data-native>原生</button>
+    <button data-aa="smaa">SMAA</button>
+    <button data-aa="taa">TAA</button>
+    <button data-ssr>SSR</button>
+    <button data-ao>SSAO</button>
+    <button data-clouds>云</button>
+  </div>
+  <span id="status">加载 Cesium 中…</span>
+  <span id="errors"></span>
+  <div id="note">需先 npm install，并通过 HTTP 打开（不能 file://）；三维数据在线加载，ion 资产需要 token。</div>
+</div>
+
+<!--
+  A single module script, so top-level await is legal and the ordering is unambiguous:
+  Cesium is awaited before any pipeline code runs. (A classic <script> cannot use top-level
+  await, and splitting this across two inline module scripts would rely on cross-script
+  evaluation ordering that is not worth depending on.)
+-->
+<script type="module">
+  import * as CCR from '../src/index.js'
+  const { createVisualPipeline, colorGradingPresets } = CCR
+  window.CCR = CCR
+
+  const query = new URLSearchParams(location.search)
+  const status = document.querySelector('#status')
+  const errorBox = document.querySelector('#errors')
+  const errors = []
+
+  // --- Cesium ion token -------------------------------------------------------------------
+  // The host supplies an ion token only when loading ion datasets.
+  const ION_TOKEN = query.get('token') || ''
+
+  // --- Token-free public 3D Tiles ---------------------------------------------------------
+  // The CesiumJS repository ships a set of sample tilesets under Apps/SampleData. sandcastle.cesium.com
+  // serves the same files but sends no Access-Control-Allow-Origin header, so a browser fetch from
+  // this page is blocked; jsDelivr mirrors the repo with `Access-Control-Allow-Origin: *`.
+  const SAMPLE_BASE = 'https://cdn.jsdelivr.net/gh/CesiumGS/cesium@1.143/Apps/SampleData'
+
+  // OSM Buildings is a planet-wide tileset, so its bounding sphere is the whole earth: frame a city
+  // explicitly instead. Override with ?lon=&lat=&height= .
+  const OSM_CITY = {
+    lon: Number(query.get('lon') ?? 116.3913),
+    lat: Number(query.get('lat') ?? 39.9075),
+    height: Number(query.get('height') ?? 2400)
+  }
+
+  const DATASETS = {
+    osm: {
+      label: '白模 · OSM Buildings',
+      // Cesium OSM Buildings (ion asset 96188): untextured building massing, white by default.
+      // The ion resource MUST be awaited before it reaches fromUrl(): this 1.143 build's
+      // Cesium3DTileset.fromUrl() does not unwrap a Promise<Resource> despite its type signature
+      // claiming it does — it fails with "createIfNeeded(...).fetchJson is not a function".
+      load: async C => {
+        if (!ION_TOKEN) throw new Error('OSM Buildings requires an ion token via ?token=...')
+        return C.Cesium3DTileset.fromUrl(await C.IonResource.fromAssetId(96188))
+      },
+      city: OSM_CITY
+    },
+    sample: {
+      label: '3D Tiles · 官方示例',
+      load: C => C.Cesium3DTileset.fromUrl(`${SAMPLE_BASE}/Cesium3DTiles/Tilesets/Tileset/tileset.json`)
+    },
+    points: {
+      label: '3D Tiles · 点云',
+      load: C => C.Cesium3DTileset.fromUrl(`${SAMPLE_BASE}/Cesium3DTiles/PointCloud/PointCloudRGB/tileset.json`),
+      // A point cloud reads as near-invisible against a dark globe at the default point size and
+      // distance attenuation; eye-dome lighting plus a fixed point size makes it legible.
+      tune: (C, ts) => {
+        ts.pointCloudShading = new C.PointCloudShading({ attenuation: false, eyeDomeLighting: true })
+        ts.style = new C.Cesium3DTileStyle({ pointSize: 2.5 })
+      }
+    }
+  }
+
+  // Cesium is loaded as a global from the npm package's own distribution directory.
+  // The dev server (scripts/dev-server.cjs) serves the project root, so this path is reachable.
+  function loadCesium() {
+    const base = new URL(query.get('cesium') || '/node_modules/cesium/Build/Cesium/', location.href)
+    if (!base.pathname.endsWith('/')) base.pathname += '/'
+    window.CESIUM_BASE_URL = base.href
+    const css = document.createElement('link')
+    css.rel = 'stylesheet'
+    css.href = new URL('Widgets/widgets.css', base)
+    document.head.appendChild(css)
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = new URL('Cesium.js', base)
+      script.onload = () => resolve(window.Cesium)
+      script.onerror = () => reject(new Error(`找不到 Cesium：${script.src}（是否已 npm install？）`))
+      document.head.appendChild(script)
+    })
+  }
+
+  try {
+    const C = await loadCesium()
+    if (ION_TOKEN) C.Ion.defaultAccessToken = ION_TOKEN
+
+    const viewer = new C.Viewer('scene', {
+      baseLayer: false, baseLayerPicker: false, geocoder: false,
+      animation: false, timeline: false, homeButton: false, navigationHelpButton: false
+    })
+    viewer.clock.currentTime = C.JulianDate.fromIso8601('2026-09-08T03:00:00Z')
+    viewer.clock.shouldAnimate = false
+    // No imagery layer: a dark globe makes the white massing read as a 白模 instead of a soup
+    // of satellite pixels.
+    viewer.scene.globe.baseColor = C.Color.fromCssColorString('#10161d')
+
+    const pipeline = createVisualPipeline({ Cesium: C, viewer })
+
+    // --- state --------------------------------------------------------------
+    let tileset = null
+    let activeSet = null
+    let activeLabel = ''
+
+    const render = () => viewer.scene.requestRender()
+    const report = message => { status.textContent = message + (activeLabel ? ` · ${activeLabel}` : '') }
+    const fail = (key, error) => {
+      const message = `${key}: ${error.message}`
+      errors.push(message)
+      errorBox.textContent = errors.slice(-3).join(' | ')
+      report(`加载失败 ${key}`)
+      console.error(message)
+    }
+
+    // --- dataset switching --------------------------------------------------
+    async function showDataset(key) {
+      const spec = DATASETS[key]
+      if (!spec) return
+      if (tileset) { viewer.scene.primitives.remove(tileset); tileset = null }
+      activeSet = key
+      activeLabel = spec.label
+      status.textContent = `加载 ${spec.label} …`
+      try {
+        const next = await spec.load(C)
+        spec.tune?.(C, next)
+        next.shadows = C.ShadowMode.ENABLED
+        viewer.scene.primitives.add(next)
+        tileset = next
+        if (spec.city) {
+          // Planet-scale tileset: frame a city and anchor the pipeline there.
+          const { lon, lat, height } = spec.city
+          viewer.camera.setView({
+            destination: C.Cartesian3.fromDegrees(lon, lat, height),
+            orientation: { heading: C.Math.toRadians(18), pitch: C.Math.toRadians(-32), roll: 0 }
+          })
+          pipeline.setCampusOrigin(C.Cartesian3.fromDegrees(lon, lat, 0))
+        } else {
+          // Small georeferenced tileset: frame its bounding sphere and anchor at its centre.
+          const sphere = next.boundingSphere
+          viewer.camera.viewBoundingSphere(sphere, new C.HeadingPitchRange(C.Math.toRadians(20), C.Math.toRadians(-32), sphere.radius * 2.4))
+          pipeline.setCampusOrigin(C.Cartesian3.clone(sphere.center))
+        }
+        render()
+        report(`就绪 ${spec.label}`)
+      } catch (error) {
+        fail(key, error)
+      }
+    }
+
+    // --- pipeline UI --------------------------------------------------------
+    const syncSetButtons = () => {
+      for (const button of document.querySelectorAll('[data-set]'))
+        button.setAttribute('aria-pressed', String(button.dataset.set === activeSet))
+    }
+    for (const button of document.querySelectorAll('[data-set]')) {
+      button.onclick = async () => { await showDataset(button.dataset.set); syncSetButtons() }
+    }
+
+    document.querySelector('[data-native]').onclick = () => {
+      pipeline.setEnabled(false); report('原生模式'); render()
+    }
+    for (const button of document.querySelectorAll('[data-aa]')) {
+      button.onclick = () => {
+        pipeline.setEnabled(true)
+        pipeline.setAntiAliasing({ mode: button.dataset.aa, msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+        report(button.dataset.aa.toUpperCase()); render()
+      }
+    }
+    document.querySelector('[data-ssr]').onclick = () => {
+      const next = !pipeline.getScreenSpaceReflectionDiagnostics().requested.enabled
+      pipeline.setEnabled(true); pipeline.setScreenSpaceReflections({ enabled: next, transparent: next })
+      report(`SSR ${next ? '开' : '关'}`); render()
+    }
+    document.querySelector('[data-ao]').onclick = () => {
+      const next = !pipeline.getScreenSpaceAODiagnostics().requested.enabled
+      pipeline.setEnabled(true); pipeline.setScreenSpaceAO({ enabled: next })
+      report(`SSAO ${next ? '开' : '关'}`); render()
+    }
+    document.querySelector('[data-clouds]').onclick = () => {
+      const next = !pipeline.getOptions().clouds
+      pipeline.setOptions({ clouds: next, environment: true })
+      report(`云 ${next ? '开' : '关'}`); render()
+    }
+
+    pipeline.setColorGrading(colorGradingPresets.clear)
+    pipeline.setEnabled(true)
+    // The default is SMAA, which pulls the two lookup tables through smaaLookupUrl().
+    pipeline.setAntiAliasing({ mode: 'smaa', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+
+    viewer.scene.renderError.addEventListener((scene, error) => fail('render', error))
+
+    // The default public sample needs no ion credentials.
+    await showDataset(query.get('dataset') || 'sample')
+    syncSetButtons()
+    // showDataset() has already reported the failure case; only claim readiness when load succeeded.
+    if (tileset) report('就绪')
+
+    window.demo = {
+      viewer, pipeline, errors,
+      showDataset,
+      get tileset() { return tileset },
+      antiAliasing: () => pipeline.getRenderDiagnostics().antiAliasing.postProcess
+    }
+  } catch (error) {
+    status.textContent = `加载失败：${error.message}`
+    window.demo = { errors: [error.message], pipeline: null, tileset: null }
+  }
+</script>
+</html>

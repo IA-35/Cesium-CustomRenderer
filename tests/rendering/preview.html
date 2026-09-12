@@ -1,0 +1,355 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>Cesium 1.143 校园视觉对比</title>
+<link rel="stylesheet" href="../../node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+<style>
+html,body,#scene{margin:0;width:100%;height:100%;overflow:hidden}
+#controls{position:fixed;top:12px;left:12px;z-index:10;background:#152534ee;color:#fff;padding:12px;font:14px sans-serif;max-width:520px}
+button{margin:4px;padding:7px;cursor:pointer}#status{white-space:pre-wrap;font-size:12px}
+#imageControls{position:fixed;right:12px;top:12px;z-index:11;background:#152534ee;color:#fff;padding:12px;width:230px;font:13px sans-serif}
+#imageControls label{display:block;margin-top:9px}#imageControls input{width:100%}#imageControls output{float:right}#imageControls select{width:100%;margin-top:5px}#imageStatus{font-size:11px;white-space:pre-wrap}
+</style>
+<div id="scene"></div>
+<div id="controls"><strong>南湖校区 · 静态 Cesium 1.143</strong><br>
+<button id="native">原生对比</button><button id="enhanced">视觉增强</button>
+<button id="fourShadows">四级联阴影</button><button id="singleShadow">校园单级联</button>
+<button id="customShadow">自定义阴影</button><button id="cachedShadow">自定义静态缓存（测试）</button><button id="shadowDepth">阴影深度图</button>
+<button id="overview">全景</button><button id="close">建筑近景</button><button id="horizon">天空视角</button>
+<br><button id="geometryToggle">几何通道：关闭</button><button id="geometryNormal">几何法线</button><button id="geometryDepth">线性深度</button><button id="geometrySource">场景颜色</button>
+<button id="materialsToggle">材质通道：关闭</button><button id="materialsStatus">材质数据状态</button>
+<button id="hizToggle">深度金字塔：关闭</button><button id="hizStatus">深度金字塔状态</button>
+<button id="aoToggle">屏幕AO：关闭</button><button id="aoStatus">AO状态</button>
+<label>AO半径（米）<input id="aoRadius" type="number" min="0.1" max="20" step="0.1" value="3" style="width:60px"></label>
+<label>AO强度<input id="aoStrength" type="number" min="0" max="2" step="0.1" value="1" style="width:50px"></label>
+<br><button id="ssrToggle">屏幕反射：关闭</button><button id="ssrStatus">反射状态</button>
+<button id="transparentSsrToggle">透明反射：关闭（需开启屏幕反射）</button><button id="transparentSsrStatus">透明反射状态</button>
+<label>反射距离（米）<input id="ssrDistance" type="number" min="1" max="2000" step="1" value="150" style="width:60px"></label>
+<label>反射强度<input id="ssrStrength" type="number" min="0" max="1" step="0.1" value="1" style="width:50px"></label>
+<button id="measure">采样60秒</button><pre id="status">加载模型…</pre></div>
+<div id="environmentControls" style="position:fixed;bottom:35px;left:12px;z-index:10;background:#152534ee;color:white;padding:8px;font:13px sans-serif">
+环境：<button data-environment="clear">晴天</button><button data-environment="morning">晨雾</button><button data-environment="overcast">层云</button><button data-environment="sunset">夕照</button><button data-environment="haze">霾</button>
+<button id="environmentOff">关闭环境</button><button id="environmentQuality">质量：均衡</button><button id="clockMorning">时间6:30</button><button id="clockNoon">时间11:00</button><button id="clockSunset">时间17:30</button><button id="clockPlay">时间播放</button></div>
+<details id="imageControls" open><summary>画面调整与抗锯齿</summary><div id="gradingControls"></div>
+<button id="clearGrading">明亮清晰</button><button id="neutralGrading">中性</button><button id="resetGrading">重置</button>
+<label for="aaMode">抗锯齿</label><select id="aaMode"><option value="smaa">SMAA（后处理抗锯齿）</option><option value="fxaa">FXAA（后处理抗锯齿）</option><option value="taa">TAA（时间抗锯齿）</option><option value="msaa">仅 MSAA（无后处理）</option><option value="off">关闭</option></select>
+<label for="msaaSamples">MSAA请求样本（组合模式才生效）</label><select id="msaaSamples"><option selected>1</option><option>2</option><option>4</option><option>8</option></select>
+<button id="msaaCombine">组合 MSAA：关闭（实验）</button>
+<button id="taaToggle">TAA：关闭</button><button id="taaReset">清空TAA历史</button><button id="taaStatus">TAA状态</button>
+<label for="taaJitter">TAA抖动样本（改后重建历史）</label><select id="taaJitter"><option>4</option><option selected>8</option><option>16</option></select>
+<label for="resolutionMode">分辨率</label><select id="resolutionMode"><option value="native">原生像素</option><option value="css">CSS像素（性能优先）</option></select>
+<button id="imageDiagnostics">读取实际状态</button>
+<button id="governorToggle">性能调速器：关闭</button><button id="governorStatus">调速器状态</button><pre id="imageStatus"></pre></details>
+<script>window.CESIUM_BASE_URL = new URL('../../node_modules/cesium/Build/Cesium/', location.href).href</script>
+<script src="../../node_modules/cesium/Build/Cesium/Cesium.js"></script>
+<script type="module">
+import { createVisualPipeline, colorGradingControls, colorGradingPresets } from '../../src/index.js'
+  import SampleGuard from '../../src/diagnostics/SampleGuard.js'
+const status = document.querySelector('#status')
+const errors = []
+const previewImageryUrl = new URLSearchParams(location.search).get('imagery')
+const previewWhiteModelUrl = new URLSearchParams(location.search).get('contextTiles')
+const viewer = new Cesium.Viewer('scene', {
+  baseLayer: false, baseLayerPicker: false, geocoder: false, navigationHelpButton: false,
+  timeline: false, animation: false, sceneModePicker: false, homeButton: false,
+  requestRenderMode: false
+})
+viewer.scene.globe.show = true
+if (previewImageryUrl) viewer.imageryLayers.add(new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({ url: previewImageryUrl })))
+viewer.clock.currentTime = Cesium.JulianDate.fromIso8601('2026-09-08T03:00:00Z')
+viewer.clock.shouldAnimate = false
+// Explicit bounded experiment, applied equally to both measurements. The default
+// full-globe camera can span multiple frusta and must remain unsupported.
+const singleFrustumSample = new URLSearchParams(location.search).get('singleFrustum') === '1'
+if (singleFrustumSample) viewer.camera.frustum.far = 50000
+viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#52654c')
+viewer.scene.renderError.addEventListener((scene, error) => { errors.push(error.message); status.textContent = error.message })
+const requestedShadow = new URLSearchParams(location.search).get('shadow')
+const pipeline = createVisualPipeline({ Cesium, viewer,
+  options: ['custom', 'native'].includes(requestedShadow) ? { shadowMode: requestedShadow } : {} })
+const tiles = []
+const contextTiles = []
+window.preview = { viewer, pipeline, tiles, contextTiles, errors }
+  Object.defineProperty(window.preview, 'geometry', { get: () => pipeline.geometry })
+const syncImageControls = () => {
+  const grading = pipeline.getColorGrading()
+  colorGradingControls.forEach(({ key }) => {
+    document.querySelector(`#grade-${key}`).value = grading[key]
+    document.querySelector(`#value-${key}`).textContent = grading[key].toFixed(2)
+  })
+  const aa = pipeline.getAntiAliasing()
+  document.querySelector('#aaMode').value = aa.mode
+  document.querySelector('#msaaSamples').value = aa.msaaSamples
+  document.querySelector('#resolutionMode').value = aa.resolutionMode
+  document.querySelector('#msaaCombine').textContent =
+    `组合 MSAA：${pipeline.getOptions().msaaCombine === true ? '开启（实验）' : '关闭（实验）'}`
+  const taa = pipeline.getTaaDiagnostics()
+  document.querySelector('#taaToggle').textContent = `TAA：${taa.requested.enabled ? '开启' : '关闭'}`
+  document.querySelector('#taaJitter').value = String(taa.requested.jitterSamples)
+}
+for (const { key, label, min, max, step } of colorGradingControls) {
+  const row = document.createElement('label')
+  row.htmlFor = `grade-${key}`
+  row.innerHTML = `${label}<output id="value-${key}"></output><input id="grade-${key}" type="range" min="${min}" max="${max}" step="${step}">`
+  row.querySelector('input').oninput = event => { pipeline.setColorGrading({ [key]: Number(event.target.value) }); syncImageControls() }
+  document.querySelector('#gradingControls').appendChild(row)
+}
+document.querySelector('#clearGrading').onclick = () => { pipeline.setColorGrading(colorGradingPresets.clear); syncImageControls() }
+document.querySelector('#neutralGrading').onclick = () => { pipeline.setColorGrading(colorGradingPresets.neutral); syncImageControls() }
+document.querySelector('#resetGrading').onclick = () => { pipeline.resetColorGrading(); syncImageControls() }
+for (const [id, key] of Object.entries({ aaMode: 'mode', msaaSamples: 'msaaSamples', resolutionMode: 'resolutionMode' })) {
+  const input = document.querySelector(`#${id}`)
+  input.onchange = () => {
+    pipeline.setAntiAliasing({ [key]: key === 'msaaSamples' ? Number(input.value) : input.value })
+    syncImageControls()
+  }
+}
+document.querySelector('#imageDiagnostics').onclick = () => { syncImageControls(); document.querySelector('#imageStatus').textContent = JSON.stringify(pipeline.getRenderDiagnostics(), null, 2) }
+document.querySelector('#msaaCombine').onclick = () => {
+  pipeline.setAntiAliasing({ msaaCombine: pipeline.getOptions().msaaCombine !== true })
+  syncImageControls()
+}
+document.querySelector('#taaToggle').onclick = () => {
+  pipeline.setTaa({ enabled: !pipeline.getTaaDiagnostics().requested.enabled })
+  syncImageControls()
+}
+document.querySelector('#taaReset').onclick = () => {
+  document.querySelector('#imageStatus').textContent = JSON.stringify(pipeline.resetTaaHistory(), null, 2)
+}
+document.querySelector('#taaJitter').onchange = event => {
+  // The sample count is read when the resolve stages are built, so re-arm the pass:
+  // switching away tears the stages (and the jitter) down, switching back rebuilds them.
+  pipeline.setTaa({ jitterSamples: Number(event.target.value), enabled: false })
+  pipeline.setTaa({ enabled: true })
+  syncImageControls()
+}
+document.querySelector('#taaStatus').onclick = () => {
+  document.querySelector('#imageStatus').textContent = JSON.stringify(pipeline.getTaaDiagnostics(), null, 2)
+}
+document.querySelector('#governorToggle').onclick = () => {
+  const enabled = !pipeline.getPerformanceDiagnostics().enabled
+  const diagnostics = pipeline.setPerformance({ enabled, targetFps: 30 })
+  document.querySelector('#governorToggle').textContent = `性能调速器：${diagnostics.enabled ? '开启' : '关闭'}`
+  document.querySelector('#imageStatus').textContent = JSON.stringify(diagnostics, null, 2)
+}
+document.querySelector('#governorStatus').onclick = () => {
+  document.querySelector('#imageStatus').textContent = JSON.stringify(pipeline.getPerformanceDiagnostics(), null, 2)
+}
+syncImageControls()
+document.querySelectorAll('[data-environment]').forEach(button => {
+  button.onclick = () => {
+    pipeline.setOptions({ environment: true, environmentPreset: button.dataset.environment })
+    status.textContent = JSON.stringify(pipeline.environmentRenderer.getDiagnostics(), null, 2)
+  }
+})
+document.querySelector('#environmentOff').onclick = () => pipeline.setOptions({ environment: false })
+document.querySelector('#environmentQuality').onclick = () => {
+  const high = pipeline.getOptions().environmentQuality !== 'high'
+  pipeline.setOptions({ environmentQuality: high ? 'high' : 'balanced' })
+  document.querySelector('#environmentQuality').textContent = high ? '质量：高' : '质量：均衡'
+}
+for (const [id, time] of [['clockMorning', '2026-09-07T22:30:00Z'], ['clockNoon', '2026-09-08T03:00:00Z'], ['clockSunset', '2026-09-08T09:30:00Z']]) {
+  document.querySelector(`#${id}`).onclick = () => { viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(time); viewer.scene.requestRender() }
+}
+document.querySelector('#clockPlay').onclick = () => {
+  viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate
+  viewer.clock.multiplier = viewer.clock.shouldAnimate ? 10 : 1
+  document.querySelector('#clockPlay').textContent = viewer.clock.shouldAnimate ? '暂停时间' : '时间播放'
+}
+document.querySelector('#geometryToggle').onclick = () => {
+  pipeline.setGeometry({ enabled: !pipeline.getGeometryDiagnostics().enabled })
+  document.querySelector('#geometryToggle').textContent = `几何通道：${pipeline.getGeometryDiagnostics().enabled ? '开启' : '关闭'}`
+  status.textContent = JSON.stringify(pipeline.getGeometryDiagnostics(), null, 2)
+}
+document.querySelector('#geometryNormal').onclick = () => pipeline.setGeometry({ debugMode: 'normal' })
+document.querySelector('#geometryDepth').onclick = () => pipeline.setGeometry({ debugMode: 'depth' })
+document.querySelector('#geometrySource').onclick = () => pipeline.setGeometry({ debugMode: 'off' })
+document.querySelector('#materialsToggle').onclick = () => {
+  const enabled = !pipeline.getOptions().materialChannelsEnabled
+  pipeline.setMaterialChannels({ enabled })
+  document.querySelector('#materialsToggle').textContent = `材质通道：${enabled ? '开启' : '关闭'}`
+}
+document.querySelector('#materialsStatus').onclick = () => { status.textContent = JSON.stringify(pipeline.getMaterialDiagnostics(), null, 2) }
+document.querySelector('#hizToggle').onclick = () => {
+  const enabled = !pipeline.getOptions().depthPyramidEnabled
+  pipeline.setDepthPyramid({ enabled })
+  document.querySelector('#hizToggle').textContent = `深度金字塔：${enabled ? '开启' : '关闭'}`
+}
+document.querySelector('#hizStatus').onclick = () => { status.textContent = JSON.stringify(pipeline.getDepthPyramidDiagnostics(), null, 2) }
+document.querySelector('#aoToggle').onclick = () => {
+  const enabled = !pipeline.getOptions().screenSpaceAoEnabled
+  pipeline.setScreenSpaceAO({ enabled })
+  document.querySelector('#aoToggle').textContent = `屏幕AO：${enabled ? '开启' : '关闭'}`
+}
+document.querySelector('#aoStatus').onclick = () => { status.textContent = JSON.stringify(pipeline.getScreenSpaceAODiagnostics(), null, 2) }
+for (const [id, key] of [['aoRadius', 'radius'], ['aoStrength', 'strength']]) {
+  document.querySelector(`#${id}`).onchange = event => {
+    event.target.value = pipeline.setScreenSpaceAO({ [key]: Number(event.target.value) })[key]
+  }
+}
+document.querySelector('#ssrToggle').onclick = () => {
+  const enabled = !pipeline.getOptions().screenSpaceReflectionEnabled
+  pipeline.setScreenSpaceReflections({ enabled })
+  document.querySelector('#ssrToggle').textContent = `屏幕反射：${enabled ? '开启' : '关闭'}`
+}
+document.querySelector('#ssrStatus').onclick = () => { status.textContent = JSON.stringify(pipeline.getScreenSpaceReflectionDiagnostics(), null, 2) }
+document.querySelector('#transparentSsrToggle').onclick = () => {
+  const transparent = !pipeline.getOptions().screenSpaceReflectionTransparent
+  pipeline.setScreenSpaceReflections({ transparent })
+  document.querySelector('#transparentSsrToggle').textContent = `透明反射：${transparent ? '已选' : '关闭'}（需开启屏幕反射）`
+}
+document.querySelector('#transparentSsrStatus').onclick = () => { status.textContent = JSON.stringify(pipeline.getTransparentReflectionDiagnostics(), null, 2) }
+for (const [id, key] of [['ssrDistance', 'distance'], ['ssrStrength', 'strength']]) {
+  document.querySelector(`#${id}`).onchange = event => {
+    event.target.value = pipeline.setScreenSpaceReflections({ [key]: Number(event.target.value) })[key]
+  }
+}
+document.querySelector('#native').onclick = () => pipeline.setEnabled(false)
+document.querySelector('#enhanced').onclick = () => pipeline.setEnabled(true)
+document.querySelector('#fourShadows').onclick = () => pipeline.setOptions({ shadowMode: 'native', shadowCascades: 4, shadowSize: 2048 })
+document.querySelector('#singleShadow').onclick = () => pipeline.setOptions({ shadowMode: 'native', shadowCascades: 1, shadowSize: 4096 })
+document.querySelector('#customShadow').onclick = () => pipeline.setOptions({ shadowMode: 'custom', shadowStatic: false, shadowDebug: false })
+document.querySelector('#cachedShadow').onclick = () => {
+  pipeline.setOptions({ shadowMode: 'custom', shadowStatic: true, shadowDebug: false })
+  status.textContent = '静态测试：纹理/实例缓冲内容变化时必须显式invalidate；动态模型请使用逐帧模式。'
+}
+document.querySelector('#shadowDepth').onclick = () => pipeline.setOptions({ shadowMode: 'custom', shadowDebug: !pipeline.getOptions().shadowDebug })
+try {
+  const base = new URLSearchParams(location.search).get('assets')
+  if (previewWhiteModelUrl) Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 128 })
+    .then(whiteModel => { viewer.scene.primitives.add(whiteModel); contextTiles.push(whiteModel) })
+    .catch(error => { errors.push(`周边白模加载失败：${error.message}`); status.textContent = errors.at(-1) })
+  if (!base) throw new Error('请通过 assets 参数提供模型根目录；通用示例见 /examples/index.html')
+  for (const name of ['SM_NH_Terr', 'SM_NH_Building', 'SM_NH_Shu']) {
+    const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${name}/tileset.json`, {
+      maximumScreenSpaceError: 16, shadows: Cesium.ShadowMode.ENABLED
+    })
+    viewer.scene.primitives.add(tile)
+    tiles.push(tile)
+  }
+  pipeline.setCampusOrigin(tiles[1].boundingSphere.center)
+  const camera = (pitch, range) => viewer.camera.lookAt(tiles[1].boundingSphere.center,
+    new Cesium.HeadingPitchRange(0, pitch, range))
+  document.querySelector('#overview').onclick = () => camera(-0.65, 1800)
+  document.querySelector('#close').onclick = () => camera(-0.45, 750)
+  document.querySelector('#horizon').onclick = () => camera(-0.08, 1600)
+  camera(-0.65, 1800)
+  status.textContent = '原生/增强使用同一时间、相机与资产；包含现有影像底图和周边白模。这不是完整业务页面。'
+} catch (error) { errors.push(error.message); status.textContent = `模型加载失败：${error.message}` }
+document.querySelector('#measure').onclick = async () => {
+  if (window.preview.measuring) return
+  if (document.hidden || !document.hasFocus()) {
+    status.textContent = '请将测试窗口置于前台后再开始采样，后台节流数据不能用于性能验收。'
+    return
+  }
+  if (!tiles.length || !tiles.every(tile => tile.tilesLoaded)) {
+    status.textContent = '请等当前视角瓦片加载完成后再采样。'
+    return
+  }
+  window.preview.measuring = true
+  const buttons = [...document.querySelectorAll('button,input,select')]
+  buttons.forEach(button => { button.disabled = true })
+  const startedOptions = pipeline.getOptions()
+  const startedEnabled = pipeline.enabled
+  const startedBuffer = [viewer.canvas.width, viewer.canvas.height]
+  const geometryConfiguration = () => ({ enabled: pipeline.getGeometryDiagnostics().enabled, debugMode: pipeline.getGeometryDiagnostics().debugMode })
+  const startedGeometry = geometryConfiguration()
+  const startedTime = Cesium.JulianDate.toIso8601(viewer.clock.currentTime)
+  const cameraConfiguration = () => [...[viewer.camera.positionWC, viewer.camera.directionWC, viewer.camera.upWC].flatMap(v => [v.x, v.y, v.z]),
+    viewer.camera.frustum.near, viewer.camera.frustum.far, viewer.camera.frustum.fov, viewer.camera.frustum.aspectRatio]
+  const startedCamera = cameraConfiguration()
+  const sampleState = () => ({ options: pipeline.getOptions(), enabled: pipeline.enabled,
+    suspended: pipeline.suspensions.size, geometry: geometryConfiguration(), camera: cameraConfiguration(),
+    time: Cesium.JulianDate.toIso8601(viewer.clock.currentTime), buffer: [viewer.canvas.width, viewer.canvas.height] })
+  const guard = new SampleGuard(sampleState())
+  const startedAt = Date.now()
+  const cameraInputs = viewer.scene.screenSpaceCameraController.enableInputs
+  viewer.scene.screenSpaceCameraController.enableInputs = false
+  let geometryValid = true
+  let materialValid = true
+  let pyramidValid = true
+  let aoValid = true
+  let reflectionValid = true
+  let transparentReflectionValid = true
+  let environmentValid = true
+  let aaValid = true
+  let taaValid = true
+  let tilesLoadedThroughoutSample = true
+  const startingUpdates = pipeline.customShadow ? pipeline.customShadow.stats.updates : 0
+  const startingHits = pipeline.customShadow ? pipeline.customShadow.stats.cacheHits : 0
+  const samples = []
+  const interruptions = []
+  const visibility = () => { if (document.hidden) interruptions.push('hidden') }
+  const blur = () => interruptions.push('blur')
+  document.addEventListener('visibilitychange', visibility)
+  window.addEventListener('blur', blur)
+  let previous, start
+  status.textContent = '采样中，请保持窗口可见。记录所有帧间隔；页面valid只检查页面状态，正式基准还需核验系统前台。'
+  await new Promise(resolve => {
+    const timeout = setTimeout(() => { interruptions.push('render-timeout'); remove(); resolve() }, 90000)
+    const remove = viewer.scene.postRender.addEventListener(() => {
+      const now = performance.now()
+      guard.observe(sampleState())
+      if (document.hidden || !document.hasFocus()) {
+        if (!interruptions.includes('not-focused')) interruptions.push('not-focused')
+      }
+      if (startedGeometry.enabled && !pipeline.getGeometryDiagnostics().valid) geometryValid = false
+      if (startedEnabled && startedOptions.materialChannelsEnabled && !pipeline.getMaterialDiagnostics().valid) materialValid = false
+      if (startedEnabled && startedOptions.depthPyramidEnabled && !pipeline.getDepthPyramidDiagnostics().valid) pyramidValid = false
+      if (startedEnabled && startedOptions.screenSpaceAoEnabled && !pipeline.getScreenSpaceAODiagnostics().valid) aoValid = false
+      if (startedEnabled && startedOptions.screenSpaceReflectionEnabled && !pipeline.getScreenSpaceReflectionDiagnostics().valid) reflectionValid = false
+      if (startedEnabled && startedOptions.screenSpaceReflectionEnabled && startedOptions.screenSpaceReflectionTransparent && !pipeline.getTransparentReflectionDiagnostics().valid) transparentReflectionValid = false
+      if (startedEnabled && startedOptions.environment && (!pipeline.environmentRenderer || !pipeline.environmentRenderer.getDiagnostics().hdr.valid)) environmentValid = false
+      if (startedEnabled && startedOptions.antialiasing === 'smaa' && (!pipeline.smaa || pipeline.smaa.getDiagnostics().effective !== 'smaa')) aaValid = false
+      if (startedEnabled && startedOptions.antialiasing === 'taa' && (!pipeline.taa || !pipeline.getTaaDiagnostics().valid)) taaValid = false
+      if (!tiles.every(tile => tile.tilesLoaded)) tilesLoadedThroughoutSample = false
+      if (previous !== undefined) samples.push(now - previous)
+      previous = now
+      if (start === undefined) start = now
+      if (now - start >= 60000) { clearTimeout(timeout); remove(); resolve() }
+    })
+  })
+  const rawFrameIntervals = [...samples]
+  samples.sort((a,b) => a-b)
+  document.removeEventListener('visibilitychange', visibility)
+  window.removeEventListener('blur', blur)
+  guard.observe(sampleState())
+  const unchanged = guard.valid && JSON.stringify(startedOptions) === JSON.stringify(pipeline.getOptions()) && startedEnabled === pipeline.enabled
+    && JSON.stringify(startedGeometry) === JSON.stringify(geometryConfiguration())
+    && JSON.stringify(startedCamera) === JSON.stringify(cameraConfiguration())
+    && startedTime === Cesium.JulianDate.toIso8601(viewer.clock.currentTime)
+  const bufferUnchanged = startedBuffer[0] === viewer.canvas.width && startedBuffer[1] === viewer.canvas.height
+  const shadowError = startedOptions.shadowMode === 'custom' && pipeline.customShadow && pipeline.customShadow.stats.error
+  const result = { version: Cesium.VERSION, enabled: pipeline.enabled,
+    validationScope: 'page-state-only; OS foreground must be verified separately',
+    valid: interruptions.length === 0 && unchanged && bufferUnchanged && geometryValid && materialValid && pyramidValid && aoValid && reflectionValid && transparentReflectionValid && environmentValid && aaValid && taaValid && tilesLoadedThroughoutSample && !shadowError && errors.length === 0 && samples.length > 90,
+    interruptions, configurationUnchanged: unchanged, changedFields: guard.changedFields, bufferUnchanged,
+    startedAt, endedAt: Date.now(), rawFrameIntervals,
+    options: startedOptions,
+    imageQuality: pipeline.getRenderDiagnostics(), aaValidThroughoutSample: aaValid,
+    taaValidThroughoutSample: taaValid,
+    geometry: { ...pipeline.getGeometryDiagnostics(), validThroughoutSample: geometryValid }, camera: startedCamera,
+    materials: { ...pipeline.getMaterialDiagnostics(), validThroughoutSample: materialValid },
+    depthPyramid: { ...pipeline.getDepthPyramidDiagnostics(), validThroughoutSample: pyramidValid },
+    screenSpaceAO: { ...pipeline.getScreenSpaceAODiagnostics(), validThroughoutSample: aoValid },
+    screenSpaceReflections: { ...pipeline.getScreenSpaceReflectionDiagnostics(), validThroughoutSample: reflectionValid },
+    transparentReflections: { ...pipeline.getTransparentReflectionDiagnostics(), validThroughoutSample: transparentReflectionValid },
+    singleFrustumSample, tilesLoadedThroughoutSample,
+    time: startedTime, environment: pipeline.environmentRenderer ? pipeline.environmentRenderer.getDiagnostics() : null, environmentValidThroughoutSample: environmentValid,
+    drawingBuffer: [viewer.canvas.width, viewer.canvas.height], frames: samples.length,
+    shadowCommands: startedOptions.shadowMode === 'custom' ? [pipeline.customShadow.stats.casters]
+      : viewer.shadowMap.outOfView ? [] : viewer.shadowMap.passes.map(pass => pass.commandList.length),
+    customStats: startedOptions.shadowMode === 'custom' ? { ...pipeline.customShadow.stats,
+      updates: pipeline.customShadow.stats.updates - startingUpdates,
+      cacheHits: pipeline.customShadow.stats.cacheHits - startingHits } : null,
+    p50: samples[Math.floor(samples.length*0.5)], p95: samples[Math.floor(samples.length*0.95)],
+    max: samples[samples.length-1], tilesLoaded: tiles.every(tile => tile.tilesLoaded), errors: [...errors] }
+  window.preview.lastMeasurement = result
+  window.preview.measuring = false
+  viewer.scene.screenSpaceCameraController.enableInputs = cameraInputs
+  buttons.forEach(button => { button.disabled = false })
+  status.textContent = JSON.stringify(result, null, 2)
+}
+window.addEventListener('pagehide', () => { pipeline.destroy(); viewer.destroy() }, { once: true })
+</script>
+</html>

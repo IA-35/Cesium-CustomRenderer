@@ -1,0 +1,39 @@
+{
+  "algorithm": "SMAA 1x Medium, color edge detection",
+  "threshold": 0.1,
+  "maxSearchSteps": 8,
+  "upstream": "https://github.com/iryoku/smaa/releases/tag/v2.8",
+  "port": "three.js 0.158.0",
+  "shaderSource": "https://github.com/mrdoob/three.js/blob/r158/examples/jsm/shaders/SMAAShader.js",
+  "lookupSource": "https://github.com/mrdoob/three.js/blob/r158/examples/jsm/postprocessing/SMAAPass.js",
+  "license": "LICENSE.txt",
+  "lookupLayout": "SMAA 2.8 padded Search 66x33, paired with the three.js shader; not the later 64x16 packed layout",
+  "textureOptions": {
+    "flipY": false,
+    "areaFilter": "LINEAR",
+    "searchFilter": "NEAREST",
+    "mipmaps": false
+  },
+  "cesiumAdaptations": [
+    "GLSL 300 texture/output syntax and Cesium v_textureCoordinates",
+    "Vertex offset helpers evaluated at fragment UV coordinates",
+    "Original scalar texel-offset conversion and paired crossing-edge Y compensation retained",
+    "Original WebGL Y signs and gamma-aware neighborhood blend retained"
+  ],
+  "files": [
+    {
+      "name": "AreaTex.png",
+      "width": 160,
+      "height": 560,
+      "bytes": 33203,
+      "sha256": "b5a8e3bb3fbf11136d1411c6b7454f4469358559352987a074e22047582c0625"
+    },
+    {
+      "name": "SearchTex.png",
+      "width": 66,
+      "height": 33,
+      "bytes": 113,
+      "sha256": "025eb54fb8c4c2858a7d6d9743b88919fe5f9c661329c447a8f1e28971ae7403"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "cesium-custom-renderer",
+  "version": "0.1.0",
+  "description": "Cesium 1.143 自定义渲染管线独立工程：太阳阴影、HDR 环境与体积云、SSAO、PBR/透明 SSR、材质 MRT 与 Hi-Z、SMAA/TAA、相机 UBO、性能调速与诊断",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json",
+    "./*": "./src/*"
+  },
+  "files": [
+    "src",
+    "public/rendering/smaa",
+    "README.md"
+  ],
+  "keywords": [
+    "cesium",
+    "webgl2",
+    "rendering",
+    "shadow",
+    "ssao",
+    "ssr",
+    "taa",
+    "smaa",
+    "volumetric-cloud"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cesium": "1.143.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "babel-loader": "^9.1.3",
+    "webpack": "^5.90.0"
+  },
+  "scripts": {
+    "test": "node --test tests/rendering/*.test.mjs",
+    "build": "node scripts/build-rendering-sdk.cjs",
+    "serve": "node scripts/dev-server.cjs"
+  }
+}
