@@ -33,6 +33,19 @@ const TARGETS = {
   campus: {
     url: `${base}/examples/campus.html`,
     ready: () => globalThis.campus && globalThis.campus.tiles.length === 3 && globalThis.campus.tiles.every(tile => tile.tilesLoaded),
+    // Imagery streams in asynchronously; capturing while tiles are still arriving makes two runs of
+    // the *same* configuration differ for a reason that has nothing to do with our rendering.
+    settled: () => {
+      const scene = globalThis.campus?.viewer?.scene
+      if (!scene) return false
+      const globe = scene.globe
+      if (globe && globe.tilesLoaded === false) return false
+      const layers = scene.imageryLayers
+      for (let i = 0; i < layers.length; i++) {
+        if (layers.get(i).imageryTilesLoaded === false) return false
+      }
+      return true
+    },
     label: '南湖校区实景（本地瓦片 + 沈阳影像）',
   },
   // Same campus geometry, but with the external imagery layer suppressed. Comparing this target
@@ -134,6 +147,12 @@ function assetManifest() {
         for (const node of document.querySelectorAll('.lil-gui.lil-root,#hud,.stats-panel')) node.style.display = 'none'
         if (host.stats?.dom) host.stats.dom.style.display = 'none'
       })
+      // Wait for asynchronous content (imagery) to finish arriving before any capture, otherwise the
+      // reference hash describes a half-loaded scene. This is a readiness gate, not a "hide the
+      // failure" switch: a target with nothing to wait for still fails loudly on a missing asset.
+      if (definition.settled) {
+        await page.waitForFunction(definition.settled, null, { timeout: 120000 })
+      }
     }
     await loadTarget()
 
