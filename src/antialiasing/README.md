@@ -1,43 +1,22 @@
-# 图像质量接口与SMAA（Cesium 1.143）
+# 图像质量接口与空间抗锯齿（Cesium 1.143）
 
-`VisualPipeline` 默认SMAA（后处理）+ 请求**1×MSAA**，使用设备原生像素。原生HDR/ACES、环境与业务后处理完成后才执行SMAA。
-
-MSAA与后处理AA解决同一个覆盖问题。参考机器上固定1080p HDR校园视角的实测：SMAA+MSAA4 的帧间隔 P95 为 **73.0ms**，SMAA+MSAA1 为 **20.5ms**——4×MSAA在107ms/秒的预算里占掉约40ms，却没有额外边缘收益。因此默认请求1个样本；`resolveMsaaPolicy` 是唯一裁决点，只有在 `msaaCombine: true` 时才兑现冗余的多重采样请求。该组合仍可用于对照实验（`pipeline.setAntiAliasing({ mode:'smaa', msaaSamples:4, msaaCombine:true })`），但不再是默认。
+2026-09-15：默认SMAA均衡档，MSAA请求1，设备原生像素。FXAA/SMAA位于最终显示颜色阶段，TAA实现不变。完整配置、校园图像对比与计时口径见 [校园抗锯齿说明](../../docs/CAMPUS_ANTIALIASING.md)。
 
 ```js
-import { getVisualPipeline, colorGradingPresets } from '@/rendering/cesium/index.js'
-const pipeline = getVisualPipeline(viewer)
-pipeline.setColorGrading({ brightness: 1.08, contrast: 1.1, saturation: 1.05, hue: 0, exposure: 1.6 })
-pipeline.setColorGrading({ hue: 0.1 }) // +18度；其他控制值保留
-pipeline.getColorGrading()
-pipeline.setColorGrading(colorGradingPresets.neutral)
-pipeline.resetColorGrading()
-pipeline.setAntiAliasing({ mode: 'smaa', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
-pipeline.setAntiAliasing({ mode: 'smaa', msaaSamples: 4, msaaCombine: true }) // 显式复现旧的组合配置
-pipeline.getAntiAliasing()                 // { mode, msaaSamples, resolutionMode, resolutionScale }
-pipeline.getRenderDiagnostics().antiAliasing.msaa // { requested, selected, combined, policy, ... }
-pipeline.getRenderDiagnostics()
+pipeline.setAntiAliasing({ mode: 'smaa', quality: 'balanced', msaaSamples: 1, msaaCombine: false });
+pipeline.setAntiAliasing({ mode: 'smaa', quality: 'balanced', msaaSamples: 4, msaaCombine: true });
+pipeline.setAntiAliasing({ mode: 'fxaa', quality: 'sharp', msaaSamples: 1, msaaCombine: false });
+pipeline.setAntiAliasing({ mode: 'msaa' }); // 原请求1且未显式指定时自动请求4
+pipeline.getRenderDiagnostics().antiAliasing;
 ```
 
-调色在显示空间进行；只有exposure作用于原生ACES。`colorGradingControls`导出五项控制范围。默认明亮清晰为brightness1.08/contrast1.1/saturation1.05/hue0/exposure1.6。只迁移已知旧默认签名，其他手动值和neutral预设保留。原始渲染API不写存储，MainMap的`setSceneColorGrading`/`applySceneFilters`负责持久化。
+空间quality可选sharp/balanced/smooth；不影响TAA。SMAA阈值分别0.1/0.05/0.035，搜索8/8/16。FXAA复用Cesium提供的3.11实现，按档位设置亚像素混合及阈值。SMAA LUT配对与原shader坐标约定保留；FXAA单pass不加载LUT。均保留原alpha，不引入时间历史。
 
-| 控制 | 取值与行为 |
-| --- | --- |
-| mode | off禁用AA；msaa仅硬件；fxaa或smaa使用对应后处理，并把多重采样请求降为1 |
-| msaaSamples | 请求1/2/4/8；仅msaa模式或`msaaCombine:true`时兑现，且不高于当前HDR颜色与深度格式共同支持的值 |
-| msaaCombine | 选项级/诊断级开关，默认false。true时后处理AA与MSAA叠加，与历史基线可比 |
-| resolutionMode | native使用设备DPR；css使用CSS像素，作为显式性能选项 |
-| resolutionScale | 0.5–2，乘以上述像素比例，默认1 |
+MSAA处理几何覆盖，后处理AA还处理着色/纹理边缘；组合可能改善画质并增加成本，需按目标场景实测。仅MSAA或显式msaaCombine兑现请求，实际值取HDR颜色/深度共同支持的样本数。诊断报告请求、选择和已分配renderbuffer，不仅报告设置值。
 
-`msaaCombine` 有意不进入 `getAntiAliasing()` 面板接口，避免改变 `SceneFilterPanel` 的四项设置形状；它通过 `getOptions().msaaCombine` 与诊断读取。
+SpatialAaPass143共享已有最终颜色执行、copy、viewport恢复、原生FXAA回退与代际取消机制；SmaaPass143公开类保持兼容，新增FxaaPass143。启停/质量变化释放自有资源，不改原生FXAA shader、业务后处理或场景材质。
 
-诊断区分请求值、配置值与已分配renderbuffer采样数，同时报告CSS/buffer/DPR。诊断包含GL查询，按需调用。imageRendering设为auto，禁用/销毁时恢复原值。高DPR会增加像素、显存和耗时；MSAA不代表MASK/OIT及后处理边缘都已多采样。
-
-SMAA移植自现有three.js r158，三阶段是颜色边缘、标准查找表权重和邻域混合。Area为160×560，Search为66×33，许可证与来源在`public/rendering/smaa/`；不引入three运行时。保留原WebGL标量offset与Y补偿的配套规则。局部gamma-aware混合不等于再次对整帧做Gamma。
-
-`SmaaPass143`拥有独立collection和lookup纹理，仅包装当前scene的execute/copy。未就绪或失败时回退FXAA，ready后关闭FXAA；异步结果使用代际检查，不能在销毁后重新创建GPU资源。只有当前帧输出可copy。现实现先原copy再覆盖SMAA结果，保留已有副作用/返回值，代价是额外blit。停用时只恢复仍拥有的FXAA/hooks；与环境hook按安装顺序逆序释放。
-
-以上描述的是SMAA空间抗锯齿。TAA另由`TaaPass143`实现，接口与边界如下。
+旧说明中关于SMAA与MSAA组合必然无收益以及旧P95数据的结论已撤下；当前校园对比以CAMPUS_ANTIALIASING.md为准。getAntiAliasing保留原四字段结构，quality从getOptions().spatialAaQuality或诊断读取。
 
 ## TAA时间抗锯齿
 

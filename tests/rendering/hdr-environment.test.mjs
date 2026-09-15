@@ -260,3 +260,15 @@ test('real Cesium collection owns float composite without adding anything to nat
   pass.destroy()
   native.destroy()
 })
+
+test('shell permits an empty sky frame but still rejects multiple depth frusta', () => {
+  const f = fixture()
+  f.pass.allowEmptyFrustum = () => true
+  f.scene._view.frustumCommandsList = []
+  assert.equal(f.pass._scopeReason(), null)
+  f.scene._view.frustumCommandsList = [{}, {}]
+  assert.match(f.pass._scopeReason(), /single frustum/)
+  f.scene._view.frustumCommandsList = []
+  f.pass.allowEmptyFrustum = () => false
+  assert.match(f.pass._scopeReason(), /single frustum/)
+})

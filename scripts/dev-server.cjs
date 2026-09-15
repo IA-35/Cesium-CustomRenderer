@@ -112,5 +112,6 @@ server.listen(port, '127.0.0.1', () => {
   console.log(`[dev-server] cesium ${path.join(root, 'node_modules/cesium/Build/Cesium')}`)
   console.log(`[dev-server] smaa   ${SMAA_DIR} (aliased to ${SMAA_URL_PREFIX})`)
   console.log(`[dev-server] http://127.0.0.1:${port}/examples/index.html`)
+  console.log(`[dev-server] http://127.0.0.1:${port}/examples/campus.html`)
   console.log(`[dev-server] http://127.0.0.1:${port}/tests/rendering/preview.html`)
 })

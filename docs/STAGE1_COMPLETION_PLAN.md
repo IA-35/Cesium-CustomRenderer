@@ -1,0 +1,442 @@
+# 阶段一基础渲染管线完整开发计划
+
+> 执行方式：由当前会话亲自执行，使用 executing-plans 按批次推进；不下发执行端会话、不启用子代理。本文是开发计划，不是完成报告。勾选框仅在对应代码、运行证据和验收条件都满足后更新。
+
+**Goal：** 在现有 CCR 独立项目内，完成阶段一的主照明接管、透明兼容、性能基础与基础环境/后期；产出可复现构建的 CCR SDK。
+**Architecture：** 保留 Cesium 1.143 的场景管理、3D Tiles 调度、几何处理、拾取和 HDR 底座；由 CCR 组织受支持不透明材质的 G-buffer/PBR 照明、自定义太阳阴影、透明前向与环境后期。未适配材质走明确标记的兼容路径，不悄悄重光照、不把后处理重放当作已完成架构替代。
+**Tech Stack：** JavaScript ES modules、Cesium 1.143.0、WebGL2/GLSL ES 3.00、Node test、Chrome/WebGL 数值及校园场景验证、Webpack UMD。
+
+编制日期：2026-09-15。当前开发仓库 HEAD 为 b2b182e，后续功能大量存在于未提交工作区；执行前必须重新记录工作区快照。当前任务仅制定计划，没有执行下列功能开发。
+
+## 1. 依据、目录与范围
+
+- 目标：[阶段1：基础渲染管线](<./阶段1：基础渲染管线.md>)。
+- 审计：[阶段一开发进度核查_0915](<./阶段一开发进度核查_0915.md>)。
+- 逐文件复用清单：[STAGE1_REUSE_MAP.md](./STAGE1_REUSE_MAP.md)；后续任务中的 R01–R15 对应其条目。
+- CCR 根目录：`G:/_JavaScript/_IAsCesiumLib/cesium customRenderer`。
+- Tianjing 根目录：`G:/_JavaScript/新版cesium示例/tianjingmap-3d`，只读参考。
+- 校园基准：[examples/campus.html](<../examples/campus.html>)；合成夹具补充验证，不能取代校园验收。
+
+**延续用户已确定的范围：**
+
+1. 植被/实例化网格不在本计划内；多光源/5000灯列为 B13 暂缓项，前十二批不恢复它。
+2. 云层在所有相机高度维持 12–50 km 平滑渐隐/截断，不恢复高空扩大范围，也不新增完整天气系统、云投地阴影或阶段二天气模拟。
+3. FXAA/SMAA/MSAA保持已有成果；TAA单列稳定性验收，不能在其他效果中顺手改动相机抖动。
+4. 不恢复白模强镜面改色；保留中性PBR、SSR环境回退和用户校园资产、底图配置。
+5. 不要求旧RuoYi登录后的完整业务验收；独立campus的交互、拾取和画质仍需验证。
+6. 不整体替换旧引擎Build、不重建另一套SDK入口；公共浏览器入口保持CCR。
+7. 不擅自提交、推送或发布本轮代码；每批形成可审阅差异和证据，阶段提交按实际授权处理。
+
+**两种交付口径：**
+
+- **阶段一当前范围候选产物**：B00–B12全部达到其验收门槛，文档明确多光源暂停、支持矩阵和兼容路径。可供业务集成，不能称原始阶段一全部完成。
+- **阶段一原始目标完整完成**：上述门槛 + B13恢复并通过5000+实际光照验收。复杂任意自定义材质、无限透明层精确排序、离屏动态建筑反射等不是本阶段默认承诺；保留兼容模式，不把它们伪装成已支持延迟照明。
+
+## 2. 架构选择与必须先解决的问题
+
+| 路线 | 实质 | 取舍 |
+| --- | --- | --- |
+| 继续在最终颜色上叠加效果 | 现有CCR增强路径 | 保留作A/B和失败恢复；无法独立完成材质/照明解耦 |
+| **渐进接管不透明照明＋独立透明前向** | 标准PBR由CCR算光，其他类型按明确矩阵兼容；原生负责资源与场景调度 | **采用**；能逐批验证、复用最多，但需新增严格的1.143执行适配 |
+| 整份迁移Tianjing旧Build或全面重写Cesium | 短期复制模块多，长期引擎耦合与回归范围大 | 不采用；旧Build私有接口与1.143不匹配，也未补齐对象遮挡闭环 |
+
+当前 `HdrCoordinator143.registerHdrEffect` 包装 `postProcessStages.execute`，此时OIT已合成。单纯新增priority更小的HDR效果，仍无法在透明前取得完整不透明输出。必须先验证B01的执行桥。
+
+当前材质附件全开时已达8槽；WebGL2设备不能一律假定8槽可用。延迟模式用精简数据契约，并把透明覆盖独立处理；不能再直接向现有布局追加位置、速度等附件。
+
+### 2.1 目标帧顺序
+
+```mermaid
+flowchart TD
+    A[Cesium场景与瓦片更新] --> B[有效性与可见性决策]
+    B --> C[CCR自定义太阳阴影]
+    B --> D[不透明材质与深度]
+    D --> E[HBAO]
+    C --> F[CCR太阳与IBL照明]
+    D --> F
+    E --> F
+    F --> G[不透明SSR与环境镜面替换]
+    G --> H[透明前向照明与透明SSR]
+    H --> I[透明与云雾介质合成]
+    I --> J[TAA开启时的稳定HDR输出]
+    J --> K[景深或移轴 光斑 光柱 Bloom]
+    K --> L[曝光与Tonemap一次]
+    L --> M[显示调色 色差 FXAA或SMAA]
+```
+
+这是**目标顺序**，当前代码不是此顺序。MSAA作用于适用几何目标，不是图中的末端滤镜。兼容前向对象必须参与正确深度测试；背景天空和影像不能因缺材质flags被清空。光柱的遮挡数据在介质阶段产生，光斑的艺术叠加在镜头阶段完成。
+
+### 2.2 核心数据契约
+
+| 数据 | 计划格式/来源 | 关键约束 |
+| --- | --- | --- |
+| normalRoughMetal | 复用RGBA8八面体法线/感知roughness/metalness | 保持编码、法线方向、粗糙度平方次数一致 |
+| albedoOcclusion | RGBA16F | 线性基础色与材质AO，不能用已照明主颜色代替 |
+| emissiveFlags | RGBA16F | 自发光保持HDR；已知有效位保持兼容 |
+| eyeDepth | R32F | 正值米制视深度，0背景，负值未知；消费者禁止跨语义误用 |
+| depth/stencil | 每视锥几何目标 | 保留log-depth、MASK、裁剪、模板和拾取原语义 |
+| transparency coverage | 独立R8 pass | 保守覆盖不等于alpha或透射率 |
+| opaque HDR / indirect specular | 照明resolve输出/可选独立目标 | SSR替换同一次照明的环境镜面分量；不再依赖重放原生照明获取它 |
+| frame context | 现有Camera UBO扩展和CPU元信息 | 帧/视图/资源generation、相机、太阳和曝光单位一致；不改旧UBO字段偏移 |
+
+四个颜色附件是延迟模式的最低完整布局。它是新消费者契约，不能悄悄改变现有公开 `getTextures()` 的4/6/7/8附件语义；旧增强模式保持可运行。标准PBR先复用同一材质求值代码，禁止维护两份不同的纹理/颜色解码算法。
+
+照明拆分的测试契约：
+
+```text
+diffuseColor = baseColor * (1 - metallic)
+F0 = mix(0.04, baseColor, metallic)
+Lo = directSunWithShadow + indirectDiffuseWithAO
+   + indirectSpecular + emissive
+finalSpecular = mix(environmentSpecular, ssrSpecular, confidence)
+```
+
+具体BRDF必须与本地1.143 `computePbrLighting/czm_pbrLighting` 的roughness、Fresnel、IBL和色彩空间逐项对齐；上式用于定义组成，不能替代完整BRDF实现。HBAO不再无差别乘到directSun/emissive上。
+
+## 3. 批次、依赖与交付
+
+| 批次 | 内容 | 前置 | 交付判定 |
+| --- | --- | --- | --- |
+| B00 | 基线、资产/证据与测试入口整理 | 无 | 可复现当前画面，不混入旧宿主依赖 |
+| B01 | 帧执行桥与透明前接入验证 | B00 | 能定位/替换不透明颜色，透明与拾取不损坏 |
+| B02 | 精简G-buffer与单太阳＋IBL延迟PBR | B01 | 受支持对象停止原生重复照明，由CCR独立出色 |
+| B03 | 透明前向、背景/兼容对象与反射合成 | B02 | 不透明/透明完整闭环、无二次照明 |
+| B04 | 自定义太阳阴影级联 | B03 | 近远精度与过渡稳定，全球相机自动跟随 |
+| B05 | 统一帧数据与跨效果目标复用 | B03 | 实际减少重复上传与同时存活资源 |
+| B06 | 遮挡体缓存与对象剔除闭环 | B01、B02、B05 | 安全地减少实际绘制，不影响投影和拾取 |
+| B07 | SSR水面/湿地与材质覆盖补齐 | B03、B04 | 玻璃/水/积水/白模代表样例可用 |
+| B08 | 地理高度一致的体积雾与云层收口 | B03、B04、B05 | 跨区域无原点跳变，遵守固定云距 |
+| B09 | Tonemap与影视后期、光斑/光柱 | B03、B08 | 逐项独立可控，曝光映射一次 |
+| B10 | TAA稳定性收口及空间AA组合回归 | B03、B07、B08、B09 | 不用模糊掩盖抖动，能力边界有证据 |
+| B11 | 全管线生命周期、能力降级与默认值 | B04–B10 | 异常恢复、多Viewer和资源压力通过 |
+| B12 | 正式校园验收、SDK与发布准备 | B11 | 固定负载画质/性能与源码/UMD一致 |
+| B13 | 5000+延迟光源（暂缓） | B02、B03、B05、用户恢复此项 | 实际光照与性能通过后才关闭原始缺口 |
+
+建议严格按表内顺序亲自执行，每批只处理自己的功能和必要依赖。B04/B05技术上可交换；不并行修改同一管线。B01–B03为第一个架构检查点，B04–B08为第二个稳定性检查点，B09–B12为候选交付检查点。B13不阻塞前十二批，但阻止“原文全部完成”的结论。
+
+## 4. 逐批执行步骤与验收
+
+所有“新增”文件均为计划文件，当前不存在；表内代码路径相对CCR根目录。每批先增加能揭示缺口的测试/夹具，确认旧实现确实不满足，再最小实现并运行对应检查。不得把测试变为仅断言源码包含某字符串。
+
+### B00：锁定可复现基线
+
+**复用：** R01、R14、R15。
+**修改：** `scripts/check-stage1.cjs`、`scripts/check-campus-aa.cjs`、`docs/API.md`；仅按实际迁移需要修改。
+**新增：** `tests/rendering/stage1-baseline.json`、`scripts/check-stage1-acceptance.cjs`、`docs/STAGE1_ACCEPTANCE.md`。
+
+- [ ] 记录Git HEAD/工作区文件hash、Cesium版本、浏览器/GPU、视口与真实drawing buffer、资产清单及材质统计；对运行所需URL只记录脱敏标识。
+- [ ] 保存campus固定近景、全景、树荫道路、玻璃/水、地平线、高空及连续绕行轨迹；固定JulianDate与云动画时间，另设动态太阳专项。
+- [ ] 复用旧宿主的material/albedo/透明/TAA夹具，迁移必要依赖到独立项目；先修复旧README中不存在的测试命令引用，不重写已有数值夹具。
+- [ ] 建立无外网合成测试和真实校园测试两条入口。校园底图未加载时记录失败，不能以关闭底图后通过替代它；本地合成夹具可独立无底图。
+- [ ] 对现有 `npm test`、`npm run build`、`check-stage1` 和空间AA生命周期形成本批记录；审计时392测试是历史基线，本计划不宣称重跑。
+- [ ] 将文档目标、当前支持矩阵和测试入口对应起来；不要让执行脚本继续读取旧宿主路径。
+
+**通过：** 同一冻结配置复跑输出一致；所有缺失资产/着色失败可见；后续每一批都能与B00图像对照。高空云仍为12–50km，不以完整地球云覆盖作为基准。
+
+### B01：帧执行桥小样，先证明能正确接管
+
+**复用：** R01、R02、R03。
+**新增：** `src/pipeline/FrameBridge143.js`、`tests/rendering/frame-bridge.test.mjs`、`tests/rendering/frame-bridge-fixture.js`。
+**修改：** `src/VisualPipeline.js`、`scripts/check-stage1.cjs`。
+
+- [ ] 针对本地1.143 `Scene.executeCommands`、`performTranslucentPass`、`resolveFramebuffers` 和 `OIT.execute` 绘制实际顺序记录，分别覆盖OIT MRT、OIT multipass、关闭OIT的排序透明、无透明、MSAA和多视锥。
+- [ ] 先实现“只观察不改色”的实例级桥，记录每帧/每视锥opaque与transparent边界；桥的所有回调必须携带视图/帧/generation。
+- [ ] 再用一个已知不透明平面验证“仅替换该像素不透明HDR、保留原深度与拾取”；前方放alpha=0.5玻璃。预期线性结果为0.5×玻璃色+0.5×替换后的不透明色。
+- [ ] OIT路径先验证resolve前替换其opaque输入；这只证明合成接点，**不证明排序透明或完整逐视锥接管**。OIT关闭时必须验证透明draw之前接入。
+- [ ] 对本地函数是否可包装做实测；闭包函数不能假装成public hook。优先复用命令派生/实例方法包装。若无法覆盖非OIT或多视锥，将限制写入桥诊断，并先保留增强路径；在证据明确前不转默认、不展开B02的大范围接管。
+- [ ] 如果确实需要引擎补丁，先产出最小可审阅差异及打包影响说明；不直接覆盖node_modules或复制1.118 Build。该分支会改变“外置原生引擎”的交付方式，应单独记录架构变更。
+- [ ] 测试异常后原生调用链仅执行一次，外部wrapper保持有效；卸载仅恢复仍由CCR拥有的方法。
+
+**通过：** 颜色替换不影响前后遮挡、透明alpha、ID与深度拾取；OIT和排序透明均有有效路径，所有不支持模式明确回到增强模式。该批失败不允许用“最终颜色再乘一次光照”绕过。
+
+### B02：精简G-buffer与主不透明延迟照明
+
+**复用：** R02、R04、R05、R08。
+**新增：** `src/lighting/DeferredLighting143.js`、`src/lighting/deferredLightingShader143.js`、`tests/rendering/deferred-lighting.test.mjs`、`tests/rendering/deferred-lighting-fixture.js`。
+**修改：** `src/channels/MaterialChannels143.js`、`MaterialTarget143.js`、`materialShader143.js`、`src/pipeline/FrameBridge143.js`、`src/VisualPipeline.js`。
+
+- [ ] 建立支持矩阵：标准metallic/roughness OPAQUE、MASK、法线贴图、双面、实例化/蒙皮；先支持统一CCR太阳与环境。模型独立IBL/自定义lightColor未映射时标为兼容，不用全局值覆盖它。
+- [ ] 在现有材质求值后提取四附件布局；透明coverage另画。用4/6/8槽模拟能力测试，验证不依赖8槽才能开启基本延迟照明。
+- [ ] 复用STANDARD_PBR_VALID及现有拒绝规则。MASK solid片元正常照明，孔洞保留背景；feature ID中性不应误判改色，但确有style、outline、classification的分支在适配前走兼容。
+- [ ] 实现太阳直接光＋SH/环境漫反射＋预滤镜面IBL＋自发光；环境数据复用EnvironmentLighting的来源和方向约定。照明resolve不得读取已照明颜色推导albedo。
+- [ ] 接入自定义太阳阴影可见性与HBAO，分别只作用到约定光照项；添加直射/间接/镜面/自发光诊断输出，定位过曝及色偏。
+- [ ] 在实验模式下将受支持原生opaque颜色draw替换为CCR材质draw，保留需要的depth/pick/ID流程。证明同一对象没有“原生PBR一次＋材质重放一次＋CCR再照明一次”的重复路径。
+- [ ] 比较独立原生参考与CCR：roughness/metalness网格、法线贴图、HDR自发光、白/灰/色卡、太阳角度变化；参考图不能由待测shader生成。
+- [ ] MSAA先在单采样MRT+多采样主色模式验证边缘安全；覆盖不一致像素保留兼容色，不制造黑边。完成适配前诊断明确partial，不能声称完整MSAA延迟覆盖。
+- [ ] 完成后接通现有setters及按需依赖，实验默认关闭，直到B03通过才可切换候选默认。
+
+**通过：** 平面内部像素误差门槛先定为绝对误差≤0.01或相对误差≤2%（线性HDR，以较宽者判；排除轮廓1px并另测边缘）。零太阳/零IBL只余自发光；灯光变化不改变材质附件；受支持对象原生PBR主颜色执行数为0，拾取仍有效。不同量化/IBL实现若无法达到门槛，记录差异并修复，不能单纯改曝光抵消。
+
+### B03：透明前向与兼容合成闭环
+
+**复用：** R01、R03、R04、R06。
+**新增：** `src/pipeline/TransparentForward143.js`、`tests/rendering/deferred-transparency.test.mjs`、`tests/rendering/deferred-transparency-fixture.js`。
+**修改：** FrameBridge、DeferredLighting、`TransparentReflection143.js`、`ScreenSpaceReflection143.js`、`src/VisualPipeline.js`。
+
+- [ ] 将不透明HDR输出成为透明前向的背景，透明直接/间接光使用与opaque同源的CCR太阳、阴影、环境参数；不把透明对象写进opaque材质目标。
+- [ ] 保留OIT MRT/multipass的原有累积算法；排序透明按原顺序绘制。明确OIT近似叠层与排序透明精度不同，不能凭重放宣称精确任意层排序。
+- [ ] SSR改为替换DeferredLighting输出的环境镜面；增强路径继续复用旧reflectionSpecular。两条来源有互斥标志，避免减去错误基线导致白模黑斑。
+- [ ] 处理天空、Globe影像、普通Primitive、unlit、自定义材质、classification兼容对象：保持深度/遮挡与原色，不参与不支持的重光照；记录兼容原因。
+- [ ] 玻璃上保留透明SSR/OIT；水和粒子走透明前向。云雾在B08完善视线分段，此批先确保关闭介质时透明闭环正确。
+- [ ] 运行两层玻璃、玻璃后白模、透明物前后不透明、MASK树叶、异步tile加载、style变化、拾取/选中轮廓、OIT关闭/开启的实际图像测试。
+- [ ] 标准Primitive与Globe的长期接管在支持矩阵中单独列项；阶段一核心验收以标准模型PBR接管与其他类型显式兼容为界，不宣称所有Cesium着色器已替代。
+
+**通过：** alpha=0/1退化正确，线性0.5混合误差≤0.01；没有覆盖透明后的不透明重照明；材质动态切换不残留上一帧结果。完成B01–B03的首个架构检查点，输出支持/兼容/拒绝矩阵及实际draw统计。
+
+### B04：相机跟随的自定义级联阴影
+
+**复用：** R07；Cesium原生ShadowMap仅作算法/行为对照，不作正常运行回退。
+**新增：** `src/shadows/CascadedShadowCoverage.js`、`tests/rendering/shadow-cascades.test.mjs`、`tests/rendering/shadow-cascades-fixture.js`。
+**修改：** DirectionalShadowPass、LightFrustum、ShadowTarget、ShadowCache、shaderAdapter143、`scripts/check-camera-shadows.cjs`。
+
+- [ ] 在现有相机跟随覆盖上增加3级联起步，采用线性/对数混合split，初始lambda=0.6；近远界由可见接收范围约束，不能让天空far值直接扩大所有阴影图。
+- [ ] 使用固定包围球半径/档位＋光空间texel snapping稳定每级联；相机位移、太阳变化与内容revision分别失效，禁止只按静态时间缓存。
+- [ ] 起始总预算为近级2048²、两级1024²；它是测试起点，需实测设备能力和成本，不自动三张2048²。
+- [ ] 每级独立caster选择，纳入相机外投影物；包围体高程参与z范围，避免仅用椭球0高程裁剪山地与高楼。
+- [ ] 交接区初始为区间末端10%，混合可见性；normal/depth bias以世界米/texel一致计算，防止浮空、重影与远处条纹。
+- [ ] 树叶MASK/cutout保持原discard与双面策略。近地树荫与建筑接地分别看，不能统一拉黑环境光来增强阴影。
+- [ ] 更新多视锥、Globe、模型/透明接收接口；阴影距离之外平滑衰减。无需用户“移动阴影到新区域”。
+- [ ] 对固定时间静止300帧、太阳连续变化、横移/旋转越过split、贴地/10km/高空、山地做图像序列和GPU对比。
+
+**通过：** 固定时刻静止无周期性跳变；级联交界处相邻帧亮度突变在平滑对照区域≤5%作为起始检查线，超过必须定位；树干/建筑根部无新增漂浮间隙；远景精度提升同时记录内存和GPU增量。预算超标调整分辨率/更新策略，不能恢复固定校园范围。
+
+### B05：共享UBO与跨效果FBO资源复用
+
+**复用：** R05、R08、R09。
+**新增：** `src/pipeline/RenderTargetPool143.js`、`tests/rendering/render-target-pool.test.mjs`。
+**修改：** CameraUniforms、UniformBuffer、HdrCoordinator、HdrBloom、ScreenSpaceAo及FrameBridge。
+
+- [ ] 列出每个pass的读/写、格式、尺寸、samples、首次/最后使用、跨帧历史；先生成资源账本再分配。只管理CCR自有资源，不能接管Cesium借用纹理的销毁。
+- [ ] 先接入Bloom中间级和AO临时滤波两个生产者；复用格式/尺寸完全匹配且生存期不重叠的目标。若二者实际无兼容目标，如实保留，不能强制共享来凑节省。
+- [ ] 同一帧顺序依赖只需保证不同时读写同附件；TAA历史、SSR历史、材质跨pass活跃数据不得视作临时目标。禁止纹理反馈循环。
+- [ ] 定义lease/generation，resize/禁用/失败立即使旧句柄失效；池只复用仍在同一context的资源。Framebuffer附件释放权统一，防止双重destroy。
+- [ ] 扩展共享相机/太阳帧数据，沿用160字节旧Camera块或新增独立块，不重排旧偏移。所有CCR消费者逐项迁移，原生Cesium automatic uniforms保持原机制。
+- [ ] 同一帧相机/投影被抖动或回放改变时不能只凭frameNumber省略更新；使用实际数据差异与视图revision判断。
+- [ ] 统计peakBytes、allocated/reused/live targets、uploadBytes、bufferSubData次数；十轮启停/resize后应回到稳定峰值。
+
+**通过：** 至少一组真实不重叠目标完成复用；GPU输出与禁用池时一致；同值帧无需重复上传，实际值变化当帧更新；停用后自有live leases为0。若并无内存节省，要解释生命周期冲突并调整接入，不能只交一个空池接口。
+
+### B06：实际对象遮挡剔除及缓存
+
+**复用：** R02、R05、R07、R10；没有可直接复制的Tianjing对象反馈实现。
+**新增：** `src/visibility/OccluderCache143.js`、`src/visibility/OcclusionCulling143.js`、`tests/rendering/occlusion-culling.test.mjs`、`tests/rendering/occlusion-fixture.js`。
+**修改：** FrameBridge、RenderProfiler、VisualPipeline。
+
+- [ ] 首期只针对有可靠包围体的静态不透明模型/瓦片分组，透明、未知自定义变形、相机在包围体内、穿近裁剪面的对象一律可见。
+- [ ] 缓存稳定遮挡体的命令和bounds；缓存不以时间停止为有效条件，tile加载/卸载、LOD、show/style、变换、剪裁、场景模式都更新revision。
+- [ ] 复用已知深度/命令派生作为遮挡输入，未知Hi-Z值禁止认定遮挡。首个闭环选择WebGL2保守occlusion query＋包围体代理绘制；只在结果已可用时读取。
+- [ ] 每帧起始查询预算128个分组，结果跨帧应用。结果未就绪→可见；相机/投影/viewport/遮挡体revision不同→可见；连续两次同状态隐藏结果才进入hidden。相机持续移动时首版可以无剔除收益，不能用旧视图结果冒险。
+- [ ] 遮挡体深度本身必须持续更新/绘制，不能因被剔除导致下一帧没有证据；代理深度测试采用保守bounds，关闭颜色/深度写。保持引擎GL状态缓存一致。
+- [ ] hidden只跳过主视图颜色与对应材质生产；不跳过太阳阴影caster、拾取、瓦片加载/LOD更新，也不直接修改tileset.show。
+- [ ] 对相机突变、遮挡体消失、门洞、细缝、动画对象、tile替换、requestRender模式测试失效。查询pending时不得同步等待阻塞，也不得无限requestRender空转。
+- [ ] 对街区遮挡测试统计查询开销、少画命令/三角形、总GPU时间；空旷场景自动不启用/不增加大量查询。通过后再评估是否需要批量Hi-Z/PBO方案，不首期实现两套系统。
+
+**通过：** 遮挡开/关固定图像无对象丢失；相机/内容变化当帧恢复可见；专门遮挡夹具实际主绘制数降低≥20%，总GPU收益超过重复采样噪声；不能仅凭queries>0标为完成。
+
+WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-open是必要契约，见[官方规范](https://registry.khronos.org/webgl/specs/2.0/)。
+
+### B07：SSR材质、水面与积水的最小完整覆盖
+
+**复用：** R03、R04、R06、R11。
+**新增：** `src/reflections/PrimitiveReflection143.js`、`tests/rendering/ssr-surfaces-fixture.js`。
+**修改：** SSR trace/resolve、材质适配、透明前向；必要时在 `examples/campus.js` 添加独立演示几何，不改用户真实资产。
+
+- [ ] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准，SSR关/开时基础PBR色不应跳变。
+- [ ] 在校园选标准玻璃、池水平面、局部湿地面三个代表，支持范围明确为标准PBR模型、指定Cesium Primitive材质与Globe water mask路径。
+- [ ] 普通Primitive提取实际法线/roughness和材质反射响应；Globe保留影像颜色，对water mask区域建立独立receiver契约，非水地面不擅自金属化。
+- [ ] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自B03，不照搬Tianjing全局scene._reflectTexture。
+- [ ] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与SSR共用能量/roughness尺度，不能miss采样最后像素或突然变黑。
+- [ ] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
+- [ ] 验证卫星影像、feature style、白模/透明OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
+
+**通过：** 三类表面均真实响应材质反射，SSR miss连续回退，无黑块/突兀切换；水面外影像不变灰。水/Globe若无法接入，原SSR完整目标保留未完成，不能仅凭白模样例关闭此项。
+
+### B08：全局地理高度雾、云层及透明介质
+
+**复用：** R07、R09、R12。
+**新增：** `src/environment/heightFog143.js`、`tests/rendering/global-fog-fixture.js`。
+**修改：** environmentStages、EnvironmentRenderer、HdrEnvironmentPass、cloudShell、TransparentForward。
+
+- [ ] 地理高度以椭球及局部高精度参考计算，禁止ECEF.y当高度；全局含义是任意经纬度一致工作，非一次积分整颗地球。
+- [ ] 无噪声基础档复用Tianjing解析指数积分思想及近零Taylor分支；使用CPU数值积分作独立参考。体积档继续使用现有Beer–Lambert积分与太阳阴影。
+- [ ] 定义默认有效雾距50km、有限采样预算，近地高度雾作用于地表接收段；高空背地射线正确退出，密度=0严格无影响。
+- [ ] 与B01深度契约接通多视锥：按米制距离分段合并透射率T与散射S，满足T=T1*T2、S=S1+T1*S2；不能把不同视锥非线性depth直接比较。
+- [ ] 每个透明片元按自身距离读取累计介质，避免只按背后地面深度给玻璃前后都上同一层雾。先通过单透明层解析测试，再验证OIT近似叠层。
+- [ ] 云与雾存在交叠时在同一视线分段合成；不支持的复杂情况记录限制，不能重复叠两次完整背景。深度引导上采样防止轮廓云/雾穿透。
+- [ ] 云继续使用现有shell与噪声，只接入新的深度/资源链；固定12–50km、区间为空直接退出、不开高空扩距。
+- [ ] 全球位置测试包括校园、赤道、接近极区、跨经度、山区、云下/中/上、高空俯视和地平线连续移动。
+
+**通过：** 相同地理高度/相对镜头的密度响应一致，无跨原点跳变；透明前后积分不重复；高空不形成整层灰幕/海量云采样；云空区间无无效raymarch循环。气象模拟和云层时间降噪属于后续阶段，不计本批缺口。
+
+### B09：Tonemap、模糊、色差、光斑与Light Shaft
+
+**复用：** R09、R12、R13。
+**新增：** `src/stages/toneMapping143.js`、`src/stages/lensEffects143.js`、`tests/rendering/lens-effects.test.mjs`、`tests/rendering/lens-effects-fixture.js`。
+**修改：** VisualPipeline、HdrCoordinator、environmentStages、API、campus控制面板。
+
+- [ ] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
+- [ ] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
+- [ ] 新映射分支需关闭原生重复tonemap并保留后续gamma/alpha契约；如果无法保证只映射一次，该曲线不可启用。
+- [ ] 移轴：借鉴Tianjing双向9-tap，核归一化，真实textureSize控制像素半径；输入线性HDR、焦带位置/宽度可调。
+- [ ] “泛焦模糊”本计划明确为可关闭的全屏高斯模糊，并补充基于焦距/焦平面的基础景深，避免术语歧义遗漏目标；优先复用Cesium createBlurStage/createDepthOfFieldStage，若其深度/映射阶段不符，适配shader而非复制collection。
+- [ ] 色彩通道偏移：在显示阶段按像素单位径向偏移R/B，中心和强度0保持原图，alpha不偏移；与hue/saturation分开。
+- [ ] 太阳光斑：生成太阳屏幕位置与可见性遮罩，取深度/云透射率遮挡，背向太阳退出；噪声/图案可参考Tianjing lensFlare，但实例自己持有stage。
+- [ ] Light Shaft：独立遮挡mask→半分辨率径向积分→深度感知合成，初始32样本、单太阳；保留已有三维雾散射，两者强度独立，避免双算同一能量。
+- [ ] HDR流程中TAA位置更改属于B10的明确迁移任务，此批单独验证TAA关闭路径，并保留原链路。所有新增影视效果默认关闭。
+- [ ] 对0/0.18/1/16/64 HDR色阶、强白光、红绿蓝高光、焦带、深度断层、镜头后太阳、建筑遮日、云遮日、resize做数值与图像测试。
+
+**通过：** 所有效果强度0/关闭为identity；常量图模糊不改变亮度；色调映射单调、有确定曝光语义，普通白墙/天空不因Bloom变白幕；光柱/光斑不透墙。每个子项单独完成记录，不能用一个“影视效果完成”掩盖遗漏。
+
+Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharted 2出处不同，见[Epic官方说明](https://dev.epicgames.com/documentation/unreal-engine/color-grading-and-the-filmic-tonemapper-in-unreal-engine)。
+
+### B10：TAA稳定性收口与AA组合
+
+**复用：** R14、R15；不迁移Tianjing resetProjection。
+**修改：** `TaaPass143.js`、`taaShaders143.js`、`FrustumJitterBridge143.js`仅限测试定位出的必要部分；SpatialAa保持既有实现。
+**新增：** `tests/rendering/taa-stability-fixture.js`；迁移旧宿主taa-quality夹具和测试入口。
+
+- [ ] 先复跑静态边缘、亚像素细线、建筑轮廓、树叶MASK、匀速移动相机、相机cut和动态物体；保存连续帧，不只看单截图。
+- [ ] 原有抖动幅度/显示网格/历史裁剪作为基线，验证B01/B02使用的投影与颜色/深度完全对应，真实drawing buffer归一化。
+- [ ] 从当前“Bloom后TAA”迁移到目标“稳定HDR后再镜头效果/Bloom”，单独A/B，效果图不能发生额外曝光/alpha变化。
+- [ ] 相机历史使用同一坐标空间；多视锥暂不盲目复用单视锥历史，保持显式FXAA回退及原因。
+- [ ] 对可刚体追踪对象提供上一帧model变换，优先计算可靠motion/reprojection；不可靠的蒙皮/透明/变形像素使用reactive/reject mask减少历史，不强行平均。此mask用独立目标或现有可复用位，不向满槽MRT追加。
+- [ ] 没有有效速度的动态对象不宣称时间稳定增强；保证无新增拖影/漂移，边缘由空间AA托底。完整变形运动向量可留后续，支持矩阵需如实说明。
+- [ ] 冻结曝光/太阳/云时间时，测边缘位置序列和灰度剖面；不能通过降低分辨率/增大模糊核让抖动指标变好。
+- [ ] 回归FXAA/SMAA三质量档、MSAA实际样本、TAA启停/resize/切模式/相机cut，以及B09的镜头效果组合。
+
+**通过：** 静态收敛后边缘位置峰峰值≤0.25像素、连续亮度无周期跳闪；静态细线对比相对现有SMAA参考损失≤10%作为拟定门槛；相机cut当帧丢弃旧历史，移动遮挡后的旧轮廓最多2帧内消退。指标与人工校园序列观感同时判断，超门槛不直接加模糊。
+
+### B11：生命周期、能力降级与默认策略
+
+**复用：** R01、R05、R08、R14。
+**新增：** `tests/rendering/stage1-lifecycle-fixture.js`、`scripts/check-stage1-lifecycle.cjs`。
+**修改：** 各新模块destroy/ownership、VisualPipeline、presets、诊断与API。
+
+- [ ] 对4/6/8 MRT槽、浮点附件不可用、OIT两模式、MSAA支持交集、非3D和多视锥建立能力矩阵，诊断包含requested/active/reason/generation。
+- [ ] 默认仍由CCR管理天空、环境、阴影、HDR和SMAA。延迟模式仅在B01–B03/覆盖矩阵全部通过后进入候选默认；不支持时明确增强模式。
+- [ ] HBAO、SSR、Bloom按场景预设显式开启；不能“默认CCR”就自动全开高成本效果。镜头模糊/色差/光斑默认关闭。
+- [ ] 20轮启停、嵌套暂停、resize、2个Viewer独立操作、tile异步到达、外部wrapper和参数修改、错误后再次启用。
+- [ ] 实际调用WEBGL_lose_context进行丢失/恢复验证：全管线generation重置、纹理/program/UBO/query重新创建，旧异步回调不复活。
+- [ ] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
+- [ ] 30分钟交互压力测试，观察自有资源数/估算字节/查询数量不随循环增长；失败路径仍呈现明确可用画面。
+
+**通过：** 无新增pageerror/GL错误，无过期纹理/双重释放，资源数量稳定；恢复后真实渲染输出通过颜色与拾取检查。仅isDestroyed/valid返回值不算画面恢复证据。
+
+### B12：校园正式验收与SDK候选产物
+
+**复用：** R01、R14、R15。
+**修改：** `scripts/check-stage1-acceptance.cjs`、`scripts/build-rendering-sdk.cjs`、API、README、算法来源与许可证记录。
+**产物：** `build/<candidateVersion>/CCR.min.js`、manifest、外置引擎接入示例、候选zip、`docs/STAGE1_ACCEPTANCE.md`及本地证据目录。
+
+- [ ] 固定1920×1080实际drawing buffer、目标硬件/浏览器、资产hash、时间/镜头轨迹及曝光。分“现有增强基线”“CCR默认”“校园推荐组合”三配置，并登记实际开关值。
+- [ ] 预热至少30秒，前台连续记录每条轨迹60秒、重复3轮；若窗口不在前台、配置/资产变化、GPU disjoint，整组不用于性能结论。
+- [ ] 性能目标先沿用历史校园要求：平均≥30FPS且帧时间P95≤33.3ms；这是待达到门槛，不是当前事实。GPU分项、CPU帧时间、资源峰值、draw/三角形一并记录。
+- [ ] 若目标硬件/原生场景本身达不到门槛，分别报告原生、旧CCR、新CCR瓶颈，不以静态缓存样本代替动态场景，也不更改负载以“通过”。
+- [ ] 逐条画质验收：卫星底图可见、天空不漂白、树荫明显且稳定、无阴影浮空/重影、SSR旋转不骤黑、高空云不扩距、AA不模糊抖动、玻璃水与雾正确排序。
+- [ ] 检查拾取/选中、瓦片加载、缩放/旋转、近远切换及实际campus业务交互；不恢复RuoYi登录全量验收。
+- [ ] 使用同一配置分别加载源码ESM与UMD，检查导出CCR、效果/依赖资源、API和图像一致；manifest记录工作树hash，不能只记录旧HEAD。
+- [ ] 用 `npm pack --dry-run` 核对已有ESM包内容，离线最小消费者验证UMD；版本号在候选证据冻结时确定，不在计划中预支发布版本。
+- [ ] 阶段提交准备只包含本阶段已审阅代码/文档/必要公开资产；校园私有资源、令牌不进入分发包。保留旧阶段可恢复包，不删除用户工作区。
+- [ ] 更新目标进度表：完成/部分/失败/暂缓与证据一一对应，B13仍暂缓时产物名称和说明不得称“原始目标全部完成”。
+
+**通过：** 验收报告对每条目标有证据链接，无未解释画质缺陷；性能门槛达到或明确未达，后者不进入完成状态。提交/推送/发布单独执行，构建完成不代表已发布。
+
+### B13：5000+延迟光源，暂缓但保留完整路线
+
+**状态：暂缓，等待用户恢复多光源开发；本计划不构成恢复该项。**
+**复用：** R02、R05、R08；Tianjing只参考灯光类型/衰减公式。
+**新增：** `src/lighting/LightManager143.js`、`src/lighting/TiledLightLists143.js`、`tests/rendering/many-lights-fixture.js`。
+
+- [ ] 定义point/spot最小支持集，稳定ID、增删/变换/颜色/半径更新；5000+不等于5000个带阴影灯，首期不包含每灯shadow map。
+- [ ] 先做32/128灯与逐灯独立参考一致性，再1000、5000和5120有效灯；禁止只检查CPU数组长度。
+- [ ] 重用LightUniforms的数据校验/std140规则；实际大数据用纹理存储并按tile建立灯索引，不把40个128灯UBO全量遍历。
+- [ ] 首版CPU投影构建16×16像素tile列表，保守光源范围；GPU使用整数索引纹理和灯参数纹理。WebGL2无compute shader的前提下不写不存在的compute路径。
+- [ ] 每tile容量明确，溢出不能静默丢灯：使用分批加法照明或扩大索引存储，同时报告overflow及成本；增加深度分层仅在重叠实测证明需要时推进。
+- [ ] 不透明resolve与透明前向消费同一光源定义，透明按自身深度计算，不借用背后opaque深度裁掉可见灯。
+- [ ] 两种性能场景必须分开：5000灯城市分布、5120灯高重叠压力。前者验证实际使用目标，后者验证正确性/上限，不能承诺任意最坏分布30FPS。
+- [ ] 在B12相同硬件/负载下单独记录GPU、CPU列表更新、上传、各tile灯数及真实可见光照；完成后重跑透明、阴影、AA与SDK验收。
+
+**通过：** 5000以上灯真实参与照明，分布测试达到约定性能门槛；高重叠无丢灯且成本有记录。只有B13也完成，才关闭原文“5000+延迟光源”任务。
+
+## 5. 拟定接口与诊断，实施时保持最小化
+
+优先沿用已有 `setScreenSpaceAO`、`setHdrBloom`、`setAntiAliasing`、环境/SSR setters。下列为**拟新增接口**，不是目前可调用API；执行批次落地后再写入正式API文档。
+
+```js
+// B02–B03：实验期显式开启，通过默认切换门槛后preset使用同一选项
+pipeline.setLighting({ mode: 'deferred' }) // 'enhanced' 保留旧增强路径
+pipeline.getLightingDiagnostics()
+// { requested, active, reason, supportedDraws, compatibilityDraws, generation }
+
+// B06：默认实验关闭，有实际收益后才纳入场景推荐组合
+pipeline.setOcclusionCulling({ enabled: true })
+pipeline.getOcclusionDiagnostics()
+// { pendingQueries, visibleGroups, hiddenGroups, skippedDraws, invalidations }
+
+// B09：不把Cesium FILMIC伪装成Unreal
+pipeline.setToneMapping({ operator: 'aces' })
+// operator: 'aces' | 'reinhard' | 'filmic' | 'unrealFilmicApprox'
+pipeline.setLensEffects({
+  tiltShift: { enabled: false, focus: 0.5, width: 0.2, radiusPixels: 8 },
+  blur: { enabled: false, radiusPixels: 4 },
+  depthOfField: { enabled: false, focusDistance: 100, focalLength: 0.05 },
+  chromaticAberration: { enabled: false, radiusPixels: 1 },
+  lensFlare: { enabled: false, strength: 0.2 },
+  lightShaft: { enabled: false, strength: 0.2 }
+})
+```
+
+参数中的像素为实际渲染目标像素，焦距/距离为米；focus/width为归一化屏幕纵坐标。blur、景深、移轴首期互斥，避免三重模糊；启用一个必须明确反馈另外两项的实际状态。新接口修改自身状态，不重置无关的曝光、底图、阴影或AA。
+
+候选默认策略由presets管理，不为每个实验参数增加永久公共API。性能门槛/算法内部采样数优先留为测试和预设内部常量。
+
+## 6. 验证操作与证据要求
+
+从CCR根目录运行。以下是**现有可用命令**，本计划制定期间未重跑：
+
+```powershell
+npm test
+npm run build
+node scripts/dev-server.cjs --port 8877
+```
+
+另一个终端使用已安装Playwright时：
+
+```powershell
+$env:CESIUM_PLAYWRIGHT = 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'
+$env:CCR_TEST_PORT = '8877'
+node scripts/check-stage1.cjs
+node scripts/check-campus-aa-lifecycle.cjs
+node scripts/check-camera-shadows.cjs
+```
+
+- 模块Node测试按新增批次使用 `node --test tests/rendering/<本批文件>.test.mjs`；先验证预期失败，再实现，通过后运行完整npm test。
+- 新GPU夹具接入现有check-stage1框架，避免为每个shader复制启动浏览器代码。
+- B00新增acceptance脚本后明确提供 `--headless` 诊断与 `--foreground` 正式验证模式；现有短时headless样本不自动升级为正式性能证据。
+- 每批目录 `docs/verification/stage1-Bxx/` 保存 `report.json`、相机/配置/源hash、截图和必要连续帧，报告包含checks、errors、limitations及采样有效性。
+- 测试通过后只因新变更/失败/未解决疑点扩大测试，不反复运行全部夹具消耗时间。
+- 文档中的误差/性能阈值属于预先制定的验收线；如必须调整，需要在报告记录原因和旧/新阈值，不能事后为绿灯放宽。
+- 最终公开文档引用可分发证据摘要，本机原始证据仍遵循当前忽略规则，不把校园私有资源打进包。
+
+## 7. 原始目标覆盖核对
+
+| 原文条目 | 完成路径 | 不可偷换的判定 |
+| --- | --- | --- |
+| Deferred / G-buffer / 材质照明解耦 | B01–B03 | CCR真实独立算光，标准对象不再双画双照明 |
+| 对象遮挡剔除与遮挡体缓存 | B06 | 可见性结果实际影响draw且安全失效 |
+| UBO统一与动态FBO | B05 | 有跨消费者上传/资源复用实绩 |
+| HBAO | 已有算法＋B02/B03回归 | 从整色调制收敛为约定间接项AO |
+| 5000+灯 | B13暂缓 | 不能用分页缓冲代替照明验收 |
+| SSR/CubeMap/玻璃/水/积水 | B03＋B07 | 实际表面与连续镜头，不要求不可能的离屏SSR |
+| TAA/FXAA/MSAA，额外SMAA | B10 | 原生或新框架切换后仍有实际画质/样本证据 |
+| 移轴/泛焦模糊/色彩偏移 | B09 | 每种效果有独立开关和identity测试 |
+| 高度雾/全局体积雾 | B08 | 任意经纬度同一高度语义，透明/多视锥不重复 |
+| 全球低分辨云 | 已有算法＋B08 | 按最新用户口径固定12–50km，不扩大高空范围 |
+| 光斑/多通道Light Shaft | B09＋B08 | 遮挡mask、散射/径向积分与合成独立验证 |
+| HDR/Bloom/Tonemap | 已有HDR/Bloom＋B09 | 一次映射、多曲线来源/差异清楚 |
+| 独立透明前向与合成 | B03＋B08 | 透明正确消费背景/光源/介质，不在最终色之后假装接管 |
+| 用户额外要求：默认CCR、自定义全球跟随阴影 | B03＋B04＋B11 | 正常路径由CCR管理，无手动迁移阴影原点 |
+| 可整合SDK产物及总体验收 | B12 | 源码/UMD、清单、画质、性能和发布状态可追溯 |
+
+**下一轮执行入口：B00→B01。** 先固定当前校园基线并验证透明前执行桥；B01/B02/B03未通过前，不用镜头滤镜数量替代核心架构推进。多光源不自动恢复。
+

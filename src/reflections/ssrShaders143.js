@@ -84,6 +84,18 @@ vec4 reflectionBounds(ivec2 pixel, int level) {
 }
 float reflectionRayDepth(float t, vec2 inverseDepth) { return 1.0 / mix(inverseDepth.x, inverseDepth.y, t); }
 
+// Fade while a hit approaches a visibility/trace boundary, before it becomes a
+// hard miss. The resolve blends this confidence with the existing native IBL.
+float reflectionHitConfidence(vec2 uv, float facing, float projectedLength, float budgetFraction, float roughness) {
+    float border = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
+    float footprint = mix(0.08, 0.16, clamp(roughness, 0.0, 1.0));
+    return smoothstep(0.0, footprint, border)
+        * smoothstep(0.02, 0.18, facing)
+        * smoothstep(2.0, 12.0, projectedLength)
+        * (1.0 - smoothstep(0.75, 1.0, budgetFraction))
+        * (1.0 - smoothstep(0.5, 0.85, roughness));
+}
+
 // Screen-linear DDA with perspective-correct depth. Coarse Hi-Z cells are skipped
 // only when their whole depth interval misses; ambiguous cells descend to pixels.
 vec4 traceReflection(ivec2 receiver, vec3 position, vec3 normal, float roughness) {
@@ -130,10 +142,10 @@ vec4 traceReflection(ivec2 receiver, vec3 position, vec3 normal, float roughness
             #endif
             if (length(vec2(pixel - receiver)) > 2.0 && overlap) {
                 int flags = int(texelFetch(u_flags, pixel, 0).a + 0.5);
-                if ((flags & 2) == 0 || dot(reflectionNormal(pixel), -direction) <= 0.02) return miss;
+                float facing = dot(reflectionNormal(pixel), -direction);
+                if ((flags & 2) == 0 || facing <= 0.02) return miss;
                 vec2 uv = (vec2(pixel) + 0.5) / size;
-                float border = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
-                float confidence = smoothstep(0.0, 0.05, border) * (1.0 - smoothstep(0.5, 0.85, roughness));
+                float confidence = reflectionHitConfidence(uv, facing, lengthPixels, float(step) / float(budget), roughness);
                 confidence *= 1.0 - smoothstep(0.85, 1.0, t);
                 vec3 hitPosition = mix(start / clip0.w, finish / clip1.w, t) / mix(1.0 / clip0.w, 1.0 / clip1.w, t);
                 return vec4(uv, confidence, length(hitPosition - start));
@@ -171,7 +183,8 @@ void main() {
     if (u_strength <= 0.0 || !reflectionReceiver(p)) return;
     // A blocked/missing center ray keeps its native environment reflection.
     // Neighbor filtering must not resurrect rays rejected by visibility tests.
-    if (texelFetch(u_reflection, p / 2, 0).a <= 0.0) return;
+    float centerConfidence = texelFetch(u_reflection, p / 2, 0).a;
+    if (centerConfidence <= 0.0) return;
     vec3 position = reflectionPosition(p), normal = reflectionNormal(p);
     vec4 response = texelFetch(u_response, p, 0);
     vec2 halfPosition = vec2(p) * 0.5;
@@ -198,7 +211,7 @@ void main() {
     }
     if (confidenceSum <= 0.00001 || weightSum <= 0.00001) return;
     vec3 radiance = sum / confidenceSum;
-    float confidence = clamp(confidenceSum / weightSum * u_strength, 0.0, 1.0);
+    float confidence = clamp(min(centerConfidence, confidenceSum / weightSum) * u_strength, 0.0, 1.0);
     vec3 nativeSpecular = texelFetch(u_specular, p, 0).rgb;
     out_FragColor = vec4(max(original.rgb + confidence * (radiance * response.rgb - nativeSpecular), vec3(0.0)), original.a);
 }`

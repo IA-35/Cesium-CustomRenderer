@@ -56,7 +56,7 @@ export default class ShadowReceiver143 {
     this.receiverUsed.set(source.id, frame)
     let program = this.programs.get(source.id)
     if (program === undefined) {
-      const fs = receiverSource(this.C, source.fragmentShaderSource)
+      const fs = receiverSource(this.C, source.fragmentShaderSource, command.pass === this.C.Pass.GLOBE)
       program = fs ? this.C.ShaderProgram.fromCache({ context: this.scene.context,
         vertexShaderSource: source.vertexShaderSource, fragmentShaderSource: fs,
         attributeLocations: source._attributeLocations }) : null

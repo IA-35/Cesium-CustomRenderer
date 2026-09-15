@@ -66,7 +66,7 @@ test('native atmosphere attenuates both captured terms through the exact fog fun
 
 test('requires HDR native PBR specular IBL and excludes unsupported material or color-changing paths', () => {
   for (const missing of required) assert.equal(adapt(program(required.filter(define => define !== missing))), null, missing)
-  for (const excluded of ['USE_CLEARCOAT', 'USE_ANISOTROPY', 'HAS_CUSTOM_FRAGMENT_SHADER', 'HAS_CUSTOM_VERTEX_SHADER', 'CUSTOM_SHADER_REPLACE_MATERIAL', 'LIGHTING_UNLIT', 'ALPHA_MODE_BLEND', 'HAS_SELECTED_FEATURE_ID', 'USE_CPU_STYLING', 'HAS_MODEL_COLOR', 'HAS_PRIMITIVE_OUTLINE', 'HAS_CLIPPING_PLANES', 'HAS_EDGE_VISIBILITY', 'HAS_EDGE_VISIBILITY_MRT', 'HAS_SILHOUETTE', 'HAS_POINT_CLOUD_COLOR_STYLE', 'METADATA_PICKING_ENABLED', 'SHADOW_MAP', 'OIT', 'CESIUM_REDIRECTED_COLOR_OUTPUT']) assert.equal(adapt(program([...required, excluded])), null, excluded)
+  for (const excluded of ['USE_CLEARCOAT', 'USE_ANISOTROPY', 'HAS_CUSTOM_FRAGMENT_SHADER', 'HAS_CUSTOM_VERTEX_SHADER', 'CUSTOM_SHADER_REPLACE_MATERIAL', 'LIGHTING_UNLIT', 'ALPHA_MODE_BLEND', 'USE_CPU_STYLING', 'HAS_MODEL_COLOR', 'HAS_PRIMITIVE_OUTLINE', 'HAS_CLIPPING_PLANES', 'HAS_EDGE_VISIBILITY', 'HAS_EDGE_VISIBILITY_MRT', 'HAS_SILHOUETTE', 'HAS_POINT_CLOUD_COLOR_STYLE', 'METADATA_PICKING_ENABLED', 'SHADOW_MAP', 'OIT', 'CESIUM_REDIRECTED_COLOR_OUTPUT']) assert.equal(adapt(program([...required, excluded])), null, excluded)
   const vertexCustom = program()
   vertexCustom.vertexShaderSource.defines.push('HAS_CUSTOM_VERTEX_SHADER')
   assert.equal(adapt(vertexCustom), null, 'Cesium custom vertex define is vertex-only')
@@ -162,3 +162,11 @@ test('transparent replay explicitly opts into BLEND without weakening ordinary c
     assert.equal(adapter.reflectionInstrumentation(C, program([...required, 'ALPHA_MODE_BLEND', define]), { allowBlend: true }).supported, false)
   }
 })
+
+test("neutral feature IDs can capture native specular while changed feature colors are rejected per pixel", () => {
+ const input=program([...required, "HAS_SELECTED_FEATURE_ID", "USE_CPU_STYLING"]);
+ input.fragmentShaderSource.sources.unshift(C._shadersCPUStylingStageFS);
+ const result=adapter.reflectionInstrumentation(C,input);
+ assert.equal(result.supported,true);
+ assert.match(result.fragmentShaderSource.sources.join("\n"), /all\(equal\(feature.color, vec4\(1.0\)\)\)/);
+});

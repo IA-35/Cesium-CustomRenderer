@@ -6,10 +6,12 @@ import DirectionalShadowPass from './shadows/DirectionalShadowPass.js'
 import EnvironmentRenderer from './environment/EnvironmentRenderer.js'
 import FoliageMask143 from './environment/FoliageMask143.js'
 import SmaaPass143 from './antialiasing/SmaaPass143.js'
+import FxaaPass143 from './antialiasing/FxaaPass143.js'
 import TaaPass143 from './antialiasing/TaaPass143.js'
 import ScreenSpaceGeometry143 from './channels/ScreenSpaceGeometry143.js'
 import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
+import HdrBloom143 from './bloom/HdrBloom143.js'
 import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
 import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
@@ -59,6 +61,8 @@ export default class VisualPipeline {
   }
 
   restore() {
+    if (this.fxaa) this.fxaa.setEnabled(false)
+    if (this.hdrBloom) this.hdrBloom.setEnabled(false)
     if (this.foliageMask) this.foliageMask.setEnabled(false)
     if (this.transparentReflections) this.transparentReflections.setEnabled(false)
     if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(false)
@@ -97,7 +101,6 @@ export default class VisualPipeline {
     if (o.shadowMode === 'custom') {
       this.write(v.shadowMap, 'enabled', false)
       if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options)
-      if (this.campusOrigin) this.customShadow.setOrigin(this.campusOrigin)
       this.customShadow.setEnabled(o.shadows)
     } else {
       if (!this.shadowMap) this.shadowMap = createCampusShadowMap(C, v, o)
@@ -121,19 +124,25 @@ export default class VisualPipeline {
     this.write(p.ambientOcclusion.uniforms, 'stepCount', 16)
     this.write(p.ambientOcclusion.uniforms, 'lengthCap', 0.15)
     this.write(p.ambientOcclusion.uniforms, 'bias', 0.2)
-    this.write(p.bloom, 'enabled', o.bloom)
+    this.write(p.bloom, 'enabled', o.bloom && !o.hdrBloomEnabled)
     // Post-process AA owns coverage, so a redundant multisample request is reduced
     // to a single sample unless the caller opted into the combination explicitly.
     const msaaPolicy = resolveMsaaPolicy(o)
     this.msaa = { ...selectMsaaSamples(s, msaaPolicy.effective), requested: msaaPolicy.requested,
       combined: msaaPolicy.combined, policy: msaaPolicy.reason }
     this.write(s, 'msaaSamples', this.msaa.selected)
+    if (o.antialiasing !== 'fxaa' && this.fxaa) this.fxaa.setEnabled(false)
     if (o.antialiasing === 'smaa' && s.context && s.context.webgl2) {
       if (!this.smaa) this.smaa = new SmaaPass143(C, s)
+      this.smaa.setQuality(o.spatialAaQuality)
       this.smaa.setEnabled(true)
     } else {
       if (this.smaa) this.smaa.setEnabled(false)
-      if (o.antialiasing !== 'taa' || !this.taa || !this.taa.enabled) {
+      if (o.antialiasing === 'fxaa' && s.context && s.context.webgl2) {
+        if (!this.fxaa) this.fxaa = new FxaaPass143(C, s)
+        this.fxaa.setQuality(o.spatialAaQuality)
+        this.fxaa.setEnabled(true)
+      } else if (o.antialiasing !== 'taa' || !this.taa || !this.taa.enabled) {
         this.write(p.fxaa, 'enabled', o.antialiasing === 'fxaa' || o.antialiasing === 'smaa')
       }
     }
@@ -158,6 +167,7 @@ export default class VisualPipeline {
     this.applyScreenSpaceReflections()
     this.applyTransparentReflections()
     this.applyScreenSpaceAO()
+    this.applyHdrBloom()
     s.requestRender()
   }
 
@@ -174,7 +184,6 @@ export default class VisualPipeline {
   setCampusOrigin(origin) {
     if (this.destroyed || !origin) return
     this.campusOrigin = this.Cesium.Cartesian3.clone(origin)
-    if (this.customShadow) this.customShadow.setOrigin(origin)
     if (this.environmentRenderer) this.environmentRenderer.setOrigin(origin)
     this.viewer.scene.requestRender()
   }
@@ -198,6 +207,33 @@ export default class VisualPipeline {
       if (this.materialChannels.setAlbedoEnabled) this.materialChannels.setAlbedoEnabled(this.options.albedoEnabled)
       this.materialChannels.setEnabled(enabled)
     }
+  }
+  applyHdrBloom(updateNative = false) {
+    if (this.destroyed || !this.enabled || this.suspensions.size) return
+    const o = this.options, native = this.viewer.scene.postProcessStages.bloom
+    if (o.hdrBloomEnabled && !this.hdrBloom) this.hdrBloom = new HdrBloom143(this.Cesium, this.viewer.scene, () => this.options)
+    if (this.hdrBloom) this.hdrBloom.setEnabled(o.hdrBloomEnabled)
+    if (updateNative) {
+      const owned = this.changes.find(change => change.object === native && change.key === 'enabled')
+      if (o.hdrBloomEnabled || (owned && native.enabled === owned.applied)) this.write(native, 'enabled', o.bloom && !o.hdrBloomEnabled)
+    }
+  }
+  setHdrBloom(settings = {}) {
+    if (!this.destroyed) {
+      const input = settings || {}, before = this.options.hdrBloomEnabled
+      this.options = normalizeOptions({ hdrBloomEnabled: input.enabled, hdrBloomStrength: input.strength,
+        hdrBloomThreshold: input.threshold, hdrBloomKnee: input.knee, hdrBloomLevels: input.levels }, this.options)
+      this.applyHdrBloom(before !== this.options.hdrBloomEnabled)
+    }
+    const o = this.options
+    return { enabled: o.hdrBloomEnabled, strength: o.hdrBloomStrength, threshold: o.hdrBloomThreshold, knee: o.hdrBloomKnee, levels: o.hdrBloomLevels }
+  }
+  getHdrBloomDiagnostics() {
+    const o = this.options
+    const requested = { enabled: o.hdrBloomEnabled, strength: o.hdrBloomStrength, threshold: o.hdrBloomThreshold, knee: o.hdrBloomKnee, levels: o.hdrBloomLevels }
+    const active = !this.destroyed && this.enabled && !this.suspensions.size && requested.enabled
+    return { ...(this.hdrBloom ? this.hdrBloom.getDiagnostics() : { enabled: false, valid: false, reason: 'Not requested' }),
+      ...(!active ? { enabled: false, valid: false, reason: this.destroyed ? 'Destroyed' : requested.enabled ? 'Pipeline inactive' : 'Not requested' } : {}), requested }
   }
   applyScreenSpaceAO(updateNativeAO = false) {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
@@ -242,7 +278,7 @@ export default class VisualPipeline {
   setAntiAliasing(settings = {}) {
     const input = typeof settings === 'string' ? { mode: settings } : settings || {}
     this.setOptions({ antialiasing: input.mode, msaaSamples: input.msaaSamples, msaaCombine: input.msaaCombine,
-      resolutionMode: input.resolutionMode, resolutionScale: input.resolutionScale })
+      resolutionMode: input.resolutionMode, resolutionScale: input.resolutionScale, spatialAaQuality: input.quality })
     return this.getAntiAliasing()
   }
   // Switching modes recreates the resolve stages, which discards the history, so the
@@ -352,18 +388,18 @@ export default class VisualPipeline {
       const input = settings || {}
       const wasEnabled = this.options.screenSpaceAoEnabled
       this.options = normalizeOptions({ screenSpaceAoEnabled: input.enabled, screenSpaceAoRadius: input.radius,
-        screenSpaceAoStrength: input.strength, screenSpaceAoBias: input.bias }, this.options)
+        screenSpaceAoStrength: input.strength, screenSpaceAoBias: input.bias, screenSpaceAoAlgorithm: input.algorithm }, this.options)
       const updateNativeAO = wasEnabled !== this.options.screenSpaceAoEnabled
       if (!this.options.screenSpaceAoEnabled) this.applyScreenSpaceAO(updateNativeAO)
       this.applyMaterialChannels()
       if (this.options.screenSpaceAoEnabled) this.applyScreenSpaceAO(updateNativeAO)
     }
     const o = this.options
-    return { enabled: o.screenSpaceAoEnabled, radius: o.screenSpaceAoRadius, strength: o.screenSpaceAoStrength, bias: o.screenSpaceAoBias }
+    return { enabled: o.screenSpaceAoEnabled, radius: o.screenSpaceAoRadius, strength: o.screenSpaceAoStrength, bias: o.screenSpaceAoBias, algorithm: o.screenSpaceAoAlgorithm }
   }
   getScreenSpaceAODiagnostics() {
     const o = this.options
-    const requested = { enabled: o.screenSpaceAoEnabled, radius: o.screenSpaceAoRadius, strength: o.screenSpaceAoStrength, bias: o.screenSpaceAoBias }
+    const requested = { enabled: o.screenSpaceAoEnabled, radius: o.screenSpaceAoRadius, strength: o.screenSpaceAoStrength, bias: o.screenSpaceAoBias, algorithm: o.screenSpaceAoAlgorithm }
     let reason = null
     if (this.destroyed) reason = 'Destroyed'
     else if (!requested.enabled) reason = 'Not requested'
@@ -404,14 +440,15 @@ export default class VisualPipeline {
   getRenderDiagnostics() {
     const fxaa = this.viewer.scene.postProcessStages.fxaa.enabled
     return { enabled: this.enabled, suspended: this.suspensions.size > 0, colorGrading: this.getColorGrading(),
-      antiAliasing: { ...this.getAntiAliasing(), msaa: this.msaa, configuredMsaaSamples: this.viewer.scene.msaaSamples,
+      antiAliasing: { ...this.getAntiAliasing(), quality: this.options.spatialAaQuality, msaa: this.msaa, configuredMsaaSamples: this.viewer.scene.msaaSamples,
         allocatedAttachments: readMsaaAttachments(this.viewer.scene),
         postProcess: this.taa && this.taa.enabled && this.taa.getDiagnostics().valid ? { effective: 'taa' }
-          : this.smaa && this.smaa.enabled ? this.smaa.getDiagnostics() : { effective: fxaa ? 'fxaa' : 'off' } },
+          : this.smaa && this.smaa.enabled ? this.smaa.getDiagnostics()
+          : this.fxaa && this.fxaa.enabled ? this.fxaa.getDiagnostics() : { effective: fxaa ? 'fxaa' : 'off' } },
       resolution: renderResolution(this.viewer), geometry: this.getGeometryDiagnostics(), materials: this.getMaterialDiagnostics(),
       albedo: this.getAlbedoDiagnostics(),
       taa: this.getTaaDiagnostics(),
-      depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(),
+      depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
       performance: this.getPerformanceDiagnostics() }
   }
@@ -505,10 +542,12 @@ export default class VisualPipeline {
     if (this.transparentReflections) this.transparentReflections.destroy()
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()
     if (this.screenSpaceAO) this.screenSpaceAO.destroy()
+    if (this.hdrBloom) this.hdrBloom.destroy()
     if (this.materialChannels) this.materialChannels.destroy()
     if (this.geometry) this.geometry.destroy()
     if (this.taa) this.taa.destroy()
     if (this.smaa) this.smaa.destroy()
+    if (this.fxaa) this.fxaa.destroy()
     if (this.environmentRenderer) this.environmentRenderer.destroy()
     if (this.customShadow) this.customShadow.destroy()
     if (this.shadowMap && !this.shadowMap.isDestroyed()) this.shadowMap.destroy()

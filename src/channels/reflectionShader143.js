@@ -1,8 +1,8 @@
 const requiredDefines = ['HDR', 'LIGHTING_PBR', 'HAS_NORMALS', 'SPECULAR_IBL', 'USE_IBL_LIGHTING']
 const excludedDefines = [
   'USE_CLEARCOAT', 'USE_ANISOTROPY', 'HAS_CUSTOM_FRAGMENT_SHADER', 'HAS_CUSTOM_VERTEX_SHADER',
-  'CUSTOM_SHADER_REPLACE_MATERIAL', 'LIGHTING_UNLIT', 'ALPHA_MODE_BLEND', 'HAS_SELECTED_FEATURE_ID',
-  'USE_CPU_STYLING', 'HAS_MODEL_COLOR', 'HAS_PRIMITIVE_OUTLINE', 'HAS_CLIPPING_PLANES',
+  'CUSTOM_SHADER_REPLACE_MATERIAL', 'LIGHTING_UNLIT', 'ALPHA_MODE_BLEND', 'HAS_CLASSIFICATION',
+  'HAS_MODEL_COLOR', 'HAS_PRIMITIVE_OUTLINE', 'HAS_CLIPPING_PLANES',
   'HAS_EDGE_VISIBILITY', 'HAS_EDGE_VISIBILITY_MRT', 'HAS_SILHOUETTE', 'HAS_POINT_CLOUD_COLOR_STYLE',
   'METADATA_PICKING_ENABLED', 'SHADOW_MAP', 'OIT', 'CESIUM_REDIRECTED_COLOR_OUTPUT'
 ]
@@ -47,6 +47,7 @@ export function reflectionInstrumentation(C, program, { allowBlend = false } = {
   if (typeof C._shadersModelFS !== 'string' || typeof C._shadersImageBasedLightingStageFS !== 'string') return unsupported
   const defines = new Set((fs.defines || []).map(define => define.trim().split(/\s+/)[0]))
   const allDefines = new Set([...defines, ...(vs.defines || []).map(define => define.trim().split(/\s+/)[0])])
+  if (allDefines.has('USE_CPU_STYLING') && !allDefines.has('HAS_SELECTED_FEATURE_ID')) return unsupported
   if (requiredDefines.some(define => !defines.has(define)) || excludedDefines.some(define =>
     allDefines.has(define) && !(allowBlend && define === 'ALPHA_MODE_BLEND'))) return unsupported
   if (fs.sources.some(source => /\b(czm_non_pick_main|czm_shadow_cast_main|czm_translucent_main)\b/.test(source))) return unsupported
@@ -57,6 +58,9 @@ export function reflectionInstrumentation(C, program, { allowBlend = false } = {
   const model = uniqueStage(fs.sources, [C._shadersModelFS.trim(), C.ShaderSource.replaceMain(C._shadersModelFS, 'czm_log_depth_main').trim()])
   const ibl = uniqueStage(fs.sources, [C._shadersImageBasedLightingStageFS.trim()])
   if (!model || !ibl) return unsupported
+  const styling = allDefines.has('HAS_SELECTED_FEATURE_ID')
+    ? uniqueStage(fs.sources, [C._shadersCPUStylingStageFS.trim()]) : null
+  if (allDefines.has('HAS_SELECTED_FEATURE_ID') && !styling) return unsupported
   let atmosphere
   if (defines.has('HAS_ATMOSPHERE')) {
     if (typeof C._shadersAtmosphereStageFS !== 'string') return unsupported
@@ -82,6 +86,10 @@ export function reflectionInstrumentation(C, program, { allowBlend = false } = {
     campus_reflectionWeight = czm_fog(distanceToCamera, campus_reflectionWeight, vec3(0.0), czm_fogVisualDensityScalar);`
   const fragmentShaderSource = fs.clone()
   fragmentShaderSource.sources = fs.sources.map((source, index) => {
+    if (styling && index === styling.index) {
+      source = source.replace('vec4 featureColor = feature.color;',
+        'vec4 featureColor = feature.color;\n    if (!all(equal(feature.color, vec4(1.0)))) campus_reflectionValid = 0.0;')
+    }
     if (index === ibl.index) source = source.replace(ibl.stage, ibl.stage.replace(specularMarker, capture))
     if (atmosphere && index === atmosphere.index) source = source.replace(atmosphere.stage, atmosphere.stage.replace(fogMarker, fogCapture))
     return source

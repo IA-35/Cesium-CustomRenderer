@@ -2,11 +2,12 @@ import { registerHdrEffect } from './HdrCoordinator143.js'
 
 // Cesium 1.143 adapter: execute independent float stages before native tone mapping.
 export default class HdrEnvironmentPass143 {
-  constructor(C, scene, createComposite) {
+  constructor(C, scene, createComposite, allowEmptyFrustum = () => false) {
     if (!/^1\.143(?:\.0)?$/.test(C.VERSION)) throw new Error('HdrEnvironmentPass143 requires Cesium 1.143')
     this.C = C
     this.scene = scene
     this.createComposite = createComposite
+    this.allowEmptyFrustum = allowEmptyFrustum
     this.collection = undefined
     this.composite = undefined
     this.inputColor = undefined
@@ -42,7 +43,7 @@ export default class HdrEnvironmentPass143 {
     if ((this.C.OrthographicFrustum && frustum instanceof this.C.OrthographicFrustum) ||
         (this.C.OrthographicOffCenterFrustum && frustum instanceof this.C.OrthographicOffCenterFrustum)) return 'requires perspective camera'
     const frustums = this.scene._view && this.scene._view.frustumCommandsList
-    if (!frustums || frustums.length !== 1) return 'requires single frustum depth'
+    if (!frustums || (frustums.length !== 1 && !(frustums.length === 0 && this.allowEmptyFrustum()))) return 'requires single frustum depth'
     return null
   }
 
@@ -98,6 +99,11 @@ export default class HdrEnvironmentPass143 {
     let output = color
     try {
       this.inputColor = color
+      if (this.allowEmptyFrustum() && this.scene._view.frustumCommandsList.length === 0) {
+        // A sky-only frame has no native geometry pass to update the projection.
+        // Its shaders explicitly ignore both depth textures for this frame.
+        uniformState.updateFrustum(this.scene.camera.frustum)
+      }
       const collection = this.collection
       collection.update(context, this.scene.frameState.useLogDepth, false)
       collection.clear(context)

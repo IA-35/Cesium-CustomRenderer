@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <title>CCR · 南湖校区实景</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+    <style>
+        html,
+        body,
+        #scene {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font: 14px system-ui
+        }
+
+        /* 只读输出区：加载进度、诊断 JSON、抗锯齿读数。可调控件全部在右上角的 lil-gui 面板里。 */
+        #hud {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 10;
+            width: 340px;
+            max-height: calc(100% - 24px);
+            overflow: auto;
+            padding: 14px;
+            background: #152534ee;
+            color: #e5edf5;
+            border: 1px solid #536677;
+            border-radius: 10px
+        }
+
+        #hud h1 {
+            font-size: 15px;
+            margin: 0 0 10px
+        }
+
+        #hud small {
+            display: block;
+            color: #a9b7c6;
+            font-size: 11px;
+            line-height: 1.6
+        }
+
+        #hud small:last-child {
+            margin-top: 8px
+        }
+
+        #hud code {
+            color: #cfe3f5
+        }
+
+        #status {
+            margin: 0;
+            font-size: 11px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow: auto
+        }
+
+        #aaExplanation,
+        #aaActual {
+            color: #b9cfdf
+        }
+
+        /* lil-gui 在 import 时自行注入基础样式，这里只覆盖配色/定位，让面板与左侧输出区一致。 */
+        .lil-gui.lil-root {
+            --background-color: #152534ee;
+            --text-color: #e5edf5;
+            --title-background-color: #1d3243;
+            --title-text-color: #e5edf5;
+            --widget-color: #24384a;
+            --hover-color: #2f4a60;
+            --focus-color: #3f7ba8;
+            --number-color: #8fd0ff;
+            --font-size: 12px;
+            top: 12px;
+            right: 12px;
+            max-height: calc(100% - 24px);
+            border: 1px solid #536677;
+            border-radius: 10px;
+            overflow: hidden
+        }
+    </style>
+    <script>window.CESIUM_BASE_URL = '/node_modules/cesium/Build/Cesium/'</script>
+    <script src="/node_modules/cesium/Build/Cesium/Cesium.js"></script>
+</head>
+
+<body>
+    <div id="scene"></div>
+    <div id="hud">
+        <h1>CCR · 南湖校区实景</h1>
+        <small id="aaExplanation"></small>
+        <small id="aaActual"></small>
+        <pre id="status">加载模型…</pre>
+        <small>瓦片取自本地 <code>assets/campus-assets/</code>，无需 8083 服务。影像默认走沈阳影像服务，
+            可用 <code>?imagery=none</code> 关闭、<code>?imagery=&lt;模板&gt;</code> 替换；周边白模可用
+            <code>?contextTiles=none</code> 关闭。控件由右上角 lil-gui 面板提供，左下角是
+            <code>js/stats.module.js</code> 的帧率面板（点击可在 FPS / MS / MB 间切换），脚本见
+            <code>examples/campus.js</code>。</small>
+    </div>
+    <script type="module" src="./campus.js"></script>
+</body>
+
+</html>

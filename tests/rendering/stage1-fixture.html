@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>CCR stage one verification</title>
+<link rel="stylesheet" href="/node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+<style>html,body,#scene{width:100%;height:100%;margin:0;overflow:hidden}</style>
+<script>window.CESIUM_BASE_URL='/node_modules/cesium/Build/Cesium/'</script>
+<script src="/node_modules/cesium/Build/Cesium/Cesium.js"></script></head>
+<body><div id="scene"></div><script type="module">
+let CCR;
+if (new URLSearchParams(location.search).get('mode') === 'umd') {
+  await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='/build/0.1.0/CCR.min.js';s.onload=resolve;s.onerror=reject;document.head.append(s)});
+  CCR=window.CCR;
+} else CCR=await import('/src/index.js');
+const viewer = new Cesium.Viewer('scene', { baseLayer: false, terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+  animation:false, timeline:false, baseLayerPicker:false, geocoder:false, infoBox:false,
+  sceneModePicker:false, navigationHelpButton:false, homeButton:false,
+  contextOptions:{webgl:{preserveDrawingBuffer:true}}, shouldAnimate:false });
+viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#647580');
+const errors=[];
+viewer.scene.renderError.addEventListener((scene,error)=>errors.push(error.message));
+viewer.camera.setView({destination:Cesium.Cartesian3.fromDegrees(123.42,41.77,5000), orientation:{heading:0,pitch:-1.1,roll:0}});
+window.fixture={viewer,CCR,errors};
+</script></body></html>

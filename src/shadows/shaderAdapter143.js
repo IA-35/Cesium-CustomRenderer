@@ -43,7 +43,17 @@ float campus_shadowVisibility(vec3 position, vec3 normal) {
 }
 `
 
-export function receiverSource(C, source) {
+export function receiverSource(C, source, globe = false) {
+  if (globe && source.sources.some(text => text.includes('czm_geodeticSurfaceNormal(v_positionMC'))) {
+    // Globe imagery has no separable PBR specular term. Attenuate its surface
+    // lighting before atmospheric composition, retaining an ambient floor.
+    const factor = 'mix(0.35, 1.0, campus_shadowVisibility(v_positionEC, normalEC))'
+    const sources = source.sources.map(text => text
+      .replaceAll('vec4 finalColor = vec4(color.rgb * czm_lightColor * diffuseIntensity, color.a);',
+        `vec4 finalColor = vec4(color.rgb * czm_lightColor * diffuseIntensity * ${factor}, color.a);`)
+      .replace('vec4 finalColor = color;', `vec4 finalColor = vec4(color.rgb * ${factor}, color.a);`))
+    return new C.ShaderSource({ defines: source.defines.slice(), sources: [pcf, ...sources] })
+  }
   const marker = 'vec3 directColor = lightColorHdr * directLighting;'
   if (!source.defines.includes('LIGHTING_PBR')) return null
   if (!source.sources.some(text => text.includes(marker))) return null

@@ -3,6 +3,7 @@ import ShadowTarget from './ShadowTarget.js'
 import ShadowReceiver143 from './ShadowReceiver143.js'
 import ShadowCache from './ShadowCache.js'
 import selectLightTiles from './CasterCommands143.js'
+import CameraShadowCoverage from './CameraShadowCoverage.js'
 
 // Owns selection, depth rendering and receiving. Does not use Cesium.ShadowMap.
 export default class DirectionalShadowPass {
@@ -10,6 +11,7 @@ export default class DirectionalShadowPass {
     Object.assign(this, { C, viewer, scene: viewer.scene, getOptions, enabled: false, ready: false, dead: false })
     this.light = new LightFrustum(C, this.scene)
     this.cache = new ShadowCache()
+    this.coverage = new CameraShadowCoverage(C)
     this.stats = { updates: 0, cacheHits: 0, casters: 0, receivers: 0, selectedOffscreen: 0, error: null }
     const uniforms = {
       campus_shadowDepth: () => this.target ? this.target.depth : this.scene.context.defaultTexture,
@@ -31,7 +33,8 @@ export default class DirectionalShadowPass {
     }))
     this.debugStage.enabled = false
   }
-  setOrigin(origin) { this.origin = this.C.Cartesian3.clone(origin); this.invalidate() }
+  // Legacy callers may invalidate here, but cannot pin coverage to a geographic area.
+  setOrigin() { this.invalidate() }
   invalidate() { this.cache.invalidate(); this.ready = false }
   setEnabled(enabled) {
     if (this.dead || enabled === this.enabled) return
@@ -42,13 +45,17 @@ export default class DirectionalShadowPass {
     if (!this.viewer.isDestroyed()) this.scene.requestRender()
   }
   update(frameState) {
-    if (!this.enabled || !this.origin || !frameState.passes.render) return
+    if (!this.enabled || !frameState.passes.render) return
+    if (this.scene.mode !== this.C.SceneMode.SCENE3D) { this.ready = false; return }
     const C = this.C
     const toLight = this.scene.light instanceof C.SunLight ? this.scene.context.uniformState.sunDirectionWC
       : C.Cartesian3.negate(this.scene.light.direction, new C.Cartesian3())
-    if (C.Cartesian3.dot(toLight, this.origin) <= 0) { this.ready = false; return }
     const options = this.getOptions()
-    this.light.update(this.origin, toLight, options.shadowDistance / 2, options.shadowSize)
+    const region = this.coverage.update(this.viewer.camera, options.shadowDistance, this.scene.globe && this.scene.globe.ellipsoid)
+    if (C.Cartesian3.dot(toLight, region.center) <= 0) { this.ready = false; return }
+    this.light.update(region.center, toLight, region.extent, options.shadowSize, true)
+    this.stats.coverage = { mode: 'camera', extent: region.extent, focusDistance: region.focusDistance,
+      texelWorld: this.light.texelWorld, center: C.Cartesian3.clone(region.center) }
     frameState.commandList.push({ pass: C.Pass.COMPUTE, execute: () => this.render(frameState) })
   }
   render(frameState) {

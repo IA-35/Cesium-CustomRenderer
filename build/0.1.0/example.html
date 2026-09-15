@@ -1,0 +1,110 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><link rel="icon" href="data:,"><title>CCR 独立 UMD 演示</title>
+<style>
+html,body,#scene{width:100%;height:100%;margin:0;overflow:hidden;background:#000}
+#toolbar{position:absolute;top:12px;left:12px;padding:12px 14px;background:#172534e8;color:#fff;font:13px/1.6 system-ui,sans-serif;border-radius:6px;z-index:1;max-width:430px}
+#toolbar .tag{display:inline-block;width:34px;color:#7f9bb5;font-size:12px}
+button{margin:2px 3px 2px 0;padding:5px 9px;cursor:pointer}
+button[aria-pressed="true"]{background:#2f6ea8;border-color:#2f6ea8;color:#fff}
+#status{display:block;margin-top:8px;color:#9fd3ff}#errors{display:block;color:#ff9c9c;font-size:11px}
+#note{margin-top:6px;color:#a9b7c6;font-size:11px}
+</style>
+<div id="scene"></div>
+<div id="toolbar">
+  Cesium 自定义渲染管线 · UMD 构建产物
+  <div class="tag-row"><span class="tag">数据</span><button data-set="osm">白模 · OSM Buildings</button><button data-set="sample">3D Tiles · 官方示例</button><button data-set="points">3D Tiles · 点云</button></div>
+  <div class="tag-row"><span class="tag">管线</span><button data-native>原生</button><button data-aa="smaa">SMAA</button><button data-aa="taa">TAA</button></div>
+  <span id="status">加载中</span><span id="errors"></span>
+  <div id="note">三维数据在线加载，ion 资产需要 token（可用 ?token= 覆盖）。</div>
+</div>
+<script src="CCR.min.js"></script>
+<script>
+(async () => {
+  const query = new URLSearchParams(location.search)
+  const status = document.querySelector('#status')
+  const errorBox = document.querySelector('#errors')
+  const errors = []
+
+  // The host supplies an ion token via ?token=... for ion datasets.
+  const ION_TOKEN = query.get('token') || ''
+
+  // Token-free public 3D Tiles from the CesiumJS repo, mirrored with CORS by jsDelivr.
+  const SAMPLE_BASE = 'https://cdn.jsdelivr.net/gh/CesiumGS/cesium@1.143/Apps/SampleData'
+  const OSM_CITY = { lon: Number(query.get('lon') ?? 116.3913), lat: Number(query.get('lat') ?? 39.9075), height: Number(query.get('height') ?? 2400) }
+
+  const DATASETS = {
+    // The ion resource MUST be awaited before it reaches fromUrl(): this 1.143 build's
+    // Cesium3DTileset.fromUrl() does not unwrap a Promise<Resource> despite its type signature.
+    osm: { label: '白模 · OSM Buildings', load: async C => {
+        if (!ION_TOKEN) throw new Error('OSM Buildings requires an ion token via ?token=...')
+        return C.Cesium3DTileset.fromUrl(await C.IonResource.fromAssetId(96188))
+      }, city: OSM_CITY },
+    sample: { label: '3D Tiles · 官方示例', load: C => C.Cesium3DTileset.fromUrl(SAMPLE_BASE + '/Cesium3DTiles/Tilesets/Tileset/tileset.json') },
+    points: { label: '3D Tiles · 点云', load: C => C.Cesium3DTileset.fromUrl(SAMPLE_BASE + '/Cesium3DTiles/PointCloud/PointCloudRGB/tileset.json'),
+      tune: (C, ts) => { ts.pointCloudShading = new C.PointCloudShading({ attenuation: false, eyeDomeLighting: true }); ts.style = new C.Cesium3DTileStyle({ pointSize: 2.5 }) } }
+  }
+
+  const base = new URL(query.get('cesium') || '/node_modules/cesium/Build/Cesium/', location.href)
+  if (!base.pathname.endsWith('/')) base.pathname += '/'
+  window.CESIUM_BASE_URL = base.href
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = new URL('Widgets/widgets.css', base); document.head.appendChild(css)
+  await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = new URL('Cesium.js', base); s.onload = resolve; s.onerror = reject; document.head.appendChild(s) })
+
+  const C = window.Cesium
+  if (ION_TOKEN) C.Ion.defaultAccessToken = ION_TOKEN
+
+  const viewer = new C.Viewer('scene', { baseLayer: false, baseLayerPicker: false, geocoder: false, animation: false, timeline: false, homeButton: false, navigationHelpButton: false })
+  viewer.clock.currentTime = C.JulianDate.fromIso8601('2026-09-08T03:00:00Z'); viewer.clock.shouldAnimate = false
+  viewer.scene.globe.baseColor = C.Color.fromCssColorString('#10161d')
+
+  const pipeline = CCR.createVisualPipeline({ Cesium: C, viewer })
+
+  let tileset = null, activeSet = null
+  const render = () => viewer.scene.requestRender()
+  const report = m => { status.textContent = m + (activeSet ? ' · ' + DATASETS[activeSet].label : '') }
+  const fail = (key, e) => { errors.push(key + ': ' + e.message); errorBox.textContent = errors.slice(-3).join(' | '); report('加载失败 ' + key); console.error(e) }
+  const syncSetButtons = () => { for (const b of document.querySelectorAll('[data-set]')) b.setAttribute('aria-pressed', String(b.dataset.set === activeSet)) }
+
+  async function showDataset(key) {
+    const spec = DATASETS[key]; if (!spec) return
+    if (tileset) { viewer.scene.primitives.remove(tileset); tileset = null }
+    activeSet = key
+    status.textContent = '加载 ' + spec.label + ' …'
+    try {
+      const next = await spec.load(C)
+      spec.tune?.(C, next)
+      next.shadows = C.ShadowMode.ENABLED
+      viewer.scene.primitives.add(next)
+      tileset = next
+      if (spec.city) {
+        const { lon, lat, height } = spec.city
+        viewer.camera.setView({ destination: C.Cartesian3.fromDegrees(lon, lat, height),
+          orientation: { heading: C.Math.toRadians(18), pitch: C.Math.toRadians(-32), roll: 0 } })
+        pipeline.setCampusOrigin(C.Cartesian3.fromDegrees(lon, lat, 0))
+      } else {
+        const sphere = next.boundingSphere
+        viewer.camera.viewBoundingSphere(sphere, new C.HeadingPitchRange(C.Math.toRadians(20), C.Math.toRadians(-32), sphere.radius * 2.4))
+        pipeline.setCampusOrigin(C.Cartesian3.clone(sphere.center))
+      }
+      render(); report('就绪 ' + spec.label)
+    } catch (e) { fail(key, e) }
+  }
+
+  for (const b of document.querySelectorAll('[data-set]')) b.onclick = async () => { await showDataset(b.dataset.set); syncSetButtons() }
+  document.querySelector('[data-native]').onclick = () => { pipeline.setEnabled(false); report('原生模式'); render() }
+  for (const b of document.querySelectorAll('[data-aa]')) b.onclick = () => {
+    pipeline.setEnabled(true)
+    pipeline.setAntiAliasing({ mode: b.dataset.aa, msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+    report(b.dataset.aa.toUpperCase()); render()
+  }
+  viewer.scene.renderError.addEventListener((scene, error) => fail('render', error))
+
+  pipeline.setEnabled(true)
+  pipeline.setAntiAliasing({ mode: 'smaa', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+  await showDataset(query.get('dataset') || 'sample')
+  syncSetButtons(); if (tileset) report('就绪')
+
+  window.sdkDemo = { viewer, pipeline, errors, showDataset, VERSION: CCR.VERSION,
+    get tileset() { return tileset } }
+  window.addEventListener('pagehide', () => { pipeline.destroy(); viewer.destroy() }, { once: true })
+})().catch(error => { document.querySelector('#status').textContent = '加载失败：' + (error.message || '请检查 Cesium 目录'); })
+</script></html>

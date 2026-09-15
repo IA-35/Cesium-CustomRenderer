@@ -4,6 +4,7 @@
 
 ```js
 pipeline.setScreenSpaceAO({ enabled: true })
+pipeline.setScreenSpaceAO({ algorithm: 'hbao' }) // 可切回 ssao
 pipeline.setScreenSpaceAO({ radius: 3, strength: 1, bias: 0.08 })
 pipeline.getScreenSpaceAODiagnostics()
 pipeline.setScreenSpaceAO({ enabled: false })
@@ -12,6 +13,7 @@ pipeline.setScreenSpaceAO({ enabled: false })
 | 参数 | 默认 | 范围 |
 | --- | ---: | --- |
 | enabled | false | boolean |
+| algorithm | ssao | ssao / hbao |
 | radius | 3米 | 0.1–20 |
 | strength | 1 | 0–2 |
 | bias | 0.08 | 0.02–0.5，方向夹角偏差 |
@@ -23,6 +25,8 @@ pipeline.setScreenSpaceAO({ enabled: false })
 AO自动请求材质通道与Hi-Z，保留调用者的显式开关。关闭AO时释放不再需要的依赖；仍被显式请求的材质/Hi-Z保留。消费者和计算都使用当帧数据，暂停/恢复/销毁与主管线联动。
 
 半分辨率可见性阶段使用8个固定方向×4个径向采样，根据视空间位置差、几何法线、半径衰减与bias估计遮蔽。几何法线由相邻深度重建，避免法线贴图让平面产生自遮蔽。邻居距接收点超过半径时不参与法线重建，无法确定局部表面则保持中性。采样半径最多64个完整分辨率像素；近距离不保证遍历配置半径内全部区域。
+
+HBAO 使用8方向×8步，沿各方向记录最大地平线，只累加新增遮蔽角度，按距离平方衰减。与 SSAO 共用有效性、几何法线、透明覆盖、滤波和 HDR 合成规则。切换算法会释放并重建自有 AO 阶段，不重建业务模型。两种算法同一 strength 的遮蔽强度不必相同，应结合画质调节。
 
 复用Hi-Z第一层拒绝不相交的深度范围，并识别未知遮挡。负深度或未知标记会保守取消该估计，不能当作天空忽略。当前没有完整层级光线行进或GTAO积分，不用这些名称描述本实现。
 

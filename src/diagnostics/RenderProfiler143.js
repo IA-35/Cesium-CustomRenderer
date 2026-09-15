@@ -24,8 +24,10 @@ export default class RenderProfiler143 {
       ['ssr', pipeline.screenSpaceReflections, '_execute'],
       ['transparentSsr', pipeline.transparentReflections, '_execute'],
       ['ao', pipeline.screenSpaceAO, '_execute'],
+      ['bloom', pipeline.hdrBloom, '_execute'],
       ['environment', pipeline.environmentRenderer && pipeline.environmentRenderer.hdr, '_execute'],
-      ['smaa', pipeline.smaa, '_execute']
+      ['smaa', pipeline.smaa, '_execute'],
+      ['fxaa', pipeline.fxaa, '_execute']
     ]) {
       if (!target) continue
       this.labels.push(label)
@@ -85,6 +87,7 @@ export default class RenderProfiler143 {
     const stage = (name, value) => {
       if (value && !value.isDestroyed()) add(name, value.outputTexture)
     }
+    if (p.hdrBloom && p.hdrBloom.stages) p.hdrBloom.stages.forEach((value, index) => stage(`bloom.${index}`, value))
     add('shadow.depth', p.customShadow && p.customShadow.target && p.customShadow.target.depth)
     const materials = p.materialChannels && p.materialChannels.target
     if (materials) for (const name of ['normalRoughMetal', 'emissiveFlags', 'eyeDepth', 'depthStencil', 'transparency', 'reflectionSpecular', 'reflectionResponse', 'opaqueColor', 'albedoOcclusion']) add(`materials.${name}`, materials[name])

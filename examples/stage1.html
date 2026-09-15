@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>CCR · 阶段一效果对比</title>
+<link rel="stylesheet" href="/node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+<style>html,body,#scene{width:100%;height:100%;margin:0;overflow:hidden;font:14px system-ui}aside{position:absolute;top:18px;left:18px;width:236px;padding:18px;background:#14202deb;color:#e5edf5;border:1px solid #425266;border-radius:12px;box-shadow:0 8px 24px #0003}h1{font-size:18px;margin:0 0 12px}label{display:flex;align-items:center;justify-content:space-between;margin:12px 0;gap:8px}input[type=range]{width:125px}select,button{background:#25394a;color:inherit;border:1px solid #52667a;border-radius:5px;padding:6px}button{cursor:pointer;margin:3px}small{display:block;color:#a7bbce;line-height:1.6}#status{margin-top:12px}</style>
+<script>window.CESIUM_BASE_URL='/node_modules/cesium/Build/Cesium/'</script>
+<script src="/node_modules/cesium/Build/Cesium/Cesium.js"></script></head><body><div id="scene"></div>
+<aside><h1>CCR · 阶段一效果对比</h1><small>本地合成场景，无需地图令牌。拖动镜头可观察接触阴影与天空。</small>
+<label>环境遮蔽<select id="ao"><option value="hbao">HBAO</option><option value="ssao">SSAO</option><option value="off">关闭</option></select></label>
+<label>高光扩散<input id="bloom" type="checkbox" checked></label>
+<label>泛光强度<input id="strength" type="range" min="0" max="1" step=".01" value=".15"></label>
+<label>云层<select id="cloud"><option value="shell">球壳云层</option><option value="local">局部云层</option><option value="off">关闭</option></select></label>
+<label>云量<input id="coverage" type="range" min="0" max=".95" step=".01" value=".42"></label>
+<label>抗锯齿<select id="aa"><option value="fxaa">FXAA</option><option value="smaa">SMAA</option><option value="taa">TAA</option></select></label>
+<button id="ground">近景</button><button id="sky">仰望天空</button><button id="above">云上</button><button id="orbit">高空</button>
+<small id="status">正在准备场景…</small></aside>
+<script type="module">
+import * as CCR from '/src/index.js';
+import {startStage1Scene} from '/tests/rendering/stage1-scene.js';
+const viewer=new Cesium.Viewer('scene',{baseLayer:false,animation:false,timeline:false,baseLayerPicker:false,geocoder:false,infoBox:false,sceneModePicker:false,navigationHelpButton:false,homeButton:false,shouldAnimate:false});
+viewer.scene.globe.baseColor=Cesium.Color.fromCssColorString('#647580');
+const app={viewer,CCR,errors:[]};window.CCR=CCR;window.stage1Demo=app;
+const status=document.querySelector('#status');
+viewer.scene.renderError.addEventListener((scene,error)=>{app.errors.push(error.message);status.textContent=error.message});
+await startStage1Scene(app);
+const p=app.pipeline;
+p.setOptions({environment:true,cloudGeometry:'shell',environmentAnimation:false,shadows:true,shadowMode:'custom'});
+const on=(id,fn)=>document.getElementById(id).addEventListener('input',event=>fn(event.target));
+on('ao',t=>p.setScreenSpaceAO({enabled:t.value!=='off',algorithm:t.value}));
+on('bloom',t=>p.setHdrBloom({enabled:t.checked}));on('strength',t=>p.setHdrBloom({strength:Number(t.value)}));
+on('cloud',t=>p.setOptions({clouds:t.value!=='off',cloudGeometry:t.value}));on('coverage',t=>p.setOptions({cloudCoverage:Number(t.value)}));
+on('aa',t=>p.setAntiAliasing(t.value));
+document.querySelector('#ground').onclick=()=>{viewer.camera.lookAt(app.origin,new Cesium.HeadingPitchRange(0,-.35,180));viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)};
+for(const [id,height,pitch] of [['sky',100,0.35],['above',6000,-.2],['orbit',2000000,-Math.PI/2]]) document.getElementById(id).onclick=()=>viewer.camera.setView({destination:Cesium.Cartesian3.fromDegrees(123.42,41.77,height),orientation:{heading:0,pitch,roll:0}});
+status.textContent='效果已启用，可用上方控件切换对比。';
+</script></body></html>

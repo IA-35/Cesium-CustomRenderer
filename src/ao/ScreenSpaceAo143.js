@@ -1,5 +1,6 @@
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { aoShader, bilateralShader, resolveShader } from './aoShaders143.js'
+import { hbaoShader } from './hbaoShader143.js'
 
 let nextId = 0
 
@@ -53,7 +54,8 @@ export default class ScreenSpaceAo143 {
       pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype, sampleMode: C.PostProcessStageSampleMode.NEAREST,
       clearColor: new C.Color(1, 0, 0, 1)
     })
-    const raw = make('raw', aoShader)
+    this.algorithm = this.getOptions().screenSpaceAoAlgorithm === 'hbao' ? 'hbao' : 'ssao'
+    const raw = make('raw', this.algorithm === 'hbao' ? hbaoShader : aoShader)
     const horizontal = make('horizontal', bilateralShader, { u_visibility: raw.name, u_axis: new C.Cartesian2(1, 0) })
     const vertical = make('vertical', bilateralShader, { u_visibility: horizontal.name, u_axis: new C.Cartesian2(0, 1) })
     const resolve = make('resolve', resolveShader, { u_visibility: vertical.name }, 1, C.PixelDatatype.FLOAT)
@@ -68,6 +70,8 @@ export default class ScreenSpaceAo143 {
 
   setEnabled(value) {
     if (this.destroyed || this._sceneDestroyed()) return
+    const algorithm = this.getOptions().screenSpaceAoAlgorithm === 'hbao' ? 'hbao' : 'ssao'
+    if (value && this.enabled && this.algorithm !== algorithm) this._release()
     if (!value) {
       this._release()
       this.failed = false
@@ -138,7 +142,7 @@ export default class ScreenSpaceAo143 {
         if (texture && !texture.isDestroyed()) textures.add(texture)
       }
     }
-    return { enabled: this.enabled, supported: this.supported, valid: !!this.getVisibilityTexture(),
+    return { enabled: this.enabled, supported: this.supported, valid: !!this.getVisibilityTexture(), algorithm: this.algorithm || 'ssao',
       reason: this._scopeReason() || this.reason, error: this.error, failed: this.failed, stats: { ...this.stats },
       bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0),
       scope: 'screen-space non-emissive HDR modulation; not isolated indirect lighting',
