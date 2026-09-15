@@ -7,7 +7,7 @@ export default class LightFrustum {
     this.eyeToShadow = new C.Matrix4()
   }
 
-  update(origin, toLight, extent, size) {
+  update(origin, toLight, extent, size, stabilize = false) {
     const C = this.C
     const direction = C.Cartesian3.normalize(toLight, new C.Cartesian3())
     const radial = C.Cartesian3.normalize(origin, new C.Cartesian3())
@@ -16,10 +16,18 @@ export default class LightFrustum {
     const right = C.Cartesian3.normalize(C.Cartesian3.cross(direction, reference, new C.Cartesian3()), new C.Cartesian3())
     const up = C.Cartesian3.normalize(C.Cartesian3.cross(right, direction, new C.Cartesian3()), new C.Cartesian3())
     this.texelWorld = 2 * extent / size
-    // The receiver region has a fixed campus anchor, not a camera-following
-    // center. Snapping its Earth-scale projections onto rotating light axes
-    // introduces up to one texel of artificial motion on every sun update.
+    // Unstabilized mode retains exact positioning for isolated light-camera callers.
     const center = C.Cartesian3.clone(origin)
+    if (stabilize) {
+      // Quantize local displacement rather than rotating Earth-scale coordinates.
+      if (!this.anchor || C.Cartesian3.distance(this.anchor, origin) > extent * 8) this.anchor = C.Cartesian3.clone(origin)
+      const delta = C.Cartesian3.subtract(origin, this.anchor, new C.Cartesian3())
+      for (const axis of [right, up]) {
+        const coordinate = C.Cartesian3.dot(delta, axis)
+        C.Cartesian3.add(center, C.Cartesian3.multiplyByScalar(axis,
+          Math.round(coordinate / this.texelWorld) * this.texelWorld - coordinate, new C.Cartesian3()), center)
+      }
+    }
     const position = C.Cartesian3.add(center, C.Cartesian3.multiplyByScalar(direction, extent * 2, new C.Cartesian3()), new C.Cartesian3())
     // Camera.setView adjusts orthographic zoom using scene depth picking. Calling
     // it inside rendering re-enters the main scene and clears its command/pass state.

@@ -66,6 +66,7 @@ compiler.run((error, stats) => {
   // consumable by require() without changing browser script loading.
   fs.writeFileSync(path.join(output, 'package.json'), JSON.stringify({ type: 'commonjs' }, null, 2))
   fs.copyFileSync(path.join(root, 'public/rendering/smaa/LICENSE.txt'), path.join(output, 'THIRD_PARTY_LICENSES.txt'))
+  fs.copyFileSync(path.join(root, 'docs/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
   const hashes = {}
   const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
     const target = path.join(dir, item.name)

@@ -4,9 +4,11 @@ export { default as ScreenSpaceGeometry143 } from './channels/ScreenSpaceGeometr
 export { default as MaterialChannels143 } from './channels/MaterialChannels143.js'
 export { default as DepthPyramid143 } from './channels/DepthPyramid143.js'
 export { default as ScreenSpaceAo143 } from './ao/ScreenSpaceAo143.js'
+export { default as HdrBloom143 } from './bloom/HdrBloom143.js'
 export { default as ScreenSpaceReflection143 } from './reflections/ScreenSpaceReflection143.js'
 export { default as TransparentReflection143 } from './reflections/TransparentReflection143.js'
 export { default as SmaaPass143 } from './antialiasing/SmaaPass143.js'
+export { default as FxaaPass143 } from './antialiasing/FxaaPass143.js'
 export { default as TaaPass143, taaBlendWeights } from './antialiasing/TaaPass143.js'
 export { default as TaaJitter143 } from './antialiasing/TaaJitter143.js'
 export { default as FrustumJitterBridge143 } from './antialiasing/FrustumJitterBridge143.js'
@@ -15,4 +17,7 @@ export { resolveMsaaPolicy, isPostProcessAntiAliasing, postProcessAntiAliasingMo
 export { default as PerformanceGovernor143, quantile } from './performance/PerformanceGovernor143.js'
 export { MATERIAL_FLAGS } from './channels/materialShader143.js'
 export { defaultFilters, normalizeOptions, normalizeColorGrading, colorGradingControls, colorGradingPresets } from './presets.js'
+// B01: frame execution bridge. A low-level building block whose first real consumer is B02's deferred
+// lighting, so it is exported but deliberately not wired into any VisualPipeline option yet.
+export { createFrameBridge, FRAME_BRIDGE_PHASES } from './pipeline/FrameBridge143.js'
 export const createVisualPipeline = options => new VisualPipeline(options)

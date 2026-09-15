@@ -4,11 +4,10 @@
 
 ## 接入
 
-`VisualPipeline` 默认使用 `shadowMode: 'custom'`、逐帧更新。必须提供校区ECEF锚点；业务已有 `setCampusOrigin` 接入。
+`VisualPipeline` 默认使用 `shadowMode: 'custom'`、逐帧更新。2026-09-15 起覆盖位置由相机自动选择，不要求提供校区ECEF锚点。`setCampusOrigin` 只保留环境/业务兼容语义，不再控制阴影区域。
 
 ```js
 pipeline.setOptions({ shadowMode: 'custom', shadows: true, shadowStatic: false })
-pipeline.setCampusOrigin(campus.staticCamera.position)
 pipeline.setOptions({ shadowDebug: true }) // 独立深度图，诊断用途
 pipeline.setOptions({ shadowDebug: false })
 pipeline.setOptions({ shadowMode: 'native' }) // 原生单级联回退/对照
@@ -20,6 +19,7 @@ pipeline.setOptions({ shadows: false }) // 关闭当前后端的阴影
 ## 文件职责
 
 - `DirectionalShadowPass.js`：生命周期、调度、光源视锥选择、状态恢复、诊断计数。
+- `CameraShadowCoverage.js`：使用主相机视线与椭球交点确定中心；未命中时使用相机前方区域；按投影宽度扩展范围，使用带滞回的尺寸档位。覆盖可跨任意地理位置，单张贴图仍有精度预算。
 - `LightFrustum.js`：稳定正交光源相机及纹素对齐。必须使用 `OrthographicFrustum` 才能得到有限的瓦片SSE；直接更新向量，不调用会触发主场景拾取的Camera.setView。
 - `CasterCommands143.js`：按光源视锥遍历瓦片，并遵守父级集合的隐藏状态。
 - `ShadowTarget.js`：深度纹理、FBO、viewport和清除命令。
@@ -29,7 +29,7 @@ pipeline.setOptions({ shadows: false }) // 关闭当前后端的阴影
 
 ## 当前支持边界
 
-- 接收端支持Cesium标准PBR `Model` / `Cesium3DTileset`，校园GLB地面也属于此范围。
+- 接收端支持Cesium标准PBR `Model` / `Cesium3DTileset`，以及Globe影像表面。Globe在大气合成前调制表面光照，保留环境亮度下限；它没有Model的可分离PBR镜面项。
 - 保留模型MASK空隙、双面状态、实例化和蒙皮，已验证项目角色模型播放动画时逐帧更新。
 - 使用单独的3D Tiles SHADOW选择Pass获取光源视锥中的投影物，不只依赖主相机视野。普通Model可从主场景命令列表取得未被主视锥提交的候选命令。
 - 平面裁剪保留；主相机眼空间的裁剪变换会转换到光源眼空间。剪裁多边形、复杂自定义顶点Shader仍需逐场景验证。

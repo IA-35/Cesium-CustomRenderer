@@ -32,7 +32,29 @@ function fixture() {
   return { viewer, Cesium, stages, owned, options: { shadowMode: 'native', environment: false } }
 }
 
-const defaults = { enabled: false, radius: 3, strength: 1, bias: 0.08 }
+const defaults = { algorithm: 'ssao', enabled: false, radius: 3, strength: 1, bias: 0.08 }
+
+test('HDR Bloom suppresses native Bloom and restores only its owned value', () => {
+  const f = fixture(), p = new VisualPipeline({...f,options:{...f.options,bloom:true}})
+  const light = {external:true}; f.viewer.scene.light=light; f.stages.exposure=.7
+  p.setHdrBloom({enabled:true})
+  assert.equal(f.stages.bloom.enabled,false)
+  p.setHdrBloom({enabled:false})
+  assert.equal(f.stages.bloom.enabled,true)
+  p.setHdrBloom({enabled:true})
+  f.stages.bloom.enabled=true
+  p.setHdrBloom({strength:.4})
+  assert.equal(f.stages.bloom.enabled,true)
+  assert.equal(f.viewer.scene.light,light)
+  assert.equal(f.stages.exposure,.7)
+  const before=p.hdrBloom
+  p.getHdrBloomDiagnostics()
+  assert.equal(p.hdrBloom,before)
+  p.suspend('test')
+  p.setHdrBloom({levels:3})
+  assert.equal(p.hdrBloom.collection,undefined)
+  p.destroy()
+})
 
 function attachOwners(pipeline) {
   const calls = []
@@ -91,9 +113,9 @@ test('AO partial settings preserve foreign scene state and never create resource
   f.stages.exposure = 0.7
   f.viewer.resize = () => assert.fail('AO-only updates must not resize')
   assert.deepEqual(pipeline.setScreenSpaceAO({ radius: 5, strength: 0.7, bias: 0.12,
-    exposure: 3, materialChannelsEnabled: true, geometryEnabled: true }), { enabled: false, radius: 5, strength: 0.7, bias: 0.12 })
+    exposure: 3, materialChannelsEnabled: true, geometryEnabled: true }), { enabled: false, radius: 5, strength: 0.7, bias: 0.12, algorithm: 'ssao' })
   for (const input of [null, {}, { enabled: 'true', radius: Infinity, strength: null, bias: NaN }]) {
-    assert.deepEqual(pipeline.setScreenSpaceAO(input), { enabled: false, radius: 5, strength: 0.7, bias: 0.12 })
+    assert.deepEqual(pipeline.setScreenSpaceAO(input), { enabled: false, radius: 5, strength: 0.7, bias: 0.12, algorithm: 'ssao' })
   }
   assert.equal(pipeline.materialChannels, undefined)
   assert.equal(pipeline.screenSpaceAO, undefined)
@@ -158,7 +180,7 @@ test('disabled and nested suspensions defer AO allocation and resume latest sett
   const { calls } = attachOwners(pipeline)
   pipeline.resume('analysis')
   assert.deepEqual(calls, [['depth', true], ['materials', true], ['ao', true]])
-  assert.deepEqual(pipeline.getScreenSpaceAODiagnostics().requested, { enabled: true, radius: 4, strength: 0.4, bias: 0.08 })
+  assert.deepEqual(pipeline.getScreenSpaceAODiagnostics().requested, { enabled: true, radius: 4, strength: 0.4, bias: 0.08, algorithm: 'ssao' })
   pipeline.destroy()
 })
 

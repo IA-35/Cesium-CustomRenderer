@@ -14,14 +14,16 @@ export const defaults = Object.freeze({
   ...defaultFilters, shadows: true, shadowMode: 'custom', shadowDebug: false, shadowStatic: false, shadowSize: 4096, shadowCascades: 1, shadowDistance: 4000,
   msaaCombine: false,
   ambientOcclusion: false, fog: true, fogDensity: 0.000025, bloom: false,
+  hdrBloomEnabled: false, hdrBloomStrength: 0.15, hdrBloomThreshold: 1, hdrBloomKnee: 0.5, hdrBloomLevels: 5,
   geometryEnabled: false, geometryDebugMode: 'off', materialChannelsEnabled: false, albedoEnabled: false, depthPyramidEnabled: false,
-  screenSpaceAoEnabled: false, screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
+  screenSpaceAoEnabled: false, screenSpaceAoAlgorithm: 'ssao', screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
   screenSpaceReflectionTransparent: false,
   taaJitterSamples: 8, taaHistoryBlend: 0.03, taaMotionBlend: 0.5, taaVelocityThreshold: 12, taaDepthTolerance: 0.1
 })
 
 const ranges = {
+  hdrBloomStrength: [0, 2], hdrBloomThreshold: [0, 20], hdrBloomKnee: [0, 1],
   contrast: [0, 3], brightness: [0, 3], exposure: [0.05, 5],
   saturation: [0, 3], hue: [-1, 1], shadowDistance: [100, 20000],
   fogDensity: [0, 0.0005], screenSpaceAoRadius: [0.1, 20], screenSpaceAoStrength: [0, 2], screenSpaceAoBias: [0.02, 0.5],
@@ -41,9 +43,12 @@ export function normalizeOptions(input = {}, current = defaults) {
     if (typeof input[key] === 'boolean') result[key] = input[key]
   })
   if ([1024, 2048, 4096].includes(input.shadowSize)) result.shadowSize = input.shadowSize
+  if (typeof input.hdrBloomEnabled === 'boolean') result.hdrBloomEnabled = input.hdrBloomEnabled
+  if (Number.isFinite(input.hdrBloomLevels)) result.hdrBloomLevels = Math.max(2, Math.min(6, Math.round(input.hdrBloomLevels)))
   if ([1, 4].includes(input.shadowCascades)) result.shadowCascades = input.shadowCascades
   if ([4, 8, 16].includes(input.taaJitterSamples)) result.taaJitterSamples = input.taaJitterSamples
   if (['native', 'custom'].includes(input.shadowMode)) result.shadowMode = input.shadowMode
+  if (['ssao', 'hbao'].includes(input.screenSpaceAoAlgorithm)) result.screenSpaceAoAlgorithm = input.screenSpaceAoAlgorithm
   if (['off', 'normal', 'depth'].includes(input.geometryDebugMode)) result.geometryDebugMode = input.geometryDebugMode
   return result
 }

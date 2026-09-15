@@ -1,0 +1,131 @@
+{
+  "reviewScope": "B00/B01 code repair; not complete stage-one scene acceptance",
+  "nodeTests": {
+    "passed": 419,
+    "failed": 0
+  },
+  "bridgeModes": [
+    {
+      "id": "mrt",
+      "environment": {
+        "useOIT": true,
+        "mrt": true,
+        "multipass": false,
+        "samples": 1,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0031250000000000444
+    },
+    {
+      "id": "msaa4",
+      "environment": {
+        "useOIT": true,
+        "mrt": true,
+        "multipass": false,
+        "samples": 4,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0031250000000000444
+    },
+    {
+      "id": "multipass",
+      "environment": {
+        "useOIT": true,
+        "mrt": false,
+        "multipass": true,
+        "samples": 1,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0001953125000000444
+    },
+    {
+      "id": "multifrustum",
+      "environment": {
+        "useOIT": true,
+        "mrt": true,
+        "multipass": false,
+        "samples": 1,
+        "frustums": 10
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0031250000000000444
+    },
+    {
+      "id": "sorted",
+      "environment": {
+        "useOIT": false,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": null
+    },
+    {
+      "id": "no-glass",
+      "environment": {
+        "useOIT": true,
+        "mrt": true,
+        "multipass": false,
+        "samples": 1,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0001464843749999778
+    },
+    {
+      "id": "umd",
+      "environment": {
+        "useOIT": true,
+        "mrt": true,
+        "multipass": false,
+        "samples": 1,
+        "frustums": 1
+      },
+      "pickIdentity": true,
+      "depthDelta": 0,
+      "errors": [],
+      "maxLinearMixError": 0.0031250000000000444
+    }
+  ],
+  "negativeChecks": {
+    "exposureRegressionRejected": true,
+    "goldenUnchanged": true,
+    "emptyImageryRejected": true,
+    "imagery503Rejected": true
+  },
+  "acceptedGoldens": [
+    "campus-geometry-ccr-default.json",
+    "campus-geometry-isolated.json",
+    "fixtures-campus-quality.json",
+    "fixtures-ccr-default.json",
+    "fixtures-isolated.json"
+  ],
+  "sceneAcceptance": {
+    "campusQualityExactComparison": "failed; golden withdrawn; no tolerance relaxation",
+    "externalImageryFullRoute": "provider failure; not accepted"
+  },
+  "bundle": {
+    "sha256": "25be2219f3bb3ba1f9c7837709347d538aeebfafd0d648ce5769313f46023b18"
+  },
+  "sourceFiles": {
+    "src/pipeline/FrameBridge143.js": "8cea335a47974c763677ba185d1b70e5ee9e67a57899911b278196de7b656c14",
+    "scripts/check-frame-bridge.cjs": "2d1e57a8616ef27b0ed01cec9a398a30dcd1136ca69c1fb37fdabda925901d0f",
+    "scripts/check-stage1-baseline.cjs": "e8743d328d9a9899c91c06cb7d92121000b636d08f69d8c04b10ef6f28f5c3ec",
+    "scripts/baseline-utils.cjs": "007a61272b3181e39ac77a4f334dde274601502ee383902d52f59227035b9930",
+    "tests/rendering/stage1-baseline-fixture.js": "a98c6dafa019dd2051d2890e8810d67cbe9d9096ddbaa6ec1ba723224e60cc6d"
+  }
+}

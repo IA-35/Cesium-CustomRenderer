@@ -45,7 +45,7 @@ test('renderer retries a failed HDR allocation only after an explicit off-to-on 
     mode: C.SceneMode.SCENE3D, highDynamicRange: true, _view: { frustumCommandsList: [{}] },
     isDestroyed: () => false, requestRender() {} }
   const viewer = { scene, clock: { currentTime: C.JulianDate.fromIso8601('2026-09-08T03:00:00Z') }, isDestroyed: () => false }
-  const renderer = new EnvironmentRenderer(C, viewer, () => normalizeOptions(), () => null)
+  const renderer = new EnvironmentRenderer(C, viewer, () => normalizeOptions({ cloudGeometry: "local" }), () => null)
   try {
     renderer.setOrigin(C.Cartesian3.fromDegrees(123.42, 41.77))
     renderer.setEnabled(true)

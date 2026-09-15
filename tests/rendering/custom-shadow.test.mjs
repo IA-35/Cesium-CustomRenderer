@@ -7,10 +7,20 @@ import { createRequire } from 'node:module'
 import selectLightTiles from '../../src/shadows/CasterCommands143.js'
 import ShadowReceiver143, { clippingPlanesInLightSpace } from '../../src/shadows/ShadowReceiver143.js'
 
-const C = { ShaderSource: class {
+const C = { Pass: { GLOBE: 2 }, ShaderSource: class {
   constructor(options) { Object.assign(this, options) }
   static replaceMain(source, name) { return source.replace(/void\s+main\s*\(/g, `void ${name}(`) }
 } }
+
+test('globe receiver attenuates imagery lighting before atmosphere instead of replacing the final color', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const original = new engine.ShaderSource({ sources: [engine._shadersGlobeFS], defines: [] })
+  const result = receiverSource(engine, original, true)
+  const source = result.sources.join('\n')
+  assert.match(source, /mix\(0.35, 1.0, campus_shadowVisibility\(v_positionEC, normalEC\)\)/)
+  assert.match(source, /czm_fog/)
+  assert.equal(receiverSource(engine, original, false), null)
+})
 
 test('receiver shadows direct lighting while retaining IBL and emissive terms', () => {
   const source = new C.ShaderSource({ defines: ['LIGHTING_PBR'], sources: [

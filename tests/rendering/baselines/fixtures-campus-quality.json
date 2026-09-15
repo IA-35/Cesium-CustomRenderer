@@ -1,0 +1,1326 @@
+{
+  "target": "fixtures",
+  "configuration": "campus-quality",
+  "captures": [
+    {
+      "configuration": "campus-quality",
+      "shot": "near",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2624009.065003754,
+          3976497.576049365,
+          4226462.222907915
+        ],
+        "direction": [
+          0.4571151617310148,
+          -0.6927252488726414,
+          0.5578328230661631
+        ],
+        "up": [
+          -0.3072387684742025,
+          0.46559832220103653,
+          0.8299533369473462
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "99b3fe9b742f459f",
+      "stats": {
+        "min": 105,
+        "max": 255,
+        "mean": 226.08538194444444,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "panorama",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2624782.4072028245,
+          3977669.520697375,
+          4225735.006099639
+        ],
+        "direction": [
+          0.48550418591724054,
+          -0.7357467793118957,
+          0.47218890519474344
+        ],
+        "up": [
+          -0.2600684859700348,
+          0.3941151415440192,
+          0.8814973838934473
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "2f275db6b0bcfe38",
+      "stats": {
+        "min": 161,
+        "max": 255,
+        "mean": 219.02310112847223,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "tree-road",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2624082.1399914273,
+          3976608.315953136,
+          4226307.445383931
+        ],
+        "direction": [
+          0.4134293410810626,
+          -0.6265225202925047,
+          0.6607160596652745
+        ],
+        "up": [
+          -0.36390398716034283,
+          0.5514703977807084,
+          0.7506359227351116
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "4474ea3ab24194eb",
+      "stats": {
+        "min": 90,
+        "max": 255,
+        "mean": 219.07659830729168,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "glass-water",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2624021.4713666327,
+          3976516.3770026746,
+          4226425.1719715465
+        ],
+        "direction": [
+          0.43450653253615074,
+          -0.6584634925432871,
+          0.6145159901671459
+        ],
+        "up": [
+          -0.3384582767806496,
+          0.5129092483566472,
+          0.7889043654517907
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "11b96d9a08ff90fd",
+      "stats": {
+        "min": 112,
+        "max": 255,
+        "mean": 222.20931857638888,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "horizon",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2624446.405744737,
+          3977160.3345815744,
+          4225446.449600203
+        ],
+        "direction": [
+          0.35860405104230797,
+          -0.5434387246406784,
+          0.7589976858574463
+        ],
+        "up": [
+          -0.41803476711149545,
+          0.6335017131965758,
+          0.6510933211629815
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "52ab08f99ebf266f",
+      "stats": {
+        "min": 0,
+        "max": 255,
+        "mean": 162.89158094618057,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "high-altitude",
+      "kind": "fixed",
+      "camera": {
+        "position": [
+          -2635660.4415447703,
+          3994154.4017024892,
+          4241441.707540019
+        ],
+        "direction": [
+          0.4519977644844835,
+          -0.6849702003029134,
+          -0.5714139004242161
+        ],
+        "up": [
+          0.31471884728904587,
+          -0.4769338452648018,
+          0.8206620220297661
+        ],
+        "frustum": {
+          "near": 0.1,
+          "far": 10000000000,
+          "fov": 1.0471975511965976,
+          "aspectRatio": 1.7777777777777777
+        },
+        "time": "2026-06-21T04:00:00Z",
+        "drawingBuffer": [
+          1280,
+          720
+        ]
+      },
+      "hash": "77126542b6d1c58f",
+      "stats": {
+        "min": 181,
+        "max": 255,
+        "mean": 219.24336371527778,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "campus-quality",
+      "shot": "orbit",
+      "kind": "orbit",
+      "hash": "597855b8b8944a5e",
+      "stats": {
+        "min": 90,
+        "max": 255,
+        "mean": 219.3069552951389,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      },
+      "frames": [
+        {
+          "index": 0,
+          "heading": 0,
+          "hash": "617de06eb9b6660f",
+          "stats": {
+            "min": 151,
+            "max": 255,
+            "mean": 219.349638671875,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624333.2091508764,
+              3976988.793260659,
+              4226120.856359907
+            ],
+            "direction": [
+              0.4718994252254142,
+              -0.7151297400511407,
+              0.5156552989801538
+            ],
+            "up": [
+              -0.2840085639726751,
+              0.43039461306625326,
+              0.8567961324806089
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "heading": 0.7853981633974483,
+          "hash": "58e80f4bb8728e42",
+          "stats": {
+            "min": 98,
+            "max": 255,
+            "mean": 219.30213975694446,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623733.366845905,
+              3977183.6300003123,
+              4226308.677757029
+            ],
+            "direction": [
+              -0.19459202474318282,
+              -0.9316150063320499,
+              0.30696485773339505
+            ],
+            "up": [
+              -0.49017852950285995,
+              0.36342787269919113,
+              0.7922406140559536
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "heading": 1.5707963267948966,
+          "hash": "2b6c55f2bc366a42",
+          "stats": {
+            "min": 98,
+            "max": 255,
+            "mean": 219.44066731770835,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623300.1146569317,
+              3976984.2989794645,
+              4226762.118721265
+            ],
+            "direction": [
+              -0.6759833458242778,
+              -0.7101360942792162,
+              -0.1968584358621065
+            ],
+            "up": [
+              -0.6390903153607075,
+              0.43193932872123464,
+              0.6363898059491532
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "heading": 2.356194490192345,
+          "hash": "c3fb9cc3c3f03e4c",
+          "stats": {
+            "min": 98,
+            "max": 255,
+            "mean": 219.72099066840278,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623287.24584033,
+              3976507.5656067273,
+              4227215.559685501
+            ],
+            "direction": [
+              -0.6902820309372563,
+              -0.18043234679355866,
+              -0.7006817294576091
+            ],
+            "up": [
+              -0.6435134169879047,
+              0.595795899372612,
+              0.48053899784235177
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 4,
+          "heading": 3.141592653589793,
+          "hash": "14ce82ffcd9291a1",
+          "stats": {
+            "min": 98,
+            "max": 255,
+            "mean": 220.0668142361111,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623702.298774333,
+              3976032.6938262144,
+              4227403.381082623
+            ],
+            "direction": [
+              -0.22911210426703754,
+              0.3472029648876766,
+              -0.9093721707043475
+            ],
+            "up": [
+              -0.5008568414389949,
+              0.7590126278496891,
+              0.4159834794177083
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "heading": 3.9269908169872414,
+          "hash": "e7479abbc7b36fcc",
+          "stats": {
+            "min": 87,
+            "max": 255,
+            "mean": 219.8540603298611,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624302.1410793047,
+              3975837.8570865616,
+              4227215.559685501
+            ],
+            "direction": [
+              0.4373793457015698,
+              0.5636882311685785,
+              -0.7006817294576091
+            ],
+            "up": [
+              -0.29468687590882753,
+              0.8259793682167632,
+              0.4805389978423521
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "heading": 4.71238898038469,
+          "hash": "085cf643bec300ca",
+          "stats": {
+            "min": 91,
+            "max": 255,
+            "mean": 219.53510850694445,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624735.393268278,
+              3976037.188107409,
+              4226762.118721265
+            ],
+            "direction": [
+              0.918770666782665,
+              0.3422093191157451,
+              -0.19685843586210755
+            ],
+            "up": [
+              -0.14577509005097888,
+              0.7574679121947205,
+              0.6363898059491527
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "heading": 5.497787143782138,
+          "hash": "597855b8b8944a5e",
+          "stats": {
+            "min": 90,
+            "max": 255,
+            "mean": 219.3069552951389,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624748.2620848794,
+              3976513.9214801462,
+              4226308.677757029
+            ],
+            "direction": [
+              0.9330693518956438,
+              -0.18749442836991242,
+              0.30696485773339444
+            ],
+            "up": [
+              -0.14135198842379454,
+              0.5936113415433432,
+              0.792240614055952
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "options": [
+    {
+      "options": {
+        "environment": true,
+        "clouds": true,
+        "cloudGeometry": "shell",
+        "environmentAnimation": false,
+        "fog": true,
+        "shadows": true,
+        "shadowMode": "custom"
+      },
+      "screenSpaceAO": {
+        "enabled": true,
+        "algorithm": "hbao"
+      },
+      "reflections": {
+        "enabled": true
+      },
+      "bloom": {
+        "enabled": true
+      },
+      "antialiasing": {
+        "mode": "smaa",
+        "msaaSamples": 4,
+        "spatialAaQuality": "balanced"
+      },
+      "id": "campus-quality",
+      "title": "校园效果组合"
+    }
+  ],
+  "hardware": {
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "cesium": "1.143.0"
+  },
+  "assets": [],
+  "sources": {
+    "head": "31f54b19f7711a6b21f45ad758224d2b1baf9212",
+    "files": [
+      {
+        "path": "examples/campus.html",
+        "sha256": "21c99cd717a94cdeeb9a00496537289cd81b722ec76664ef601534e824b18973"
+      },
+      {
+        "path": "examples/campus.js",
+        "sha256": "31e8aa5d0cd196ea8caef1f7759c15f5226c78d05633539575bdd7dc9a04b1d2"
+      },
+      {
+        "path": "examples/index.html",
+        "sha256": "ff48a2ab70a22aa0ebf053e18f1118b6bdc533fa57c9c6a11ae9e14b1db5081e"
+      },
+      {
+        "path": "examples/js/stats.module.js",
+        "sha256": "3ddaf5e00c10f02f715168a66e0a50456c496efc80033a0c4fc37d4d0c2a3891"
+      },
+      {
+        "path": "examples/runtime-config.js",
+        "sha256": "c433ae8635c8c7f20a2b8872f818b555790569d5f294ea257258f03d3957425b"
+      },
+      {
+        "path": "examples/stage1.html",
+        "sha256": "935ebc29cdaaaf5e95d5298a554f4db7cd5121404cf7edff198e02407fdeab6c"
+      },
+      {
+        "path": "examples/white-city.html",
+        "sha256": "5d4cf298f2a0c9115adff22ccdbcc7796351c85e1837556d505548aad818240b"
+      },
+      {
+        "path": "examples/white-city.js",
+        "sha256": "6958113d6892e383f7f66ecce63702c4df76fe55d7d16116daa145b9b39367dd"
+      },
+      {
+        "path": "examples/white-tiles-material.js",
+        "sha256": "b4665b12b2cd3b2757baeacdae182112fba1d252bd6a68bd9ad303d19475a6b9"
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "c05344251bbc31f5bf87fc2f26ce6c196efa4b5af08c9f1a94dfdbf5c67593d0"
+      },
+      {
+        "path": "package.json",
+        "sha256": "c078251bd1360bba8ad0a9838b4146a44c47def2377e219821c29bd953905661"
+      },
+      {
+        "path": "scripts/baseline-server.cjs",
+        "sha256": "8ad58bdb72a35c9d09e6ceaf64d4a57d74cad83a8f7eb9cefc6af85ebc837912"
+      },
+      {
+        "path": "scripts/baseline-utils.cjs",
+        "sha256": "a5858c59d67b31f43d6a00710df7aac330e3516dd359c07f0931f24f281c33a9"
+      },
+      {
+        "path": "scripts/build-rendering-sdk.cjs",
+        "sha256": "44451b909e8621bd9adf04de7a156161704ea60baa2c5a6cf367c34cc38e419b"
+      },
+      {
+        "path": "scripts/check-baseline-guards.cjs",
+        "sha256": "ca0ce8bcb3092c765b1efc88ee07ba90039a9481f24b0b2142e81a2cc8c49b3f"
+      },
+      {
+        "path": "scripts/check-browser-sdk.cjs",
+        "sha256": "a0cb055e4df31978f9c06344502392c09ef58d19b2d7570f82bba63cd0eb5b45"
+      },
+      {
+        "path": "scripts/check-camera-shadows.cjs",
+        "sha256": "5b24f341312511c8a1eacc8f145219b62f6441a70c130b4e96dbdad4f5aaa6ff"
+      },
+      {
+        "path": "scripts/check-campus-aa-lifecycle.cjs",
+        "sha256": "a577328c0527b8108657c549fa83d65e5a1d325115a0f815b5445361e3f175d0"
+      },
+      {
+        "path": "scripts/check-campus-aa.cjs",
+        "sha256": "da80d73839fb103b505bcdb680394e4b967ccf7c39c1d94dbadd63e697fa6c04"
+      },
+      {
+        "path": "scripts/check-frame-bridge.cjs",
+        "sha256": "19c8d2b45703a39f19a720a1b983df56e482fa6382f5eb981a4546bc22b06e31"
+      },
+      {
+        "path": "scripts/check-stage1-baseline.cjs",
+        "sha256": "2240af5a3181735eccaa07d52bee54caff43bd9ef71208883f553bd8de7f3a88"
+      },
+      {
+        "path": "scripts/check-stage1.cjs",
+        "sha256": "990a81aea867c26cf512350d45a2428b18dd8d87e6bf71faa83424687d3dea59"
+      },
+      {
+        "path": "scripts/check-white-city.cjs",
+        "sha256": "a847eca90298c5cce8bcbb3c6ad991c9bfb7a93203b95f170999227d0ee2a9d3"
+      },
+      {
+        "path": "scripts/check-white-tiles.cjs",
+        "sha256": "2b41b6d1c83fffb05bd845c2eb02d0890f45fd5a3bea9fa32e8138a50d8c6e5d"
+      },
+      {
+        "path": "scripts/dev-server.cjs",
+        "sha256": "68cf03ca79ae47fe94625cecbbef9e9525d47464ad59097041a3169674898705"
+      },
+      {
+        "path": "scripts/prepare-white-city.cjs",
+        "sha256": "c0672eb5da2eee7fdc9d00ca6f8db67a4fd1589801ebb96f27177939d3d0a279"
+      },
+      {
+        "path": "scripts/rendering-sdk-README.md",
+        "sha256": "5f2e3170b7871c42a920aeb9fd8d3e5edf7fed2e4545f49fa9a72eac68f8153b"
+      },
+      {
+        "path": "scripts/rendering-sdk-example.html",
+        "sha256": "b902d9579d0680e4bd6c9f4fba7e87f52f5c7b2cd737fbe6e8054c8b52728e1f"
+      },
+      {
+        "path": "src/README.md",
+        "sha256": "86d58f8ae56ae423ce1c6dd5ee38994230aeb5ab3659f94f756625c23d8292c6"
+      },
+      {
+        "path": "src/STAGE_SNAPSHOT.md",
+        "sha256": "e9aac59b864c9fdd38ec4a12c934db86da064415fb2c7f6905f269108d639161"
+      },
+      {
+        "path": "src/VisualPipeline.js",
+        "sha256": "5d939f8b68d02eedfdf699ec78172024ffb9092bb60eaa8079d0d5e3f05eca6f"
+      },
+      {
+        "path": "src/antialiasing/FrustumJitterBridge143.js",
+        "sha256": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b"
+      },
+      {
+        "path": "src/antialiasing/FxaaPass143.js",
+        "sha256": "3307ef3052de16fce9c54e3649d32121dafeaf9ff181bdd0b12749ce887cecea"
+      },
+      {
+        "path": "src/antialiasing/README.md",
+        "sha256": "7e182df8fed4786f37d3bd35b8c53ca3ae89d529da991fe47c2fadb536a586dc"
+      },
+      {
+        "path": "src/antialiasing/SmaaPass143.js",
+        "sha256": "e4a20fdaf81c340633460644977f9f704dcee9730803945de7b240ba6645f8fc"
+      },
+      {
+        "path": "src/antialiasing/SpatialAaPass143.js",
+        "sha256": "068f9114647cccd2e8a3b86fe669152fc97e2e559667c95b3a8d48838b3ae709"
+      },
+      {
+        "path": "src/antialiasing/TaaJitter143.js",
+        "sha256": "cdb4e657095f24ce61d3490b52ca9fe08cb6e0fbef0ce4873d0539ca54307b27"
+      },
+      {
+        "path": "src/antialiasing/TaaPass143.js",
+        "sha256": "577d5a6777211151d4cdb43e52f6e1372459d88b33db04c314427a57114ef927"
+      },
+      {
+        "path": "src/antialiasing/fxaaShader143.js",
+        "sha256": "8e0ddaa3d6d71bd393e7d25b2df9913c18332f3ad3dbe1d1c14caf0a82ccb109"
+      },
+      {
+        "path": "src/antialiasing/jitter143.js",
+        "sha256": "dc2561a8046f37fbc4357985d65b6c25656cf91f82e91ecf76309579d3fea26a"
+      },
+      {
+        "path": "src/antialiasing/settings143.js",
+        "sha256": "42a521a2c4fe0db545607e26a6c9eb3972d4f0e95f3ddb34b847f96d9925bfbd"
+      },
+      {
+        "path": "src/antialiasing/smaaLookupUrls.js",
+        "sha256": "3c92817747b160c7b0a5003a2a1e6593dfbfc1c45adbfca36f7eeefb28676870"
+      },
+      {
+        "path": "src/antialiasing/smaaShaders.js",
+        "sha256": "77e40ffcbbc0c1fd901ceef1e1aab76cfd2d73fa7a41c1432b0f8c29bf0e05fc"
+      },
+      {
+        "path": "src/antialiasing/taaShaders143.js",
+        "sha256": "ace3058cd4b7527af5c04cdcc57f33029bdddf4c2b91f27a026e19053e230a54"
+      },
+      {
+        "path": "src/ao/README.md",
+        "sha256": "66c37d541f370349192e083f21203e88af4c3de38c313f9e9dd2e71741dcd4cb"
+      },
+      {
+        "path": "src/ao/ScreenSpaceAo143.js",
+        "sha256": "f8609de9cb94b14d9719a07189fd572b49e641d71c96652e71fb8c7ffc163edc"
+      },
+      {
+        "path": "src/ao/aoShaders143.js",
+        "sha256": "58d9e13acdf66a7de2d8cdf28476ff831d5191f9f0e2b026407c3dcc47baeb9e"
+      },
+      {
+        "path": "src/ao/hbaoShader143.js",
+        "sha256": "d633470b347fe050a5152e663b934723446645553fd93e533fa54b34c5ae172e"
+      },
+      {
+        "path": "src/bloom/HdrBloom143.js",
+        "sha256": "70546ee5e3aafe8855032847f5580fda3a82f82be86931ad421c1df0ff3b86e2"
+      },
+      {
+        "path": "src/bloom/README.md",
+        "sha256": "8e632cdb3fc0bc17c6a293e8f0b4cf0f548a2baa4554ee21292a840fd5aab695"
+      },
+      {
+        "path": "src/bloom/bloomShaders143.js",
+        "sha256": "56f0a9fe54ab545b653418295826f9158ed2f1f8023150a4028025758d4c39f5"
+      },
+      {
+        "path": "src/buffers/CameraUniforms143.js",
+        "sha256": "0baeb026cc1b008bb21f7e3f71e57164042f521f28137b31508c76c0a9e30852"
+      },
+      {
+        "path": "src/buffers/LightUniforms143.js",
+        "sha256": "60350d02d4f01326e439ea921cd9c5ea2aa961f7e8b44b829b9b19897a54971b"
+      },
+      {
+        "path": "src/buffers/README.md",
+        "sha256": "84fda8ce2a546e82b56ea18a229d42493846b2e72c05b8208a3c8aa9c0bb4d46"
+      },
+      {
+        "path": "src/buffers/UniformBuffer143.js",
+        "sha256": "c2bcc81e06bd8267bfe4f340294b80203b030b4bdc68729dca8e0fc2966c0a42"
+      },
+      {
+        "path": "src/channels/DEPTH_PYRAMID.md",
+        "sha256": "ab2b95d5a803aa8d6a34127ca6aefdf9709465b3372d72bfbafaee3a5ee5ba55"
+      },
+      {
+        "path": "src/channels/DepthPyramid143.js",
+        "sha256": "e3737eeef11615382f77f67e25f055c09b6a1fb4e47f5de602680a317b2dc809"
+      },
+      {
+        "path": "src/channels/MATERIAL_CHANNELS.md",
+        "sha256": "ab2d05e364224472cb653a5704cfbd4e5a7816c823219eb49fc0fba08b61e2e4"
+      },
+      {
+        "path": "src/channels/MaterialChannels143.js",
+        "sha256": "609dffe8772828c36b5dd3ecbf726c3e5519d4498baf5879090c90fe7264f4f1"
+      },
+      {
+        "path": "src/channels/MaterialTarget143.js",
+        "sha256": "3027b219d488e02897aa04f3a6c46015adf14fb5daaac6928d41a44039975fcb"
+      },
+      {
+        "path": "src/channels/README.md",
+        "sha256": "d4c44e621991576273f35bf0b7b3149ea0fc719c6e83ac4d44473c432870c1fe"
+      },
+      {
+        "path": "src/channels/ScreenSpaceGeometry143.js",
+        "sha256": "b7673f4d33aa56010b0b3e5d0b1fdad704e480f81a3d30fe1f4bc0b887fa6b7e"
+      },
+      {
+        "path": "src/channels/TRANSPARENCY.md",
+        "sha256": "45dde45ceb5a5c14794bb57f8f6a3c7603d6b688a76ee70c183e2c3961f18a6f"
+      },
+      {
+        "path": "src/channels/geometryEncoding.js",
+        "sha256": "dd49299286c469fdf58ed12b794d722ceedd974d4ffd5f36605f74627b52c5a6"
+      },
+      {
+        "path": "src/channels/materialShader143.js",
+        "sha256": "3b9098db8bc226dc1f0cfd3080cd1d47261a76aee682471f12ed894854e7690b"
+      },
+      {
+        "path": "src/channels/reflectionShader143.js",
+        "sha256": "cf53c365a41cb49e41f895e7e045dccd102f248511c0ac5c3eade7376eb441e5"
+      },
+      {
+        "path": "src/diagnostics/GpuTimer.js",
+        "sha256": "468357a0924e513d6956286ac97caca1784bbf520545db62a072d92f8c7a244b"
+      },
+      {
+        "path": "src/diagnostics/README.md",
+        "sha256": "0ca045ab83e0c8452b03f98d79b94f2c736458ca883d76f9b7e66be8cbae008c"
+      },
+      {
+        "path": "src/diagnostics/RenderProfiler143.js",
+        "sha256": "bdb70d8dba32e9646123199dc781eec5bfcd620e832a2619f138bb7369acc49a"
+      },
+      {
+        "path": "src/diagnostics/SampleGuard.js",
+        "sha256": "22615eb91b42ab0c2ee17a32eb31d043489a441400d0a94cbc95f119ec80258a"
+      },
+      {
+        "path": "src/environment/EnvironmentLighting143.js",
+        "sha256": "93667e583490486c548b8be766ddce0c2f259b5eefb309ac207df4e1a05838b3"
+      },
+      {
+        "path": "src/environment/EnvironmentRenderer.js",
+        "sha256": "4ad87e468e658c1f5c562f695379e69acdf730f31ad79dcdd367536ab4d5e940"
+      },
+      {
+        "path": "src/environment/FoliageMask143.js",
+        "sha256": "903f025237bfb13dec32473e3a670a31fd28f2b453335e2e44e61ba0117ced78"
+      },
+      {
+        "path": "src/environment/HdrCoordinator143.js",
+        "sha256": "212feeb1b5c8c743de646ab169263a70e26c38494c1053bccd92350e6109c712"
+      },
+      {
+        "path": "src/environment/HdrEnvironmentPass143.js",
+        "sha256": "ce4866727545589e0fc5e20a9c8159764afb74431d951dffe4c1808ddf828630"
+      },
+      {
+        "path": "src/environment/README.md",
+        "sha256": "6e6afd39199e5509c00cdff19aa8e40d15d534f089e70b227fc3b65f6a8c3f77"
+      },
+      {
+        "path": "src/environment/cloudShell143.js",
+        "sha256": "3a80b035195925e48e4c7860c214001e3d34a97947b99d1121d64a4196dc23cc"
+      },
+      {
+        "path": "src/environment/environmentStages.js",
+        "sha256": "254c16e800e2ba1688e492267c4b744e4d6596b17119915ac2ce9952b2cbc85d"
+      },
+      {
+        "path": "src/environment/environmentState.js",
+        "sha256": "2d1fb2265be9c965e802b868b5e4e9b11bdd8fce70a39f11324d7de16b174001"
+      },
+      {
+        "path": "src/environment/noiseAtlas.js",
+        "sha256": "7cf64fcaebb3dbb9a1b89f540d30e75bb6b9b0f2f0eff985f80674674a8df5b8"
+      },
+      {
+        "path": "src/index.js",
+        "sha256": "6c03de6319170437717d6337465f300b7b9c8e0c0634661089f020c8d5202452"
+      },
+      {
+        "path": "src/performance/PerformanceGovernor143.js",
+        "sha256": "ff6aa9c7dc8d233c91cb74800cdaee95fce754148c30df047b92b0133b3c2f48"
+      },
+      {
+        "path": "src/performance/README.md",
+        "sha256": "fd117c3f1d534846efb132ba8ce58b73d47c3ada988d54636a84ee0a73b7a723"
+      },
+      {
+        "path": "src/pipeline/FrameBridge143.js",
+        "sha256": "50cc634b5347aa0fc99771ff2661360d4b42c2e9c0ca5681597ab5b12e6225bd"
+      },
+      {
+        "path": "src/presets.js",
+        "sha256": "5a4adb4c5b3a7cd193061f55c0a6d4edf8088096614a23a1563aa277974f7e45"
+      },
+      {
+        "path": "src/reflections/OitCompatibility143.js",
+        "sha256": "b8c6e326c4e5cbd004e7305c8ad4e197ed84b05cb9353842801fe724cce7d18a"
+      },
+      {
+        "path": "src/reflections/README.md",
+        "sha256": "5d7158f21044b52041eb1029706514d768229ac0175ce450578999794dd14f46"
+      },
+      {
+        "path": "src/reflections/ScreenSpaceReflection143.js",
+        "sha256": "314ed7e334424a72a99cfadc0b340dccae00d00d62cba5013d256b0775cfc894"
+      },
+      {
+        "path": "src/reflections/TransparentReflection143.js",
+        "sha256": "fa218ca1d32194c410f170b4f37bc4bf00a10cc681e4c7e2d938001fb6447bb6"
+      },
+      {
+        "path": "src/reflections/ssrShaders143.js",
+        "sha256": "58de5550efbf125d30d2941b38b8270e183ff67e053e660391e54ddfa669107e"
+      },
+      {
+        "path": "src/reflections/transparentReflectionShader143.js",
+        "sha256": "20de1c58bccd3a0c2de89f8ab8e22593ae6a4f823c07702b33c038793ec7baea"
+      },
+      {
+        "path": "src/shadowBias143.js",
+        "sha256": "359fae3b952f779cd67c637ba12ad12e2efcfc3e782fbf18f21b90ad19b369eb"
+      },
+      {
+        "path": "src/shadowMap143.js",
+        "sha256": "112715a6d67882dd727152ff9f793b0fa66eb7ef76115a4e5a6f7febc1ab174a"
+      },
+      {
+        "path": "src/shadows/CameraShadowCoverage.js",
+        "sha256": "c2db7381c29aad5894044730d929adbb36e972802963440713cdb8ca5b2e9c6f"
+      },
+      {
+        "path": "src/shadows/CasterCommands143.js",
+        "sha256": "6dc558cdb0bf56f0a0187a3ef118d289df2f07fc34d98ce2386364bc408dfd4a"
+      },
+      {
+        "path": "src/shadows/DirectionalShadowPass.js",
+        "sha256": "5511b474d02e51c1f8475d65fd8774be0fc87ac006628730fde946822903f52e"
+      },
+      {
+        "path": "src/shadows/LightFrustum.js",
+        "sha256": "37e65ca970399dfd6cd0a8f364c684ce9150f36acff20ad0ba30c3c717408c4f"
+      },
+      {
+        "path": "src/shadows/README.md",
+        "sha256": "b33af675536f629fe961e93d8d4461e82e091a7eb0c54d8f56a184aa0f541ffb"
+      },
+      {
+        "path": "src/shadows/ShadowCache.js",
+        "sha256": "933984bc367371dcf6feb4d4481f37c2500dfe2e5efdbeccd8f11aac4fe291c9"
+      },
+      {
+        "path": "src/shadows/ShadowReceiver143.js",
+        "sha256": "90a0cd01d1959460f6cf8191322f2583f70b99d61ed1b470a5757e2d2c8629d3"
+      },
+      {
+        "path": "src/shadows/ShadowTarget.js",
+        "sha256": "9cbd9c6a159dd4ee36d1fb33a216582fe06c3f1df5fabcde8f0230d14b2c769d"
+      },
+      {
+        "path": "src/shadows/shaderAdapter143.js",
+        "sha256": "63d4eeaaef73550aad384b3d3970cab209426b223eae03cc73cccf707b972680"
+      },
+      {
+        "path": "src/stages/colorGrading.js",
+        "sha256": "ba6f438223dfd3ca31690840d61c1b97153073ec12ebbbd4d5f65291d80c468b"
+      },
+      {
+        "path": "tests/rendering/antialiasing-settings.test.mjs",
+        "sha256": "d0abacad6eb73423f53ad7f39b89906e577d9986c88a9bb29d7bd8aee055aa04"
+      },
+      {
+        "path": "tests/rendering/ao-numeric-fixture.js",
+        "sha256": "d69dd44414e7f3d61464c57d367af6a471218a6d7ecc0d40a2526b603704fe85"
+      },
+      {
+        "path": "tests/rendering/ao-pipeline.test.mjs",
+        "sha256": "6ca46565910283318cab65548f1eb0ab8b68f3a777e281a286e95b3d4410618e"
+      },
+      {
+        "path": "tests/rendering/ao-shaders.test.mjs",
+        "sha256": "a2e5a148307a9272862d7c870b16b61adc7995aaa8ed5e81a3f381d215b92f92"
+      },
+      {
+        "path": "tests/rendering/baseline-validation.test.mjs",
+        "sha256": "dc99c8e8b7def749a70be464a76e284733badb765494bd7d739b9aaf7875cae6"
+      },
+      {
+        "path": "tests/rendering/bloom-numeric-fixture.js",
+        "sha256": "6b6f95bc8e6b2a64b883fc62b77fd9bb5c59092b764f49f4c75d585fcfd9e49a"
+      },
+      {
+        "path": "tests/rendering/camera-uniforms.test.mjs",
+        "sha256": "a1be5371a2737bc2a332d774216b204c32e36afa4f7d50b3b9b8a5fb019c30b6"
+      },
+      {
+        "path": "tests/rendering/cloud-fade-fixture.js",
+        "sha256": "8d6921c857bd8a2ab3151a238ea05cef14a5107a13a360a76651a324c4907ca2"
+      },
+      {
+        "path": "tests/rendering/cloud-shell-fixture.js",
+        "sha256": "2d6e2cc158c74b14c955a4c086c0caa780328f6f44d5402190aba60ee64c2b25"
+      },
+      {
+        "path": "tests/rendering/cloud-shell.test.mjs",
+        "sha256": "e83b605c16ea6cb9b3eeca6b1cb914123d7225558e641b4da7e731b4a6b837ce"
+      },
+      {
+        "path": "tests/rendering/custom-shadow.test.mjs",
+        "sha256": "fff6ba7648ac8f2afe5b5149ba1f0415c7f5f82521b034c2a08667747464193e"
+      },
+      {
+        "path": "tests/rendering/depth-pyramid.test.mjs",
+        "sha256": "cbecb24491c5d7f86517aa8e6da5c9bb316a2dd251d7576ffba2b1936eab72c8"
+      },
+      {
+        "path": "tests/rendering/environment-lifecycle.test.mjs",
+        "sha256": "3a41ee94500ebd55b7669d6228183b56b14799a64e3c5415717c1ee4561dec97"
+      },
+      {
+        "path": "tests/rendering/environment-lighting.test.mjs",
+        "sha256": "58bb7fa55473d6e132814ad6c13fdde46f98c8d92268f139826161bb8f61b8ad"
+      },
+      {
+        "path": "tests/rendering/environment-stages.test.mjs",
+        "sha256": "6b2291c9fcba740232612dde4d07f6910b54c5e3d251979837fdc08e4fa955eb"
+      },
+      {
+        "path": "tests/rendering/environment-state.test.mjs",
+        "sha256": "7c6f234653499992455b1eb6c6cd05a776d95e9012d1d623700c5099d9146941"
+      },
+      {
+        "path": "tests/rendering/foliage-mask.test.mjs",
+        "sha256": "a3a1db78dc5c286db6cad1ca766932ebbd5a67a62785374d2f6205d53ff235b9"
+      },
+      {
+        "path": "tests/rendering/frame-bridge-fixture.html",
+        "sha256": "051cacc72f6d05613504ff72086c0ec6ead9575625f2c376799164b22db7ee46"
+      },
+      {
+        "path": "tests/rendering/frame-bridge-fixture.js",
+        "sha256": "bb2c1081c7e4f092ba2937a1bc816fd92a4289b8feaf0ba3a26e30931c956fcc"
+      },
+      {
+        "path": "tests/rendering/frame-bridge.test.mjs",
+        "sha256": "57e2fb9213c5252ac35041750242bff2de25a6acc2d6270d7967dedfb210a012"
+      },
+      {
+        "path": "tests/rendering/geometry-encoding.test.mjs",
+        "sha256": "f58906d1b88d9ea3bf795decba7260161c55a0916c5bddabb0d75a1f636a9955"
+      },
+      {
+        "path": "tests/rendering/hbao.test.mjs",
+        "sha256": "fd7e390be8932789d6d01bd533d962c0351b55651618d649b140c3360040d1a1"
+      },
+      {
+        "path": "tests/rendering/hdr-bloom.test.mjs",
+        "sha256": "4a7b21adbe9f8b95c53dca40183bc99cb9da8266f1128117d53d42c4dcf5323b"
+      },
+      {
+        "path": "tests/rendering/hdr-coordinator.test.mjs",
+        "sha256": "d56269f3aa2ab1ba594a6cc2636dc3780c1f033589a8b15ff29ed9f016b6370c"
+      },
+      {
+        "path": "tests/rendering/hdr-environment.test.mjs",
+        "sha256": "6f468299e243982783ba34e2e095d87d0487ea64f0458b551635cf0f5fdf6615"
+      },
+      {
+        "path": "tests/rendering/hiz-pipeline.test.mjs",
+        "sha256": "574c1fc56944faa51e09cfcdda844044fde87b1e7da7580a8119ad59b0aa8d0a"
+      },
+      {
+        "path": "tests/rendering/image-controls.test.mjs",
+        "sha256": "ad22e702e024507d70fe44005a589f2b29f221fe1679725888a3b08e8eb81084"
+      },
+      {
+        "path": "tests/rendering/light-uniforms.test.mjs",
+        "sha256": "ac34066c683af580a9abc39b20efcc02f8e14ebd396345eacbaed334507570d5"
+      },
+      {
+        "path": "tests/rendering/material-hiz.test.mjs",
+        "sha256": "474fa9bae1ef8a5298ab2936f0d62487228403356bfdab5bd71f79e3013a2094"
+      },
+      {
+        "path": "tests/rendering/material-pipeline.test.mjs",
+        "sha256": "9ebe25685708d92faf4423b8ec7b20edc594ead37bcd4f8489d76f6092e86860"
+      },
+      {
+        "path": "tests/rendering/material-reflection.test.mjs",
+        "sha256": "165a83a7e33faf3004027f88b5462d08bdfaa0d9f49213625db9f6ce9f770375"
+      },
+      {
+        "path": "tests/rendering/material-replay.test.mjs",
+        "sha256": "ba78d5c847fde7ed70b623a3b5a231541ea36f6d5d4b644b4a06f273dab52bc9"
+      },
+      {
+        "path": "tests/rendering/material-shader.test.mjs",
+        "sha256": "3d51037a7a75037b3817a53df25f574355f044392e678b7cd8d63419953c3ccd"
+      },
+      {
+        "path": "tests/rendering/material-state-regressions.test.mjs",
+        "sha256": "3be700e3631620cd171e98f06c277a9bb21e73aa341505e499bcdfc63f61878f"
+      },
+      {
+        "path": "tests/rendering/material-target.test.mjs",
+        "sha256": "542820c425f2a41f0391af3854513f9601fa5247db6149cf5dabde7dca460cef"
+      },
+      {
+        "path": "tests/rendering/noise-numeric-fixture.js",
+        "sha256": "e606a92bab7ee4a128206d3d216d3e92bec7e6fe76e9472c1e0196e4a51d7227"
+      },
+      {
+        "path": "tests/rendering/oit-compatibility.test.mjs",
+        "sha256": "6bf6d339edc335f971231bc03481e58608479caf7518efa8f056508eab385fd8"
+      },
+      {
+        "path": "tests/rendering/performance-diagnostics.test.mjs",
+        "sha256": "5568bb9cfceaa84c528d290fc73d5f4a76ebbda33fe09de352ad07bee9990195"
+      },
+      {
+        "path": "tests/rendering/performance-governor.test.mjs",
+        "sha256": "2423958b60c32ccda07f1649d4958c286c30ef1316808c6128e04786c5066cc8"
+      },
+      {
+        "path": "tests/rendering/performance-policy.test.mjs",
+        "sha256": "ba4f372fe220dbefd5acf39d59eabcc388df270442533ab435737519c74fe5c9"
+      },
+      {
+        "path": "tests/rendering/preview.html",
+        "sha256": "5eb3b9783774e8552043b90fc0e500e5c994fcae3520bcb72c34d9ba44f0bd4e"
+      },
+      {
+        "path": "tests/rendering/reflection-shader.test.mjs",
+        "sha256": "1a025eff9c2b52a5d3a9bc0c9cc85ca06b4df606bed41d4db3e84118de882003"
+      },
+      {
+        "path": "tests/rendering/screen-space-ao.test.mjs",
+        "sha256": "7247e7ad7f43c5e95146cf5e96f0d908616eaab26fabe1f8126b2de37a3be20b"
+      },
+      {
+        "path": "tests/rendering/screen-space-geometry.test.mjs",
+        "sha256": "00515343d3058b97313bdb05f606051fc4bb505aa1b2d4db90750860790fedf2"
+      },
+      {
+        "path": "tests/rendering/screen-space-reflection.test.mjs",
+        "sha256": "919ecb5896c523b7138fc8b0e4986ce56695a5c1b564dc8501e11c8103108c2c"
+      },
+      {
+        "path": "tests/rendering/shadow-coverage.test.mjs",
+        "sha256": "f49e97ff0b3e250240d96ff5b1ab09bf153f354756e0dd517c4506b89ea3c084"
+      },
+      {
+        "path": "tests/rendering/smaa.test.mjs",
+        "sha256": "f2618d9106351e87556db90bc936b008ecc23f842f5d4246e621fb27319b55dc"
+      },
+      {
+        "path": "tests/rendering/spatial-aa-fixture.js",
+        "sha256": "ceaa6fac5879ed588b7af3665bd2297d0c82ebcd58a81592cefccc7b9f19c8b7"
+      },
+      {
+        "path": "tests/rendering/spatial-aa.test.mjs",
+        "sha256": "4035fdbe4c5d0e4a74b8c82c094acb84701339ab576590aa777c021cef005558"
+      },
+      {
+        "path": "tests/rendering/ssr-numeric-fixture.js",
+        "sha256": "40805d18234dff1fae666a205d7d7dd808c28486cdb259961fbd15471b375fb0"
+      },
+      {
+        "path": "tests/rendering/ssr-pipeline.test.mjs",
+        "sha256": "330c5a2c5b52dd217f560ba21ab38092c603fb12bcd64bb0abf28988fa25113d"
+      },
+      {
+        "path": "tests/rendering/ssr-shaders.test.mjs",
+        "sha256": "764d7493f26955e691cf4e6b9cbeb12e8b5eaae0a58ffcfcf2f22c387393280d"
+      },
+      {
+        "path": "tests/rendering/ssr-transition-fixture.js",
+        "sha256": "db8183938629fc361d7d5404748da58e7fa0e9fb922a4ae722be3e5cc9d961c5"
+      },
+      {
+        "path": "tests/rendering/stage1-baseline-fixture.js",
+        "sha256": "3766161482da3988ae0b9ee655551aa5ae78dea5aaae165db5fadfa8154f4e93"
+      },
+      {
+        "path": "tests/rendering/stage1-fixture.html",
+        "sha256": "e73cb7df10bb2bd07fc54049aab3b32a9cf9648ab920fdfc879ce0f2a66707f2"
+      },
+      {
+        "path": "tests/rendering/stage1-scene.js",
+        "sha256": "4dc1cda24a6c49d5bed550a906ba074efdd94b6dea0c5f8560cd3d3d088104fd"
+      },
+      {
+        "path": "tests/rendering/taa-jitter.test.mjs",
+        "sha256": "c0cc7ca8231bc200ece3315d7102e01e3964bfed3ad9ee50329f7e5fa80394e5"
+      },
+      {
+        "path": "tests/rendering/taa-pass.test.mjs",
+        "sha256": "f757db08f5e91dc6758ffe4d1696566645585d5396f09410e4c3b7633d670b8d"
+      },
+      {
+        "path": "tests/rendering/taa-reprojection.test.mjs",
+        "sha256": "09083ce1fe08dbe724bf57e5f37c0f17643df78a0ca28c2428ddf47b71528f99"
+      },
+      {
+        "path": "tests/rendering/transparent-reflection-pipeline.test.mjs",
+        "sha256": "a57d109eb34cf63ed0842aff622b663047703184da4bf6f0d46d8a8389123de2"
+      },
+      {
+        "path": "tests/rendering/transparent-reflection-shader.test.mjs",
+        "sha256": "72eadda7ecd03f6604cd3329e8882254398ee03998bc93d8bb67ba64724068c7"
+      },
+      {
+        "path": "tests/rendering/transparent-reflection.test.mjs",
+        "sha256": "58a89ca013346e853548d295e02aa192417d764043c6c4e4127be7ba6916d823"
+      },
+      {
+        "path": "tests/rendering/uniform-buffer.test.mjs",
+        "sha256": "a39a3b6a2b97af9193e376fe52b476463583f05a983733fcf41966c5439bb990"
+      },
+      {
+        "path": "tests/rendering/visual-pipeline.test.mjs",
+        "sha256": "0a56285bbbb5be9bde414d7129307df5e3a965f7fc19a2e351de909b5507e507"
+      }
+    ],
+    "contentHash": "63ce44a490048878d2ded5d1dcf4880cb47fb6f8b2a42c48702756114743ca90"
+  }
+}

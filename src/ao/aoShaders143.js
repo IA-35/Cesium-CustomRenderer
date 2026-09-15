@@ -1,6 +1,6 @@
 // Deterministic screen-space AO. Resolve attenuates non-emissive HDR lighting,
 // including direct light; it does not isolate Cesium's IBL contribution.
-const common = `
+export const common = `
 uniform highp sampler2D u_depth;
 uniform highp sampler2D u_material;
 uniform highp sampler2D u_flags;

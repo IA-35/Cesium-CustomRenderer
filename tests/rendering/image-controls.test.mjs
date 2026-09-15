@@ -36,6 +36,19 @@ test('AA API preserves color grading and reports the normalized requested settin
   assert.equal(p.getAntiAliasing().mode, 'off')
 })
 
+test('spatial quality is independently configurable and MSAA mode does not silently keep one sample', () => {
+  const p = pipeline()
+  p.setAntiAliasing({ mode: 'msaa' })
+  assert.equal(p.getAntiAliasing().msaaSamples, 4)
+  p.setAntiAliasing({ mode: 'smaa', quality: 'smooth' })
+  assert.equal(p.options.spatialAaQuality, 'smooth')
+  p.setAntiAliasing({ quality: 'invalid' })
+  assert.equal(p.options.spatialAaQuality, 'smooth')
+  const before = [p.options.taaHistoryBlend, p.options.taaMotionBlend, p.options.taaJitterSamples]
+  p.setAntiAliasing({ quality: 'sharp' })
+  assert.deepEqual([p.options.taaHistoryBlend, p.options.taaMotionBlend, p.options.taaJitterSamples], before)
+})
+
 test('diagnostics report active FXAA after retaining a disabled SMAA instance', () => {
   const p = pipeline()
   p.enabled = true

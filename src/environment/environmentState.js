@@ -1,7 +1,7 @@
 export const environmentDefaults = Object.freeze({
   environment: true, environmentPreset: 'clear', environmentQuality: 'balanced',
   skyLightIntensity: 3.2, sunIntensity: 2.2, clouds: true, cloudCoverage: null,
-  cloudModel: 'auto', volumetricFog: true, sunScattering: true, environmentAnimation: true,
+  cloudModel: 'auto', cloudGeometry: 'shell', volumetricFog: true, sunScattering: true, environmentAnimation: true,
   fogBaseHeight: 20, fogHeightFalloff: null, cloudBaseHeight: null, cloudThickness: null
 })
 
@@ -19,7 +19,7 @@ export function normalizeEnvironmentOptions(input = {}, current = environmentDef
     if (typeof input[key] === 'boolean') result[key] = input[key]
   }
   for (const [key, values] of Object.entries({ environmentPreset: Object.keys(profiles),
-    environmentQuality: ['balanced', 'high'], cloudModel: ['auto', 'cumulus', 'stratus'] })) {
+    environmentQuality: ['balanced', 'high'], cloudModel: ['auto', 'cumulus', 'stratus'], cloudGeometry: ['local', 'shell'] })) {
     if (values.includes(input[key])) result[key] = input[key]
   }
   for (const [key, min, max] of [['skyLightIntensity', 0, 5], ['sunIntensity', 0, 5], ['cloudCoverage', 0, 0.95],

@@ -1,30 +1,34 @@
-// One MSAA sample by default. Multisampling and a post-process AA stage (SMAA/FXAA)
-// address the same coverage problem, so requesting both doubles the cost of the
-// dominant scene pass without adding edge quality. The reference 1080p HDR campus
-// measurement is P95 73.0 ms for SMAA+MSAA4 against P95 20.5 ms for SMAA+MSAA1.
-export const antiAliasingDefaults = Object.freeze({ antialiasing: 'smaa', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+// Keep the default scene cost bounded. MSAA smooths geometry coverage, while
+// spatial AA also sees shading/texture edges; their combination is an explicit choice.
+export const antiAliasingDefaults = Object.freeze({ antialiasing: 'smaa', spatialAaQuality: 'balanced', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+
+const qualities = Object.freeze({
+  sharp: Object.freeze({ smaaThreshold: .1, smaaSearchSteps: 8, fxaaSubpix: .25, fxaaThreshold: .125, fxaaThresholdMin: .0625 }),
+  balanced: Object.freeze({ smaaThreshold: .05, smaaSearchSteps: 8, fxaaSubpix: .5, fxaaThreshold: .0833, fxaaThresholdMin: .0312 }),
+  smooth: Object.freeze({ smaaThreshold: .035, smaaSearchSteps: 16, fxaaSubpix: .75, fxaaThreshold: .063, fxaaThresholdMin: .0156 })
+})
+export const spatialQuality = name => qualities[name] || qualities.balanced
 
 export function normalizeAntiAliasing(input = {}, current = antiAliasingDefaults) {
   const result = { ...current }
   if (!input || typeof input !== 'object') return result
   if (['off', 'msaa', 'fxaa', 'smaa', 'taa'].includes(input.antialiasing)) result.antialiasing = input.antialiasing
+  if (['sharp', 'balanced', 'smooth'].includes(input.spatialAaQuality)) result.spatialAaQuality = input.spatialAaQuality
+  if (input.antialiasing === 'msaa' && input.msaaSamples === undefined && result.msaaSamples === 1) result.msaaSamples = 4
   if ([1, 2, 4, 8].includes(input.msaaSamples)) result.msaaSamples = input.msaaSamples
   if (['native', 'css'].includes(input.resolutionMode)) result.resolutionMode = input.resolutionMode
   if (Number.isFinite(input.resolutionScale)) result.resolutionScale = Math.max(0.5, Math.min(2, input.resolutionScale))
   return result
 }
 
-// Modes that own edge coverage in a post-process pass instead of in the framebuffer.
-// They are mutually exclusive with multisampling on the same coverage problem.
+// Spatial/temporal post-process modes. Hardware sampling may be combined explicitly.
 export const postProcessAntiAliasingModes = Object.freeze(['fxaa', 'smaa', 'taa'])
 
 export function isPostProcessAntiAliasing(mode) {
   return postProcessAntiAliasingModes.includes(mode)
 }
 
-// Single source of truth for how many multisamples the scene framebuffer actually
-// asks for. Post-process AA keeps the coverage work, so an explicit `msaaCombine`
-// opt-in is required before a redundant multisample request is honoured.
+// Single source of truth for scene sample count. Combination is an explicit cost choice.
 export function resolveMsaaPolicy(input = {}) {
   const mode = input && input.antialiasing
   const raw = input && input.msaaSamples

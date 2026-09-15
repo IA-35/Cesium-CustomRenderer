@@ -2,6 +2,8 @@
 
 支持已分离原生镜面项的不透明PBR模型。命中时替换对应的环境反射，未命中保留原生CubeMap；默认关闭，不改模型材质参数。
 
+带建筑批次ID的原生PBR瓦片也可作为接收面：仅接受已识别的原生CPUStyling shader，feature.color为白色时捕获；业务改色或改变透明度后逐片元拒绝。保留建筑ID、拾取和原生颜色，不通过清除批次元数据启用反射。
+
 ```js
 pipeline.setScreenSpaceReflections({ enabled: true, distance: 150, thickness: 0.5, strength: 1 })
 pipeline.setScreenSpaceReflections({ transparent: true }) // 可选透明PBR逐层反射，默认关闭
@@ -26,6 +28,8 @@ pipeline.setScreenSpaceReflections({ enabled: false })
 追踪沿屏幕网格进行透视正确DDA；最多使用5层Hi-Z跳跃，区间不相交才跳过，存在未知值时下降到单像素。反射启用时Hi-Z额外纳入透明覆盖：B=0，A按位保存1=未知不透明、2=透明覆盖、3=两者；父层按位OR保留标记。R/G仍是不透明深度。不透明反射遇任何标记保守停止；透明接收面只把不透明未知位当作硬阻断。
 
 粗糙度影响步数（最多160）、置信度与邻域滤波。厚度为米，默认0.5；最大射线距离150m，可设1–2000m。屏幕边缘渐隐、近面截断，roughness≥0.85保留原生反射。半分辨率trace以全像素0、2、4…为anchor，全分辨率resolve使用同一整数位置映射及深度/法线/粗糙度约束；当前anchor未命中时不从邻域补回反射。
+
+2026-09-14 增加角度过渡：命中表面接近擦边、投影射线短于12像素、追踪预算进入最后25%以及屏幕边缘时提前降低置信度。屏幕渐隐宽度随粗糙度调整；resolve 的最终置信度不超过中心射线，避免邻域强化弱命中后骤降。继续保留真实遮挡拒绝，不加入时间历史拖影。没有全场景反射探针，屏幕外建筑的真实倒影仍不可恢复；未命中时使用原生环境反射近似。
 
 合成公式：`source + confidence × (hitRadiance × response - nativeSpecular)`；保留原alpha。HDR顺序为不透明SSR(5)→可选透明SSR(6)→AO(10)→体积环境(20)→原生ToneMap/后期。SSR必须在AO前，因为捕获的原生镜面项尚未乘AO。
 

@@ -1,0 +1,751 @@
+{
+  "batch": "B00",
+  "target": "fixtures",
+  "reference": {
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "time": "2026-06-21T04:00:00Z"
+  },
+  "captures": [
+    {
+      "configuration": "baseline",
+      "shot": "near",
+      "kind": "fixed",
+      "hash": "a947e0f673bc2199",
+      "stats": {
+        "min": 127,
+        "max": 255,
+        "mean": 226.06872721354168,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "panorama",
+      "kind": "fixed",
+      "hash": "40b8bba1b0b62155",
+      "stats": {
+        "min": 169,
+        "max": 255,
+        "mean": 219.02213433159721,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "tree-road",
+      "kind": "fixed",
+      "hash": "843b44a2b212dfbd",
+      "stats": {
+        "min": 90,
+        "max": 255,
+        "mean": 219.07109700520834,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "glass-water",
+      "kind": "fixed",
+      "hash": "a6edd8c608c974a1",
+      "stats": {
+        "min": 112,
+        "max": 255,
+        "mean": 222.20305989583332,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "horizon",
+      "kind": "fixed",
+      "hash": "6d2b6cc69eb9277c",
+      "stats": {
+        "min": 0,
+        "max": 255,
+        "mean": 162.8907541232639,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "high-altitude",
+      "kind": "fixed",
+      "hash": "2fe67c47b6cf0c0e",
+      "stats": {
+        "min": 181,
+        "max": 255,
+        "mean": 219.24307508680556,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      }
+    },
+    {
+      "configuration": "baseline",
+      "shot": "orbit",
+      "kind": "orbit",
+      "hash": "e2e42e56b86bec9a",
+      "stats": {
+        "min": 92,
+        "max": 255,
+        "mean": 219.30336263020834,
+        "finite": true,
+        "samples": 921600,
+        "stride": 4,
+        "pixels": 921600
+      },
+      "frames": [
+        {
+          "index": 0,
+          "heading": 0,
+          "hash": "f5d77f89b9be7e66",
+          "stats": {
+            "min": 162,
+            "max": 255,
+            "mean": 219.35061848958333,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624333.2091508764,
+              3976988.793260659,
+              4226120.856359907
+            ],
+            "direction": [
+              0.47189942522541534,
+              -0.7151297400511413,
+              0.5156552989801519
+            ],
+            "up": [
+              -0.2840085639726766,
+              0.4303946130662544,
+              0.8567961324806079
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "heading": 0.7853981633974483,
+          "hash": "0ad475b2b842549c",
+          "stats": {
+            "min": 106,
+            "max": 255,
+            "mean": 219.29481879340278,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623733.366845905,
+              3977183.6300003123,
+              4226308.677757029
+            ],
+            "direction": [
+              -0.19459202474318282,
+              -0.9316150063320499,
+              0.30696485773339505
+            ],
+            "up": [
+              -0.49017852950285995,
+              0.36342787269919113,
+              0.7922406140559536
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "heading": 1.5707963267948966,
+          "hash": "c649ba27bc2bcb89",
+          "stats": {
+            "min": 106,
+            "max": 255,
+            "mean": 219.4402094184028,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623300.1146569317,
+              3976984.2989794645,
+              4226762.118721265
+            ],
+            "direction": [
+              -0.6759833458242778,
+              -0.7101360942792162,
+              -0.1968584358621065
+            ],
+            "up": [
+              -0.6390903153607075,
+              0.43193932872123464,
+              0.6363898059491532
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "heading": 2.356194490192345,
+          "hash": "4cc043e8c3c50c84",
+          "stats": {
+            "min": 99,
+            "max": 255,
+            "mean": 219.71493272569444,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623287.24584033,
+              3976507.5656067273,
+              4227215.559685501
+            ],
+            "direction": [
+              -0.6902820309372563,
+              -0.18043234679355866,
+              -0.7006817294576091
+            ],
+            "up": [
+              -0.6435134169879047,
+              0.595795899372612,
+              0.48053899784235177
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 4,
+          "heading": 3.141592653589793,
+          "hash": "899857adcd86b321",
+          "stats": {
+            "min": 103,
+            "max": 255,
+            "mean": 220.06587456597222,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2623702.298774333,
+              3976032.6938262144,
+              4227403.381082623
+            ],
+            "direction": [
+              -0.22911210426703754,
+              0.3472029648876766,
+              -0.9093721707043475
+            ],
+            "up": [
+              -0.5008568414389949,
+              0.7590126278496891,
+              0.4159834794177083
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "heading": 3.9269908169872414,
+          "hash": "1f7873eac79648fb",
+          "stats": {
+            "min": 92,
+            "max": 255,
+            "mean": 219.85008680555555,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624302.1410793047,
+              3975837.8570865616,
+              4227215.559685501
+            ],
+            "direction": [
+              0.4373793457015698,
+              0.5636882311685785,
+              -0.7006817294576091
+            ],
+            "up": [
+              -0.29468687590882753,
+              0.8259793682167632,
+              0.4805389978423521
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "heading": 4.71238898038469,
+          "hash": "f52bac4fbec43e90",
+          "stats": {
+            "min": 91,
+            "max": 255,
+            "mean": 219.53491644965277,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624735.393268278,
+              3976037.188107409,
+              4226762.118721265
+            ],
+            "direction": [
+              0.918770666782665,
+              0.3422093191157451,
+              -0.19685843586210755
+            ],
+            "up": [
+              -0.14577509005097888,
+              0.7574679121947205,
+              0.6363898059491527
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "heading": 5.497787143782138,
+          "hash": "e2e42e56b86bec9a",
+          "stats": {
+            "min": 92,
+            "max": 255,
+            "mean": 219.30336263020834,
+            "finite": true,
+            "samples": 921600,
+            "stride": 4,
+            "pixels": 921600
+          },
+          "camera": {
+            "position": [
+              -2624748.2620848794,
+              3976513.9214801462,
+              4226308.677757029
+            ],
+            "direction": [
+              0.9330693518956438,
+              -0.18749442836991242,
+              0.30696485773339444
+            ],
+            "up": [
+              -0.14135198842379298,
+              0.5936113415433432,
+              0.7922406140559524
+            ],
+            "frustum": {
+              "near": 0.1,
+              "far": 10000000000,
+              "fov": 1.0471975511965976,
+              "aspectRatio": 1.7777777777777777
+            },
+            "time": "2026-06-21T04:00:00Z",
+            "drawingBuffer": [
+              1280,
+              720
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "runtime": [
+    {
+      "id": "baseline",
+      "title": "现有增强基线（无实验特性）",
+      "settleFrames": 60,
+      "orbitFrames": 60,
+      "runtime": {
+        "cesiumVersion": "1.143.0",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "vendor": "Google Inc. (NVIDIA)",
+        "glVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "maxColorAttachments": 8,
+        "canvas": [
+          1280,
+          720
+        ],
+        "drawingBuffer": [
+          1280,
+          720
+        ],
+        "devicePixelRatio": 1,
+        "diagnostics": {
+          "enabled": true,
+          "suspended": false,
+          "colorGrading": {
+            "contrast": 1.1,
+            "brightness": 1.08,
+            "exposure": 1.6,
+            "saturation": 1.05,
+            "hue": 0
+          },
+          "antiAliasing": {
+            "mode": "fxaa",
+            "msaaSamples": 1,
+            "resolutionMode": "native",
+            "resolutionScale": 1,
+            "quality": "balanced",
+            "msaa": {
+              "requested": 1,
+              "selected": 1,
+              "supported": true,
+              "reason": null,
+              "maxSamples": 8,
+              "colorFormat": "RGBA16F",
+              "colorSamples": [
+                8,
+                4,
+                2,
+                1
+              ],
+              "depthSamples": [
+                8,
+                4,
+                2,
+                1
+              ],
+              "combined": false,
+              "policy": "Post-process anti-aliasing owns coverage"
+            },
+            "configuredMsaaSamples": 1,
+            "allocatedAttachments": {
+              "scene": {
+                "configured": 1,
+                "colorRenderbufferSamples": null,
+                "depthRenderbufferSamples": null
+              },
+              "globe": {
+                "configured": 1,
+                "colorRenderbufferSamples": null,
+                "depthRenderbufferSamples": null
+              }
+            },
+            "postProcess": {
+              "supported": true,
+              "enabled": true,
+              "ready": true,
+              "effective": "fxaa",
+              "error": null,
+              "quality": "balanced",
+              "settings": {
+                "smaaThreshold": 0.05,
+                "smaaSearchSteps": 8,
+                "fxaaSubpix": 0.5,
+                "fxaaThreshold": 0.0833,
+                "fxaaThresholdMin": 0.0312
+              },
+              "lookupDimensions": {
+                "area": null,
+                "search": null
+              },
+              "outputDimensions": {
+                "width": 1280,
+                "height": 720
+              },
+              "resourceCounts": {
+                "collections": 1,
+                "stages": 1,
+                "lookupTextures": 0
+              }
+            }
+          },
+          "resolution": {
+            "nativeDpr": 1,
+            "css": [
+              1280,
+              720
+            ],
+            "drawingBuffer": [
+              1280,
+              720
+            ],
+            "effectivePixelRatio": [
+              1,
+              1
+            ],
+            "imageRendering": "auto"
+          },
+          "geometry": {
+            "enabled": false,
+            "valid": false,
+            "reason": "Not requested",
+            "requested": {
+              "enabled": false,
+              "debugMode": "off"
+            }
+          },
+          "materials": {
+            "enabled": false,
+            "supported": true,
+            "valid": false,
+            "reason": "Not requested",
+            "error": null,
+            "stats": {
+              "frames": 0,
+              "draws": 0,
+              "invalidators": 0,
+              "transparentDraws": 0,
+              "frustumCount": 0
+            },
+            "bytes": 0,
+            "allocationScope": "owned MRT textures including depth-stencil; excludes driver overhead",
+            "format": "RGBA8 normal/roughness/metallic + RGBA16F emissive/flags + R32F eye-depth + R8 transparency",
+            "opaqueOnly": true,
+            "unsupportedSurfacesHaveInvalidDepth": true,
+            "materialLayoutVersion": 2,
+            "albedoContractVersion": 1,
+            "reflectionContractVersion": 1,
+            "opaqueColorContractVersion": 1,
+            "depthContractVersion": 2,
+            "transparencyContract": "R8 binary conservative visible forward-fragment coverage; main transparency/OIT unchanged",
+            "depthContract": "positive=known eye metres; zero=background; negative=unknown opaque occluder",
+            "requested": {
+              "enabled": false
+            }
+          },
+          "albedo": {
+            "requested": {
+              "enabled": false
+            },
+            "enabled": false,
+            "supported": true,
+            "valid": false,
+            "reason": "Not requested",
+            "error": null,
+            "albedoContractVersion": 1,
+            "bytes": 0
+          },
+          "taa": {
+            "enabled": false,
+            "valid": false,
+            "reason": "Not requested",
+            "requested": {
+              "enabled": false,
+              "jitterSamples": 8,
+              "historyBlend": 0.03,
+              "motionBlend": 0.5,
+              "velocityThreshold": 12,
+              "depthTolerance": 0.1
+            }
+          },
+          "depthPyramid": {
+            "valid": false,
+            "bytes": 0,
+            "reason": "Not requested",
+            "enabled": false,
+            "requested": {
+              "enabled": false
+            }
+          },
+          "screenSpaceAO": {
+            "enabled": false,
+            "supported": true,
+            "valid": false,
+            "algorithm": "hbao",
+            "reason": "Not requested",
+            "error": null,
+            "failed": false,
+            "stats": {
+              "frames": 0,
+              "bypasses": 0
+            },
+            "bytes": 0,
+            "scope": "screen-space non-emissive HDR modulation; not isolated indirect lighting",
+            "allocationScope": "distinct active AO collection textures, excludes materials/Hi-Z/source HDR",
+            "requested": {
+              "enabled": false,
+              "radius": 3,
+              "strength": 1,
+              "bias": 0.08,
+              "algorithm": "hbao"
+            }
+          },
+          "hdrBloom": {
+            "enabled": false,
+            "supported": true,
+            "failed": false,
+            "error": null,
+            "valid": false,
+            "reason": "Not requested",
+            "levels": 4,
+            "stats": {
+              "frames": 0,
+              "bypasses": 0
+            },
+            "bytes": 0,
+            "scope": "linear HDR bloom before TAA and native tone mapping",
+            "requested": {
+              "enabled": false,
+              "strength": 0.15,
+              "threshold": 1,
+              "knee": 0.5,
+              "levels": 4
+            }
+          },
+          "screenSpaceReflections": {
+            "enabled": false,
+            "valid": false,
+            "reason": "Not requested",
+            "requested": {
+              "enabled": false,
+              "distance": 150,
+              "thickness": 0.5,
+              "strength": 1,
+              "transparent": false
+            }
+          },
+          "transparentReflections": {
+            "enabled": false,
+            "valid": false,
+            "reason": "Not requested",
+            "requested": {
+              "enabled": false
+            }
+          },
+          "performance": {
+            "enabled": false,
+            "reason": "Not requested"
+          }
+        }
+      }
+    }
+  ],
+  "snapshot": {
+    "position": [
+      -2624748.2620848794,
+      3976513.9214801462,
+      4226308.677757029
+    ],
+    "direction": [
+      0.9330693518956438,
+      -0.18749442836991242,
+      0.30696485773339444
+    ],
+    "up": [
+      -0.1413519884237939,
+      0.5936113415433432,
+      0.7922406140559521
+    ],
+    "frustum": {
+      "near": 0.1,
+      "far": 10000000000,
+      "fov": 1.0471975511965976,
+      "aspectRatio": 1.7777777777777777
+    },
+    "time": "2026-06-21T04:00:00Z",
+    "drawingBuffer": [
+      1280,
+      720
+    ]
+  },
+  "notes": [
+    "Hashes are FNV-style hashes of the presented default framebuffer (RGBA8 readback).",
+    "A later batch compares its own capture against these hashes for the same frozen configuration.",
+    "The 12-50 km cloud fade is the reference for high-altitude shots; do not widen it."
+  ]
+}

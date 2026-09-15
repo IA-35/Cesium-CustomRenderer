@@ -50,7 +50,9 @@ function send(response, status, headers, body) {
 }
 
 function resolveWithin(base, requestPath) {
-  const decoded = decodeURIComponent(requestPath).replace(/\\/g, '/')
+  let decoded
+  try { decoded = decodeURIComponent(requestPath).replace(/\\/g, '/') }
+  catch { return null }
   const target = path.resolve(base, '.' + decoded)
   const rel = path.relative(base, target)
   if (rel.startsWith('..') || path.isAbsolute(rel)) return null
@@ -78,6 +80,15 @@ function serveFile(request, response, filePath, directoryUrl) {
 const server = http.createServer((request, response) => {
   const parsed = url.parse(request.url)
   const pathname = parsed.pathname || '/'
+
+  // Example credentials belong to this server process, never to source or generated bundles.
+  if (pathname === '/examples/runtime-config.js') {
+    const config = { imageryUrl: process.env.CCR_EXAMPLE_IMAGERY_URL || null,
+      ionToken: process.env.CCR_EXAMPLE_ION_TOKEN || null }
+    const body = 'window.CCR_EXAMPLE_CONFIG = ' + JSON.stringify(config).replace(/</g, '\\u003c') + ';'
+    send(response, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }, body)
+    return
+  }
 
   // Alias: Cesium's SMAA lookup path -> the project's own tables.
   if (pathname.startsWith(SMAA_URL_PREFIX)) {
@@ -112,5 +123,6 @@ server.listen(port, '127.0.0.1', () => {
   console.log(`[dev-server] cesium ${path.join(root, 'node_modules/cesium/Build/Cesium')}`)
   console.log(`[dev-server] smaa   ${SMAA_DIR} (aliased to ${SMAA_URL_PREFIX})`)
   console.log(`[dev-server] http://127.0.0.1:${port}/examples/index.html`)
+  console.log(`[dev-server] http://127.0.0.1:${port}/examples/campus.html`)
   console.log(`[dev-server] http://127.0.0.1:${port}/tests/rendering/preview.html`)
 })

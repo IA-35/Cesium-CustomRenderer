@@ -4,7 +4,7 @@ import { normalizeAntiAliasing, selectMsaaSamples } from '../../src/antialiasing
 
 test('AA defaults use native pixels and reject invalid quality settings', () => {
   const result = normalizeAntiAliasing({ antialiasing: 'tsr', msaaSamples: 99, resolutionMode: 'auto', resolutionScale: Infinity })
-  assert.deepEqual(result, { antialiasing: 'smaa', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
+  assert.deepEqual(result, { antialiasing: 'smaa', spatialAaQuality: 'balanced', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
   assert.equal(normalizeAntiAliasing({ resolutionScale: 0.1 }).resolutionScale, 0.5)
   assert.equal(normalizeAntiAliasing({ antialiasing: 'msaa', msaaSamples: 8 }).msaaSamples, 8)
 })
