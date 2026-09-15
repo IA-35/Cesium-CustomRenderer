@@ -21,6 +21,10 @@ const argv = process.argv.slice(2)
 const argOf = (name, fallback = null) => { const i = argv.indexOf(name); return i === -1 ? fallback : argv[i + 1] }
 const target = argOf('--target', 'campus')
 const repeat = Number(argOf('--repeat', '1'))
+// `--fresh-page` reloads the page between rounds. A campus replay must do this: the second round in
+// one long-lived page still differs in ways the report calls out, and a round that is not a genuine
+// cold start is not the "same frozen configuration" the plan asks for.
+const freshPage = argv.includes('--fresh-page')
 const port = process.env.CCR_TEST_PORT || '8877'
 const base = `http://127.0.0.1:${port}`
 const output = path.resolve(__dirname, `../docs/verification/stage1-B00/${target}`)
@@ -30,6 +34,14 @@ const TARGETS = {
     url: `${base}/examples/campus.html`,
     ready: () => globalThis.campus && globalThis.campus.tiles.length === 3 && globalThis.campus.tiles.every(tile => tile.tilesLoaded),
     label: '南湖校区实景（本地瓦片 + 沈阳影像）',
+  },
+  // Same campus geometry, but with the external imagery layer suppressed. Comparing this target
+  // against `campus` is how the report separates "our rendering is not reproducible" from "the
+  // external tile service returns a different picture on every HTTP request".
+  'campus-offline': {
+    url: `${base}/examples/campus.html?imagery=none`,
+    ready: () => globalThis.campus && globalThis.campus.tiles.length === 3 && globalThis.campus.tiles.every(tile => tile.tilesLoaded),
+    label: '南湖校区本地几何（关闭外部影像，仅用于定位差异来源）',
   },
   fixtures: {
     url: `${base}/tests/rendering/stage1-fixture.html`,
@@ -109,22 +121,26 @@ function assetManifest() {
     // makes a missing asset diagnosable. 404s on unrelated favicons/tiles must not hide campus misses.
     page.on('response', response => { if (response.status() >= 400) responses.push({ url: response.url(), status: response.status() }) })
 
-    await page.goto(definition.url)
-    await page.waitForFunction(definition.ready, null, { timeout: 90000 })
-    // Freeze the noise/animation clock and hide the UI chrome so captures compare like for like.
-    await page.evaluate(() => {
-      const host = globalThis.campus || globalThis.fixture
-      host.pipeline?.setOptions({ environmentAnimation: false })
-      const scene = host.viewer.scene
-      scene.screenSpaceCameraController.enableCollisionDetection = false
-      scene.screenSpaceCameraController.enableInputs = false
-      for (const node of document.querySelectorAll('.lil-gui.lil-root,#hud,.stats-panel')) node.style.display = 'none'
-      if (host.stats?.dom) host.stats.dom.style.display = 'none'
-    })
+    const loadTarget = async () => {
+      await page.goto(definition.url)
+      await page.waitForFunction(definition.ready, null, { timeout: 90000 })
+      // Freeze the noise/animation clock and hide the UI chrome so captures compare like for like.
+      await page.evaluate(() => {
+        const host = globalThis.campus || globalThis.fixture
+        host.pipeline?.setOptions({ environmentAnimation: false })
+        const scene = host.viewer.scene
+        scene.screenSpaceCameraController.enableCollisionDetection = false
+        scene.screenSpaceCameraController.enableInputs = false
+        for (const node of document.querySelectorAll('.lil-gui.lil-root,#hud,.stats-panel')) node.style.display = 'none'
+        if (host.stats?.dom) host.stats.dom.style.display = 'none'
+      })
+    }
+    await loadTarget()
 
     // The scripts below live in the page; the fixture module is imported from the dev server.
     const runs = []
     for (let round = 0; round < Math.max(1, repeat); round++) {
+      if (round > 0 && freshPage) await loadTarget()
       const result = await page.evaluate(async () => {
         const { runBaseline, cameraSnapshot, waitFrames, readDrawingBuffer, hashBytes } = await import('/tests/rendering/stage1-baseline-fixture.js')
         const host = globalThis.fixture || globalThis.campus
@@ -192,10 +208,12 @@ function assetManifest() {
       generatedAt: new Date().toISOString(),
       scope: target === 'campus'
         ? '1280x720 headless Chrome, real campus assets and imagery; image baseline + determinism, not a performance acceptance'
-        : '1280x720 headless Chrome, offline synthetic fixture; environment-independent baseline',
+        : target === 'campus-offline'
+          ? '1280x720 headless Chrome, campus geometry without the external imagery layer; used to attribute non-determinism to a source'
+          : '1280x720 headless Chrome, offline synthetic fixture; environment-independent baseline',
       valid: comparison.every(entry => entry.stable),
       workTree: workTreeSnapshot(),
-      assets: target === 'campus' ? assetManifest() : [],
+      assets: target.startsWith('campus') ? assetManifest() : [],
       requests: { failed: failedRequests, consoleErrors, httpErrors: responses },
       runs,
       determinism: comparison,

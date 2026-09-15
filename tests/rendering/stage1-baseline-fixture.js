@@ -55,8 +55,8 @@ export const BASELINE_VIEWPORTS = [
  */
 export const BASELINE_SETTLE_FRAMES = 60
 
-/** Frames per orbit sample; smaller because an orbit measures change over time, not convergence. */
-export const BASELINE_ORBIT_FRAMES = 12
+/** Frames per orbit sample; smaller than a settle wait because an orbit measures change over time. */
+export const BASELINE_ORBIT_FRAMES = 60
 
 /**
  * Wait for `count` further rendered frames. Rejects (instead of hanging) when the scene raised a
