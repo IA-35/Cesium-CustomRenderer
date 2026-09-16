@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "c28bc66db2fbf6fac4733f1a297bab1f47616d76",
+  "sourceCommit": "1a361eaff493677aeaf54bf1cf44d427480a3ead",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b",
@@ -55,8 +55,8 @@
     "src/environment/HdrEnvironmentPass143.js": "ce4866727545589e0fc5e20a9c8159764afb74431d951dffe4c1808ddf828630",
     "src/environment/noiseAtlas.js": "7cf64fcaebb3dbb9a1b89f540d30e75bb6b9b0f2f0eff985f80674674a8df5b8",
     "src/index.js": "6c03de6319170437717d6337465f300b7b9c8e0c0634661089f020c8d5202452",
-    "src/lighting/DeferredGeometry143.js": "1161b54bc22b365d716e645d1ab8d8ba1ee469c4453fc4cb99c1373c5caeece4",
-    "src/lighting/DeferredLighting143.js": "fba5b2c6aa528497b292f2efe0f316554c1f48088619a3816a09c76022372c40",
+    "src/lighting/DeferredGeometry143.js": "cca575707a40b55bf71dae9c0191c064b634c35f0469e4d95f2632caf8b711b5",
+    "src/lighting/DeferredLighting143.js": "ac0ab4adb9d1e33e9b41ffb58552e324cc2f7466694e5ffe56d935db9eee5239",
     "src/lighting/deferredLightingShader143.js": "4ed1b0eec6fb780248bac7a48eae88a690f134ea7482a987a4260cf0dfb2fd58",
     "src/performance/PerformanceGovernor143.js": "ff6aa9c7dc8d233c91cb74800cdaee95fce754148c30df047b92b0133b3c2f48",
     "src/pipeline/FrameBridge143.js": "8cea335a47974c763677ba185d1b70e5ee9e67a57899911b278196de7b656c14",
@@ -77,9 +77,9 @@
     "src/shadows/ShadowReceiver143.js": "90a0cd01d1959460f6cf8191322f2583f70b99d61ed1b470a5757e2d2c8629d3",
     "src/shadows/ShadowTarget.js": "9cbd9c6a159dd4ee36d1fb33a216582fe06c3f1df5fabcde8f0230d14b2c769d",
     "src/stages/colorGrading.js": "ba6f438223dfd3ca31690840d61c1b97153073ec12ebbbd4d5f65291d80c468b",
-    "src/VisualPipeline.js": "bc2c7eca2e0b7376151b1262c5b66fd207bdbd8f1199a4c46ab910c9de317c5e"
+    "src/VisualPipeline.js": "f56891a3a77784bd4cd115e8c9a9c086598c5c30b1b4808f7505d0484af9ff43"
   },
-  "bytes": 335969,
-  "gzipBytes": 113920,
-  "sha256": "49b11f2c1424b7da01e44b9221538814262db681a2633c2d78d87a74ad8045fe"
+  "bytes": 336955,
+  "gzipBytes": 114153,
+  "sha256": "f4a8802705750507400cc05207bbca8a1c18492f18cf29b14eb74f8397cd1a90"
 }

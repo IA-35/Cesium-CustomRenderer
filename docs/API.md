@@ -602,4 +602,6 @@ pipeline.setLighting({ mode: 'enhanced' })
 
 诊断 requested 是请求模式，activeMode/valid 才是本帧结果；reason 说明回退或故障。默认 enhanced 不变。MSAA、多种非透视/分类模式、排序透明及 SSR/TAA 组合暂不接管。标准 Model、MASK/法线贴图/实例化/蒙皮及中性 feature 3D Tiles 已验证；未映射材质按对象保留原生。
 
+几何接管或照明失败会恢复本帧已接管的原生颜色并停用延迟模块，reason 保留故障；显式切到 enhanced 再切回 deferred 可重试。所需的传统 AO 材质依赖自动恢复，在后续帧重新有效。运行范围或全兼容对象造成的软回退可以自动恢复接管，无需反复切换 mode。
+
 compact-v1 是独立消费者契约，不能用旧 MaterialChannels 的编码读取。四颜色附件＋独立覆盖共 57 字节/像素，约 112.7 MiB/1080p，不含 Hi-Z/AO。支持矩阵、资源与复现入口见 [B02_COMPLETION.md](B02_COMPLETION.md)。

@@ -16,3 +16,5 @@ Scope: generic Cesium 1.143 standard PBR opaque/MASK models. Keep application co
 Native depth is shared by the inline geometry FBO. Supported geometry produces material data once in the main opaque pass; no native forward lighting or material replay for those draws. Compatibility geometry retains native rendering plus conservative data invalidation. Deferred remains opt-in. B03 still owns full transparent-lighting and SSR integration; unavailable combinations retain enhanced rendering with explicit diagnostics.
 
 Current results and explicit remaining cross-mode work: [B02_COMPLETION.md](B02_COMPLETION.md). Independent native-reference review is performed locally; no execution agent delegation.
+
+- [x] Second review: partial capture recovery, automatic AO dependencies on hard/soft fallback, and temporary program cleanup; seven runtime fault/recovery checks and two additional ownership tests.

@@ -2,6 +2,16 @@
 
 本轮关闭审查 R1–R9 和“重复原生照明、实际五附件”问题，完成 **Cesium 1.143、HDR、3D 透视、单采样 OIT 下标准不透明 PBR 的延迟接管**。默认仍为 enhanced。B03 的 SSR/透明完整集成、MSAA 延迟几何与排序透明接点仍未实现，不能据此称阶段一或所有渲染模式已经完成。
 
+## 二审修复收尾
+
+2026-09-16，针对提交 `1a361ea` 的快速二审，三项新增缺陷均已修复：
+
+- **主几何异常恢复**：在实例 draw 接管边界捕获错误，复用照明恢复路径；释放材质目标前恢复本帧已接管对象的原生颜色。失败命令和后续命令走原生。恢复过程保留当前视锥、pass 和 viewport，避免中途恢复改变后续投影；命令执行前即登记恢复信息，覆盖写入完成后抛错的情况。
+- **AO 依赖恢复**：依据实际几何接管可用性与失败状态重新计算依赖；故障、运行范围不支持或本帧全部对象走兼容渲染时，恢复传统材质生产者。AO 在后续帧重新获得有效材质/Hi-Z；恢复接管后停止无用的传统生产者。故障帧保证原生颜色恢复，不承诺该帧 AO 也立即重建。
+- **编译失败清理**：照明 shader 绑定失败时释放临时程序及 RenderState 引用；几何 shader 的多个变体采用先登记所有权再构造的顺序，保证中途失败也能统一释放。
+
+新增 `check-deferred-recovery.cjs`：七组检查包含部分几何接管前/后失败、真实多视锥、照明＋HBAO 故障、运行范围回退、全兼容回退及 UMD。同帧线性 HDR 与独立原生参考比较；失败原因保留、零场景错误、显式重试以及软回退自动恢复均纳入断言。新增单测覆盖五次编译失败清理和部分变体分配失败。证据：`verification/stage1-B02-recovery/report.json`；原二审失败记录保留，不覆盖。
+
 ## 实现及审查对应
 
 | 原问题 | 修复 | 验证入口 |
@@ -50,6 +60,7 @@ npm test
 npm run build
 node scripts/check-deferred-lighting.cjs
 node scripts/check-deferred-matrix.cjs
+node scripts/check-deferred-recovery.cjs
 node scripts/check-deferred-composition.cjs
 node scripts/check-deferred-tiles.cjs
 node scripts/check-stage1.cjs

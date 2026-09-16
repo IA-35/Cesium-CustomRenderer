@@ -193,6 +193,7 @@ export default class VisualPipeline {
           return this.screenSpaceAO.getVisibilityTexture()
         },
         getShadowVisibility: () => this._deferredShadowVisibility(),
+        onGeometryAvailability: () => this.applyMaterialChannels(),
       })
     }
     if (this.deferredLighting) {
@@ -253,7 +254,8 @@ export default class VisualPipeline {
   applyMaterialChannels() {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
     const inline = this.options.lightingMode === 'deferred' && this.viewer.scene.msaaSamples <= 1 &&
-      this.viewer.scene.orderIndependentTranslucency && !this.options.screenSpaceReflectionEnabled && this.options.antialiasing !== 'taa'
+      this.viewer.scene.orderIndependentTranslucency && !this.options.screenSpaceReflectionEnabled && this.options.antialiasing !== 'taa' &&
+      !this.deferredLighting?.failed && this.deferredLighting?.geometryAvailable !== false
     const depthPyramidEnabled = this.options.depthPyramidEnabled || (this.options.screenSpaceAoEnabled && !inline) || this.options.screenSpaceReflectionEnabled
     const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled
     if (enabled && !this.materialChannels) {

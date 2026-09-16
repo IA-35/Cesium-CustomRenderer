@@ -3,9 +3,9 @@ import DeferredGeometry143 from './DeferredGeometry143.js'
 import { deferredLightingShaderSource } from './deferredLightingShader143.js'
 
 export default class DeferredLighting143 {
-  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, getShadowVisibility=()=>null }={}) {
+  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, getShadowVisibility=()=>null, onGeometryAvailability=()=>{} }={}) {
     if(!C||!scene||!/^1\.143(?:\.0)?$/.test(C.VERSION))throw new Error('Deferred lighting requires Cesium 1.143 and scene')
-    Object.assign(this,{C,scene,getOptions,prepareAo,getShadowVisibility,enabled:false,failed:false,destroyed:false,
+    Object.assign(this,{C,scene,getOptions,prepareAo,getShadowVisibility,onGeometryAvailability,enabled:false,failed:false,destroyed:false,
       reason:'Disabled',error:null,outputFrame:undefined,programs:new Map(),groups:[],targets:new Map()})
     this.materials=new DeferredGeometry143(C,scene,this)
     this.terms={direct:true,indirect:true,emissive:true,shadow:true,ao:true}
@@ -21,6 +21,7 @@ export default class DeferredLighting143 {
     if(this.enabled||this.failed)return
     try{
       this.enabled=true
+      this.geometryAvailable=undefined
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
       this.off=this.bridge.on('translucent',()=>this.render())
       this.bridge.install()
@@ -30,6 +31,11 @@ export default class DeferredLighting143 {
       this.reason='Not rendered'
     }catch(error){this.fail(error)}
     this.scene.requestRender()
+  }
+  setGeometryAvailable(value){
+    if(this.geometryAvailable===value)return
+    this.geometryAvailable=value
+    this.onGeometryAvailability(value)
   }
   setTerms(values={}){for(const key of Object.keys(this.terms))if(typeof values[key]==='boolean')this.terms[key]=values[key]}
   setDebugMode(value){if(Number.isFinite(value))this.debugMode=Math.max(0,Math.min(7,Math.round(value)))}
@@ -69,12 +75,16 @@ export default class DeferredLighting143 {
     if(!entry){
       const options={depthTest:{enabled:false},depthMask:false,blending:{enabled:false}}
       const state=C.RenderState.fromCache(options)
+      let command
       try{
-        const command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,group),{renderState:state})
+        command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,group),{renderState:state})
         const saved=ctx._gl.getParameter(ctx._gl.CURRENT_PROGRAM)
         try{command.shaderProgram._bind()}finally{ctx._gl.useProgram(saved)}
         entry={command,options};this.programs.set(key,entry)
-      }catch(error){C.RenderState.removeFromCache(options);throw error}
+      }catch(error){
+        if(command?.shaderProgram&&!command.shaderProgram.isDestroyed())command.shaderProgram.destroy()
+        C.RenderState.removeFromCache(options);throw error
+      }
     }
     return entry.command
   }
@@ -102,7 +112,12 @@ export default class DeferredLighting143 {
       if(!target)throw new Error('Resolved opaque target unavailable')
       const used=new Set(this.materials.captured.map(record=>record.group.id))
       const groups=this.groups.filter(group=>used.has(group.id))
-      if(!groups.length){this.reason='No supported PBR draws';return}
+      if(!groups.length){
+        this.reason='No supported PBR draws'
+        this.materials.ready=false
+        this.setGeometryAvailable(false)
+        return
+      }
       const opaque=this.scene._view.oit._opaqueTexture
       const ao=this.terms.ao?this.prepareAo(opaque):null,shadow=this.terms.shadow?this.getShadowVisibility():null
       this.stats.lastAoValid=!!ao;this.stats.lastShadowValid=!!shadow
@@ -130,16 +145,18 @@ export default class DeferredLighting143 {
         this.stats.draws++
       }
       this.outputFrame=this.scene.frameState.frameNumber;this.reason=null;this.stats.frames++
-    }catch(error){
-      try { this.materials.restoreNativeColors() } catch (recovery) { error=new Error(error.message+'; native recovery: '+recovery.message) }
-      this.fail(error)
-    }
+    }catch(error){this.recover(error)}
     finally{gl.bindFramebuffer(gl.READ_FRAMEBUFFER,read);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,draw);ctx._currentFramebuffer=cached;us.viewport=viewport}
+  }
+  recover(error){
+    try { this.materials.restoreNativeColors() } catch (recovery) { error=new Error(error.message+'; native recovery: '+recovery.message) }
+    this.fail(error)
   }
   fail(error){
     this.error=error.message||String(error)
     this.detach();this.enabled=false;this.failed=true
     this.reason=this.error+'; disable before retrying'
+    this.setGeometryAvailable(false)
   }
   detach(){
     this.off?.();this.off=null

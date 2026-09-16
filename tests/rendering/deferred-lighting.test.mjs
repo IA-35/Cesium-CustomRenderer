@@ -83,3 +83,32 @@ test('native atmospheric fog remains on the compatibility path',()=>{
    uniformMap:{u_isInFog:()=>true}}),null)
  d.destroy()
 })
+
+test('failed shader compilation releases every temporary program before retry',()=>{
+ const s=scene(),released=[]
+ s.context._gl={CURRENT_PROGRAM:1,getParameter:()=>null,useProgram(){}}
+ s.context.createViewportQuadCommand=()=>{
+   const p={dead:false,_bind(){throw new Error('injected link failure')},isDestroyed(){return this.dead},destroy(){this.dead=true;released.push(this)}}
+   return {shaderProgram:p}
+ }
+ const d=new DeferredLighting143({Cesium:C,scene:s})
+ for(let i=0;i<5;i++)assert.throws(()=>d.ensureProgram({diffuse:false,specular:false}),/injected link failure/)
+ assert.equal(released.length,5)
+ assert.equal(d.programs.size,0)
+ d.destroy()
+})
+
+test('partially constructed geometry variants remain owned by failure cleanup',()=>{
+ const s=scene(),d=new DeferredLighting143({Cesium:C,scene:s})
+ let created=0,released=0
+ d.materials.C={...C,ShaderProgram:{fromCache(){
+   if(++created===2)throw new Error('variant allocation failed')
+   return {isDestroyed:()=>false,destroy(){released++}}
+ }}}
+ const source=program(['LIGHTING_PBR','USE_METALLIC_ROUGHNESS','HAS_NORMALS']);source.id=123
+ d.materials.setEnabled(true)
+ assert.throws(()=>d.materials.programFor({shaderProgram:source,renderState:{stencilTest:{enabled:false}}}),/variant allocation failed/)
+ d.fail(new Error('variant allocation failed'))
+ assert.equal(released,1);assert.equal(d.materials.programs.size,0)
+ d.destroy()
+})

@@ -49,7 +49,13 @@ export default class DeferredGeometry143 {
         command.shaderProgram = args[0] ?? command.shaderProgram
         command.uniformMap = args[1] ?? command.uniformMap
       }
-      return self.capture(previous, command, passState)
+      try { return self.capture(previous, command, passState) }
+      catch(error) {
+        // Recover earlier captures before retiring the material textures. The
+        // failed command and all subsequent draws then use native rendering.
+        self.owner.recover(error)
+        return previous.call(this, command, passState)
+      }
     }
     context.draw = this.hook
     this.proxy = { update: state => {
@@ -81,15 +87,15 @@ export default class DeferredGeometry143 {
     this.owner.groups=[];this.owner.groupFrame=this.scene.frameState.frameNumber
     this.stats = { materialDraws: 0, nativeSupportedColorDraws: 0, compatibilityDraws: 0, coverageDraws: 0 }
     this.reason = this.scopeReason()
-    if (this.reason || this.owner.failed) return
+    if (this.reason || this.owner.failed) { this.owner.setGeometryAvailable(false); return }
     const C = this.C, s = this.scene, ctx = s.context
     const bins = s._view.frustumCommandsList
-    if (!bins?.length) { this.reason = 'No geometry'; return }
+    if (!bins?.length) { this.reason = 'No geometry'; this.owner.setGeometryAvailable(false); return }
     for (const bin of bins) {
       if ([C.Pass.TERRAIN_CLASSIFICATION, C.Pass.CESIUM_3D_TILE_CLASSIFICATION,
         C.Pass.CESIUM_3D_TILE_CLASSIFICATION_IGNORE_SHOW, C.Pass.VOXELS, C.Pass.GAUSSIAN_SPLATS,
         C.Pass.CESIUM_3D_TILE_EDGES, C.Pass.CESIUM_3D_TILE_EDGES_DIRECT].some(p => bin.indices[p] > 0)) {
-        this.reason = 'Unsupported command family uses enhanced rendering'; return
+        this.reason = 'Unsupported command family uses enhanced rendering'; this.owner.setGeometryAvailable(false); return
       }
     }
     try {
@@ -161,6 +167,9 @@ export default class DeferredGeometry143 {
       if(stencil.enabled&&(stencil.frontFunction!==this.C.StencilFunction.ALWAYS||stencil.backFunction!==this.C.StencilFunction.ALWAYS))throw new Error('Complex stencil uses enhanced rendering')
       const sources=compactMaterialSources(this.C,source)
       record={...sources,_program:this.C.ShaderProgram.fromCache({context:this.scene.context,...sources,attributeLocations:source._attributeLocations})}
+      // Own the first program before constructing other variants, so failure
+      // cleanup can release a partially constructed record as well.
+      this.programs.set(key,record)
       if (sources.supported) {
         const invalid=compactMaterialSources(this.C,source,true)
         record._invalid=this.C.ShaderProgram.fromCache({context:this.scene.context,...invalid,attributeLocations:source._attributeLocations})
@@ -175,7 +184,6 @@ export default class DeferredGeometry143 {
         record._recovery=this.C.ShaderProgram.fromCache({context:this.scene.context,vertexShaderSource:source.vertexShaderSource,
           fragmentShaderSource:fs,attributeLocations:source._attributeLocations})
       }
-      this.programs.set(key,record)
     }
     record.frame=this.scene.frameState.frameNumber
     return record
@@ -230,10 +238,11 @@ export default class DeferredGeometry143 {
         // Preserve each model's actual environment uniforms, including custom SH,
         // IBL factor and reference frame. Material values themselves stay in MRT.
         derived.uniformMap={...command.uniformMap,ccr_lightingGroup:()=>group.id}
-        nativeDraw.call(ctx,derived,passState)
         const frustum=s.camera.frustum.clone()
         frustum.near=ctx.uniformState.currentFrustum.x;frustum.far=ctx.uniformState.currentFrustum.y
         this.captured.push({command,nativeTarget,group,frustum})
+        nativeDraw.call(ctx,derived,passState)
+        this.owner.setGeometryAvailable(true)
         this.stats.materialDraws++
       }else{
         derived.shaderProgram=record._invalid||record._program
@@ -305,6 +314,8 @@ export default class DeferredGeometry143 {
 
   restoreNativeColors() {
     const C=this.C,s=this.scene,ctx=s.context,us=ctx.uniformState
+    const frustum=s.camera.frustum.clone(),viewport=C.BoundingRectangle.clone(us.viewport),pass=us.pass
+    frustum.near=us.currentFrustum.x;frustum.far=us.currentFrustum.y
     this.busy=true
     try {
       for(const {command,nativeTarget,group,frustum}of this.captured) {
@@ -324,7 +335,7 @@ export default class DeferredGeometry143 {
         const ps=new C.PassState(ctx);ps.viewport=new C.BoundingRectangle(0,0,this.target.width,this.target.height)
         derived.execute(ctx,ps)
       }
-    } finally {this.busy=false;us.updateFrustum(s.camera.frustum)}
+    } finally {this.busy=false;us.updateFrustum(frustum);us.updatePass(pass);us.viewport=viewport}
   }
 
   getTextures() {

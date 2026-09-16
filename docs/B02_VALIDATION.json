@@ -3,7 +3,7 @@
   "engine": "Cesium 1.143.0",
   "scope": "Opt-in standard opaque PBR, single-sample HDR 3D perspective OIT; generic generated fixtures",
   "unitTests": {
-    "passed": 434,
+    "passed": 436,
     "failed": 0
   },
   "materialParity": {
@@ -19,201 +19,201 @@
   "runtimeMatrix": [
     {
       "name": "default",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "direct",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "ibl",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "emissive",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "four-slot",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "no-global",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "southern",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "polar",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "typed",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "highlight",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "multi-frustum",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 6,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "msaa",
-      "parity": true,
-      "activeMode": "enhanced",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "enhanced"
     },
     {
       "name": "sorted",
-      "parity": true,
-      "activeMode": "enhanced",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "enhanced"
     },
     {
       "name": "lifecycle",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "umd",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "resize",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "viewer-destroy",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "context-loss",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "draw-overrides",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "fog",
-      "parity": true,
-      "activeMode": "enhanced",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "enhanced"
     },
     {
       "name": "no-log-depth",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     },
     {
       "name": "model-ibl",
-      "parity": true,
-      "activeMode": "deferred",
       "frustums": 1,
       "pickPreserved": true,
       "pageErrors": [],
-      "renderErrors": []
+      "renderErrors": [],
+      "parity": true,
+      "activeMode": "deferred"
     }
   ],
   "lifecycle": {
@@ -292,9 +292,9 @@
     "goldenUpdated": false
   },
   "build": {
-    "bytes": 335969,
-    "gzipBytes": 113920,
-    "sha256": "49b11f2c1424b7da01e44b9221538814262db681a2633c2d78d87a74ad8045fe",
+    "bytes": 336955,
+    "gzipBytes": 114153,
+    "sha256": "f4a8802705750507400cc05207bbca8a1c18492f18cf29b14eb74f8397cd1a90",
     "verifiedSourceHashes": 62
   },
   "remaining": [
@@ -303,5 +303,95 @@
     "Four-slot capability simulation is not physical four-slot hardware certification",
     "No formal FPS/P95 or long-duration GPU-memory certification",
     "Stage1 and paused multi-light B13 are not complete"
-  ]
+  ],
+  "secondReview": {
+    "reviewedBaseCommit": "1a361eaff493677aeaf54bf1cf44d427480a3ead",
+    "issuesClosed": [
+      "capture exception recovery",
+      "AO dependencies after fallback",
+      "shader program ownership on compile failure"
+    ],
+    "runtimeCases": [
+      {
+        "name": "geometry-before",
+        "frustums": 1,
+        "priorCaptured": 2,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": null
+      },
+      {
+        "name": "geometry-after",
+        "frustums": 1,
+        "priorCaptured": 2,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": null
+      },
+      {
+        "name": "geometry-multifrustum",
+        "frustums": 6,
+        "priorCaptured": 2,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": null
+      },
+      {
+        "name": "lighting-ao",
+        "frustums": 1,
+        "priorCaptured": 0,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": true
+      },
+      {
+        "name": "scope-ao",
+        "frustums": 1,
+        "priorCaptured": 0,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": true
+      },
+      {
+        "name": "compatibility-ao",
+        "frustums": 1,
+        "priorCaptured": 0,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": true
+      },
+      {
+        "name": "geometry-umd",
+        "frustums": 1,
+        "priorCaptured": 2,
+        "sameFrameParity": true,
+        "maxError": 0,
+        "retry": true,
+        "renderErrors": [],
+        "pageErrors": [],
+        "aoRecovered": null
+      }
+    ],
+    "compileFailureRetryCount": 5,
+    "partialGeometryVariantFailureCleanup": true,
+    "aoRecoveryContract": "Native colors recover in the fault frame; AO material dependencies become valid in subsequent frames"
+  }
 }
