@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {safeUrl,sourceSnapshot,compareGolden,assertRequests}=require('./baseline-utils.cjs')
 const argv=process.argv.slice(2),arg=(key,fallback)=>{const i=argv.indexOf(key);return i<0?fallback:argv[i+1]}
 const root=path.resolve(__dirname,'..'),port=process.env.CCR_TEST_PORT||8877
-const target=arg('--target','campus-geometry'),mode=arg('--mode',target==='campus'?'visual':'compare')
+const target=arg('--target','fixtures'),mode=arg('--mode',target==='campus'?'visual':'compare')
 const configuration=arg('--configuration','ccr-default'),repeat=Number(arg('--repeat','2'))
 const goldenDir=path.join(root,'tests/rendering/baselines')
 const output=path.join(root,'docs/verification/stage1-B00-fixed',target+'-'+configuration+'-'+mode)
@@ -52,7 +52,7 @@ function assetManifest(){
      ()=>window.campus?.tiles.length===3&&window.campus.contextTiles.length===1,null,{timeout:90000})
    const run=await page.evaluate(async ({target,configuration})=>{
     const m=await import('/tests/rendering/stage1-baseline-fixture.js')
-    const host=globalThis.campus||globalThis.fixture,scene=host.viewer.scene
+    const host=target==='fixtures'?globalThis.fixture:globalThis.campus,scene=host.viewer.scene
     host.baselineProviderErrors=[]
     for(let i=0;i<scene.imageryLayers.length;i++){
      const provider=scene.imageryLayers.get(i).imageryProvider

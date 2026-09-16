@@ -16,6 +16,11 @@ export const defaults = Object.freeze({
   ambientOcclusion: false, fog: true, fogDensity: 0.000025, bloom: false,
   hdrBloomEnabled: false, hdrBloomStrength: 0.15, hdrBloomThreshold: 1, hdrBloomKnee: 0.5, hdrBloomLevels: 5,
   geometryEnabled: false, geometryDebugMode: 'off', materialChannelsEnabled: false, albedoEnabled: false, depthPyramidEnabled: false,
+  // B02: deferred lighting is experimental and off by default. `enhanced` keeps native forward
+  // lighting untouched. The per-term switches exist so a lighting mismatch can be attributed to one
+  // term instead of being blamed on "the lighting" as a whole.
+  lightingMode: 'enhanced', lightingDirect: true, lightingIndirect: true, lightingEmissive: true,
+  lightingShadow: true, lightingAo: true, lightingAoStrength: 1, lightingDebugMode: 0,
   screenSpaceAoEnabled: false, screenSpaceAoAlgorithm: 'ssao', screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
   screenSpaceReflectionTransparent: false,
@@ -28,7 +33,8 @@ const ranges = {
   saturation: [0, 3], hue: [-1, 1], shadowDistance: [100, 20000],
   fogDensity: [0, 0.0005], screenSpaceAoRadius: [0.1, 20], screenSpaceAoStrength: [0, 2], screenSpaceAoBias: [0.02, 0.5],
   screenSpaceReflectionDistance: [1, 2000], screenSpaceReflectionThickness: [0.01, 20], screenSpaceReflectionStrength: [0, 1],
-  taaHistoryBlend: [0.02, 0.5], taaMotionBlend: [0.1, 1], taaVelocityThreshold: [1, 64], taaDepthTolerance: [0, 0.5]
+  taaHistoryBlend: [0.02, 0.5], taaMotionBlend: [0.1, 1], taaVelocityThreshold: [1, 64], taaDepthTolerance: [0, 0.5],
+  lightingAoStrength: [0, 1], lightingDebugMode: [0, 7]
 }
 
 export function normalizeOptions(input = {}, current = defaults) {
@@ -39,7 +45,7 @@ export function normalizeOptions(input = {}, current = defaults) {
       result[key] = Math.max(ranges[key][0], Math.min(ranges[key][1], input[key]))
     }
   })
-  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine'].forEach(key => {
+  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo'].forEach(key => {
     if (typeof input[key] === 'boolean') result[key] = input[key]
   })
   if ([1024, 2048, 4096].includes(input.shadowSize)) result.shadowSize = input.shadowSize
@@ -50,6 +56,9 @@ export function normalizeOptions(input = {}, current = defaults) {
   if (['native', 'custom'].includes(input.shadowMode)) result.shadowMode = input.shadowMode
   if (['ssao', 'hbao'].includes(input.screenSpaceAoAlgorithm)) result.screenSpaceAoAlgorithm = input.screenSpaceAoAlgorithm
   if (['off', 'normal', 'depth'].includes(input.geometryDebugMode)) result.geometryDebugMode = input.geometryDebugMode
+  // `enhanced` is both the default and the fallback for anything unrecognised, so a typo can never
+  // silently switch the renderer into an experimental lighting path.
+  if (['enhanced', 'deferred'].includes(input.lightingMode)) result.lightingMode = input.lightingMode
   return result
 }
 

@@ -1,3 +1,4 @@
+import CampusAssetCompatibility from './compat/CampusAssetCompatibility.js'
 // examples/campus.js
 //
 // 南湖校区实景示例的脚本部分，从 examples/campus.html 内联的 <script type="module"> 拆出。
@@ -50,6 +51,16 @@ const pipeline = createVisualPipeline({ Cesium, viewer,
 const tiles = []
 const contextTiles = []
 window.campus = { viewer, pipeline, tiles, contextTiles, errors, base }
+// Legacy asset fixes belong to this example, not to the renderer.
+const assetCompatibility = new CampusAssetCompatibility(Cesium, viewer.scene)
+const updateAssetCompatibility = () => assetCompatibility.setEnabled(
+  pipeline.enabled && !pipeline.destroyed && !pipeline.suspensions.size,
+  pipeline.getOptions().environment
+)
+const removeAssetCompatibility = viewer.scene.preUpdate.addEventListener(updateAssetCompatibility)
+updateAssetCompatibility()
+window.addEventListener('pagehide', () => { removeAssetCompatibility(); assetCompatibility.destroy() }, { once: true })
+
 Object.defineProperty(window.campus, 'geometry', { get: () => pipeline.geometry })
 
 // ---------------------------------------------------------------------------

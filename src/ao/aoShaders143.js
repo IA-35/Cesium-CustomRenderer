@@ -37,6 +37,9 @@ bool aoReceiver(ivec2 pixel) {
     return (flags & 3) == 3 && (flags & (16 | 32 | 64)) == 0;
 }
 vec3 aoNormal(ivec2 pixel) {
+    // Compact deferred data retain the native XYZ normal to avoid octahedral
+    // round-trip error at sharp specular highlights. Legacy data stay oct-encoded.
+    if (texelFetch(u_flags, pixel, 0).a >= 1024.0) return texelFetch(u_material, pixel, 0).rgb;
     vec2 oct = texelFetch(u_material, pixel, 0).rg * 2.0 - 1.0;
     vec3 normal = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
     vec2 direction = vec2(normal.x >= 0.0 ? 1.0 : -1.0, normal.y >= 0.0 ? 1.0 : -1.0);

@@ -17,7 +17,7 @@ export function cubeUrl(C, color = [0.65,0.68,0.72,1], emissive = [0,0,0]) {
 export async function startStage1Scene(f) {
   if (f.pipeline) return
   const C = Cesium, {viewer,CCR}=f
-  const origin=C.Cartesian3.fromDegrees(123.42,41.77,0), frame=C.Transforms.eastNorthUpToFixedFrame(origin)
+  const origin=C.Cartesian3.fromDegrees(...(f.location || [123.42,41.77,0])), frame=C.Transforms.eastNorthUpToFixedFrame(origin)
   viewer.clock.currentTime=C.JulianDate.fromIso8601('2026-06-21T04:00:00Z')
   const specs=[[[0,0,-1],[200,200,2]],[[0,0,12],[18,18,24]],[[24,0,7],[12,12,14]],[[0,25,3],[8,10,6]]]
   f.models=[]
@@ -37,7 +37,7 @@ export async function startStage1Scene(f) {
   f.origin=origin
 }
 
-export async function runStage1SceneChecks(f) {
+export async function runStage1SceneChecks(f, { requireCloudPresence = true } = {}) {
   await startStage1Scene(f)
   const C=Cesium, {viewer,pipeline}=f, scene=viewer.scene, checks={}, measurements={}
   const frames=n=>new Promise((resolve,reject)=>{
@@ -60,16 +60,19 @@ export async function runStage1SceneChecks(f) {
   check('bloomSceneValid',pipeline.getHdrBloomDiagnostics().valid)
   pipeline.setOptions({environment:true,cloudGeometry:'shell',environmentAnimation:false,cloudCoverage:.8,cloudBaseHeight:1000,cloudThickness:1000,fog:false})
   measurements.cloudCases=[]
+  const location=C.Cartographic.fromCartesian(f.origin)
   for(const [height,pitch,expectCloud] of [[100,-Math.PI/2,false],[100,Math.PI/2,true],[1500,Math.PI/2,true],[3000,Math.PI/2,false],[3000,-Math.PI/2,true],[2000000,-Math.PI/2,false]]){
-    viewer.camera.setView({destination:C.Cartesian3.fromDegrees(123.42,41.77,height),orientation:{heading:0,pitch,roll:0}})
+    viewer.camera.setView({destination:C.Cartesian3.fromRadians(location.longitude,location.latitude,height),orientation:{heading:0,pitch,roll:0}})
     await frames(10)
     check('shellValidAt'+height+'_'+pitch,pipeline.environmentRenderer.getDiagnostics().hdr.valid)
     const samples=sampleClouds(); measurements.cloudCases.push({height,pitch,...samples})
     check('shellFiniteAt'+height+'_'+pitch,samples.finite)
-    check('shellCoverageAt'+height+'_'+pitch,expectCloud?samples.min<.99:samples.min>.9999)
+    // Cloud density varies geographically; only the original density fixture requires nonempty clouds.
+    if (expectCloud && !requireCloudPresence) check('shellTransmittanceRangeAt'+height+'_'+pitch,samples.min>=0&&samples.max<=1)
+    else check('shellCoverageAt'+height+'_'+pitch,expectCloud?samples.min<.99:samples.min>.9999)
   }
   for(const latitude of [0,80]) {
-    viewer.camera.setView({destination:C.Cartesian3.fromDegrees(123.42,latitude,100),orientation:{heading:0,pitch:-Math.PI/2,roll:0}})
+    viewer.camera.setView({destination:C.Cartesian3.fromRadians(location.longitude,C.Math.toRadians(latitude),100),orientation:{heading:0,pitch:-Math.PI/2,roll:0}})
     await frames(8)
     check('groundNotCoveredAtLatitude'+latitude,pipeline.environmentRenderer.getDiagnostics().hdr.valid&&sampleClouds().min>.9999)
   }

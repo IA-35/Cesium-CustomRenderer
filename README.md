@@ -80,6 +80,8 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 
 ## 阶段一 B00/B01 基准与接点
 
+CCR面向通用Cesium场景。B00默认运行无外部资产的合成基准，校园仅作可选集成；资产专用修正放在examples/compat，SDK不按校园文件名修改材质。详见 [通用范围](docs/RENDERER_SCOPE.md)。
+
 已修复B00的基准覆盖、影像失败判定、源码内容hash，以及B01的目标绑定、透明混合验证、安装生命周期和资源释放。当前状态与范围见 [修复交接](docs/B00_B01_FIX_HANDOVER.md) 和 [验收说明](docs/STAGE1_ACCEPTANCE.md)。
 
 - 五份已复比基准按目标/配置分别保存，未通过严格复比的校园高质量组合不发布golden；默认compare不改写，显式update要求两次冷启动一致。

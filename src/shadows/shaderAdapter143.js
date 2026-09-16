@@ -1,4 +1,4 @@
-const pcf = `
+export const pcf = `
 uniform sampler2D campus_shadowDepth;
 uniform mat4 campus_eyeToShadow;
 uniform vec4 campus_shadowParams;

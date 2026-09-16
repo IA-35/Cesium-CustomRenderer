@@ -1,0 +1,307 @@
+{
+  "date": "2026-09-16",
+  "engine": "Cesium 1.143.0",
+  "scope": "Opt-in standard opaque PBR, single-sample HDR 3D perspective OIT; generic generated fixtures",
+  "unitTests": {
+    "passed": 434,
+    "failed": 0
+  },
+  "materialParity": {
+    "expected": 7,
+    "supported": 7,
+    "passed": 7,
+    "valid": true,
+    "tolerance": {
+      "absolute": 0.01,
+      "relative": 0.02
+    }
+  },
+  "runtimeMatrix": [
+    {
+      "name": "default",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "direct",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "ibl",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "emissive",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "four-slot",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "no-global",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "southern",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "polar",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "typed",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "highlight",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "multi-frustum",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 6,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "msaa",
+      "parity": true,
+      "activeMode": "enhanced",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "sorted",
+      "parity": true,
+      "activeMode": "enhanced",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "lifecycle",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "umd",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "resize",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "viewer-destroy",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "context-loss",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "draw-overrides",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "fog",
+      "parity": true,
+      "activeMode": "enhanced",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "no-log-depth",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    },
+    {
+      "name": "model-ibl",
+      "parity": true,
+      "activeMode": "deferred",
+      "frustums": 1,
+      "pickPreserved": true,
+      "pageErrors": [],
+      "renderErrors": []
+    }
+  ],
+  "lifecycle": {
+    "release": {
+      "ownedTexture": true,
+      "ownedFramebuffer": true,
+      "nativeDepthAlive": true,
+      "programReleased": true,
+      "materialPrograms": 0,
+      "lightingPrograms": 0
+    },
+    "failure": {
+      "failed": true,
+      "reason": "injected target failure; disable before retrying",
+      "nativeColorRecovered": true
+    },
+    "retryWorks": true,
+    "repeatedResources": {
+      "lightingFramebuffers": 1,
+      "lightingPrograms": 1,
+      "materialPrograms": 4
+    }
+  },
+  "composition": {
+    "directAo": {
+      "max": 0,
+      "darker": 0
+    },
+    "indirectAo": {
+      "max": 0.048583984375,
+      "darker": 5834
+    },
+    "directShadow": {
+      "max": 0.267059326171875,
+      "darker": 4255
+    },
+    "emissiveInvariant": {
+      "max": 0,
+      "darker": 0
+    },
+    "transparent": {
+      "native": [
+        0.1759033203125,
+        0.339599609375,
+        0.50341796875
+      ],
+      "deferred": [
+        0.1759033203125,
+        0.339599609375,
+        0.50341796875
+      ],
+      "coverage": 1,
+      "draws": 1
+    }
+  },
+  "regressions": {
+    "stage1SourceSceneChecks": 29,
+    "stage1UmdSceneChecks": 29,
+    "stage1ResizeSizes": [
+      [
+        801,
+        603
+      ],
+      [
+        1280,
+        720
+      ]
+    ],
+    "stage1PageErrors": 0,
+    "stage1HttpErrors": 0,
+    "frameBridgeModes": 7,
+    "sourceAndUmdSdk": true,
+    "geographicLocations": 3,
+    "checksPerLocation": 29,
+    "fixturesDefaultFrozenGoldenComparison": true,
+    "goldenUpdated": false
+  },
+  "build": {
+    "bytes": 335969,
+    "gzipBytes": 113920,
+    "sha256": "49b11f2c1424b7da01e44b9221538814262db681a2633c2d78d87a74ad8045fe",
+    "verifiedSourceHashes": 62
+  },
+  "remaining": [
+    "MSAA deferred geometry takeover is not implemented; explicit enhanced fallback",
+    "Sorted transparency and SSR/TAA deferred combinations remain for B03/B10",
+    "Four-slot capability simulation is not physical four-slot hardware certification",
+    "No formal FPS/P95 or long-duration GPU-memory certification",
+    "Stage1 and paused multi-light B13 are not complete"
+  ]
+}

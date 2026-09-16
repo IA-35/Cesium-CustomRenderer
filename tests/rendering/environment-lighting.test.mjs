@@ -19,6 +19,20 @@ function fixture() {
 
 function tileset() { return new C.Cesium3DTileset() }
 
+test('core lighting never changes IBL factors based on an asset filename', () => {
+  const { scene, lighting } = fixture()
+  const assets = ['/SM_NH_Terr/tileset.json', '/SM_NH_Building/tileset.json', '/generic/tileset.json'].map(url => {
+    const model = tileset()
+    model._resource = new C.Resource('http://localhost' + url)
+    scene.primitives.add(model)
+    return model
+  })
+  lighting.setEnabled(true)
+  for (const asset of assets) assert.equal(asset.imageBasedLighting.imageBasedLightingFactor.y, 1)
+  lighting.destroy()
+  for (const asset of assets) asset.destroy()
+})
+
 test('daylight hides the star background and night and cleanup restore its original visibility', () => {
   const { scene, lighting } = fixture()
   scene.skyBox = { show: true }
@@ -37,45 +51,6 @@ test('daylight hides the star background and night and cleanup restore its origi
   lighting.apply({ daylight: 0 })
   assert.equal(scene.skyBox.show, false)
   lighting.destroy()
-})
-
-test('legacy campus base-color assets keep diffuse sky lighting without grazing sky glare', () => {
-  const { scene, lighting } = fixture()
-  const campus = tileset()
-  campus._resource = new C.Resource('http://localhost/Dongda/SM_NH_Terr/tileset.json')
-  const original = campus.imageBasedLighting.imageBasedLightingFactor
-  scene.primitives.add(campus)
-  lighting.setEnabled(true)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor.x, 1)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor.y, 0)
-  const applied = campus.imageBasedLighting.imageBasedLightingFactor
-  lighting.apply(settings)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor, applied)
-  lighting.setEnabled(false)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor, original)
-  lighting.setEnabled(true)
-  const external = new C.Cartesian2(.7, .5)
-  campus.imageBasedLighting.imageBasedLightingFactor = external
-  const assigned = campus.imageBasedLighting.imageBasedLightingFactor
-  lighting.apply(settings)
-  lighting.setEnabled(false)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor, assigned)
-  assert.deepEqual(assigned, external)
-  lighting.destroy(); campus.destroy(); scene.primitives.destroy()
-})
-
-test('campus material compatibility preserves explicit IBL settings and other PBR assets', () => {
-  const { scene, lighting } = fixture()
-  const campus = tileset(), pbr = tileset()
-  campus._resource = new C.Resource('http://localhost/Dongda/SM_NH_Building/tileset.json')
-  campus.imageBasedLighting.imageBasedLightingFactor = new C.Cartesian2(.8, .6)
-  const original = campus.imageBasedLighting.imageBasedLightingFactor
-  pbr._resource = new C.Resource('http://localhost/glass/tileset.json')
-  scene.primitives.add(campus); scene.primitives.add(pbr)
-  lighting.setEnabled(true)
-  assert.equal(campus.imageBasedLighting.imageBasedLightingFactor, original)
-  assert.equal(pbr.imageBasedLighting.imageBasedLightingFactor.y, 1)
-  lighting.destroy(); campus.destroy(); pbr.destroy(); scene.primitives.destroy()
 })
 
 test('uses the shipped 1.143 public API and restores owned sunlight and atmosphere', () => {

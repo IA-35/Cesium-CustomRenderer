@@ -80,13 +80,15 @@ export default class ScreenSpaceAo143 {
       try {
         this.error = null
         this._createStages()
-        this.detach = registerHdrEffect(this.scene, 10, (...args) => this._execute(...args))
+        this.detach = registerHdrEffect(this.scene, 10, (...args) => this.getMaterials()?.compactActive ? args[1] : this._execute(...args))
         this.enabled = true
         this.reason = 'Not rendered'
       } catch (error) { this._fail(error) }
     }
     this.scene.requestRender()
   }
+
+  prepareVisibility(context, color) { return this._execute(context, color, undefined, undefined) }
 
   _execute(context, color, depth, id) {
     this.outputFrame = undefined
@@ -145,7 +147,8 @@ export default class ScreenSpaceAo143 {
     return { enabled: this.enabled, supported: this.supported, valid: !!this.getVisibilityTexture(), algorithm: this.algorithm || 'ssao',
       reason: this._scopeReason() || this.reason, error: this.error, failed: this.failed, stats: { ...this.stats },
       bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0),
-      scope: 'screen-space non-emissive HDR modulation; not isolated indirect lighting',
+      scope: this.getMaterials()?.compactActive ? 'indirect lighting visibility; legacy color modulation bypassed'
+        : 'screen-space non-emissive HDR modulation; not isolated indirect lighting',
       allocationScope: 'distinct active AO collection textures, excludes materials/Hi-Z/source HDR' }
   }
 

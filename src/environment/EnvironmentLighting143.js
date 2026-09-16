@@ -114,19 +114,8 @@ export default class EnvironmentLighting143 {
         seen.add(manager)
         let record = this.managers.get(manager)
         if (!record) {
-          const ibl = primitive.imageBasedLighting
-          const factor = ibl && ibl.imageBasedLightingFactor
-          // These legacy exports use base-color textures and a blanket 0.45
-          // roughness for grass, paving and facades. Adding the sky's specular
-          // lobe turns those diffuse surfaces pale at grazing view angles.
-          // Limit compatibility to the verified assets and default IBL factors.
-          const diffuseOnly = !primitive.customShader && factor && factor.x === 1 && factor.y === 1 &&
-            /\/SM_NH_(?:Terr|Building)\/tileset\.json(?:[?#]|$)/i.test(primitive.resource && primitive.resource.url || '')
-          record = { primitive, changes: [], diffuseOnly }
+          record = { primitive, changes: [] }
           this.managers.set(manager, record)
-        }
-        if (record.diffuseOnly) {
-          write(record.changes, primitive.imageBasedLighting, 'imageBasedLightingFactor', new C.Cartesian2(1, 0))
         }
         let changed = write(record.changes, manager, 'atmosphereScatteringIntensity', o.skyIntensity)
         changed = write(record.changes, manager, 'maximumSecondsDifference', 60) || changed

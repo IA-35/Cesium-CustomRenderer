@@ -1,5 +1,6 @@
 # CCR · 自定义渲染管线 API 使用文档
 
+> 最新范围：[CCR通用渲染原则](RENDERER_SCOPE.md)。B00默认target为fixtures；校园是可选集成用例，其服务/资产问题不定义CCR的通用能力边界。
 Cesium 1.143.0 渲染增强管线（CCR）的对外接口参考。全部签名、默认值、取值范围与诊断字段均取自当前源码：`src/index.js`、`src/presets.js`、`src/VisualPipeline.js`、`src/environment/environmentState.js`、`src/antialiasing/settings143.js`。
 
 > 版本门槛：所有类都要求 `Cesium.VERSION` 匹配 `/^1\.143(?:\.0)?$/`，不匹配直接抛错。管线依赖 1.143 的若干内部结构（`scene._view.frustumCommandsList`、`globeDepthTexture`、`updateDerivedCommands`、`_primitiveBias` 等），升级 Cesium 前必须重新验证。
@@ -514,7 +515,7 @@ profiler.destroy()
 
 ## 9. 能力边界与未实现
 
-- 主颜色仍来自 Cesium 原生前向渲染。**没有**真正的延迟照明、统一 GBuffer、实际遮挡剔除、分块光照、5000 灯实时渲染（`LightUniforms143` 目前只有数据验证，没有照明消费者）。
+- 默认 enhanced 模式的主颜色仍来自 Cesium 原生前向渲染。B02 可选 deferred 已接管支持范围内的标准不透明 PBR（见 10.3）；尚无实际对象遮挡剔除、分块光照、5000 灯实时渲染。
 - 体积雾与云是**局部/球壳**效果，不是全球体积雾；云影不投到地面，云不参与 IBL 与反射探针。
 - 材质通道只支持单采样 MRT，不提供运动矢量、透明表面法线、玻璃/水自身光学参数；拒绝 classification、edge-only、voxels、Gaussian splats、透明 Globe、invert classification、WebVR、depth-only 模型。
 - 透明覆盖是二值单采样，不等于完整 MSAA 透明覆盖；透明物体之间不支持递归反射与折射。
@@ -547,7 +548,7 @@ node scripts/check-frame-bridge.cjs
 
 ### 10.1 帧执行桥
 
-`createFrameBridge({ Cesium, scene })` 是实验性OIT接点，未自动接入VisualPipeline，也不是完整延迟照明。优先使用最后的OIT合成前阶段：
+`createFrameBridge({ Cesium, scene })` 是实验性OIT接点；VisualPipeline 的可选 deferred 模块使用它，桥本身不等于完整延迟照明。优先使用最后的OIT合成前阶段：
 
 ```js
 const bridge = CCR.createFrameBridge({ Cesium, scene })
@@ -583,3 +584,22 @@ bridge.install()
 - `CCR_EXAMPLE_ION_TOKEN`：可选Cesium Ion token。
 
 在启动服务器的终端设置，值不要写入Git、构建包或持久化系统环境。静态部署由部署流程生成运行时配置或在加载示例前注入同名对象。客户端实际需要的配置会发送给浏览器，不能用它保存服务端秘密。
+
+
+### 10.3 B02 标准不透明延迟照明（可选）
+
+```js
+pipeline.setAntiAliasing({ mode: 'smaa' }) // 单采样；MSAA 走增强回退
+pipeline.setScreenSpaceReflections({ enabled: false })
+pipeline.setLighting({ mode: 'deferred' })
+pipeline.setLighting({ aoStrength: 0.8, debugMode: 0 }) // 未传 mode 时保留当前模式
+console.log(pipeline.getLightingDiagnostics())
+// 显式关闭也会清除失败锁；随后可以重试
+pipeline.setLighting({ mode: 'enhanced' })
+```
+
+如需 AO，请另外通过 setScreenSpaceAO 开启；lighting.ao 仅决定是否消费可用的 AO。shadow 同理，消费现有自定义太阳阴影。开关 direct、indirect、emissive、shadow、ao 分别控制对应项，aoStrength 限定 0–1。debugMode：0 正常、1 直接、2 间接、3 自发光、4 阴影可见性、5 AO、6 roughness/metalness、7 albedo。
+
+诊断 requested 是请求模式，activeMode/valid 才是本帧结果；reason 说明回退或故障。默认 enhanced 不变。MSAA、多种非透视/分类模式、排序透明及 SSR/TAA 组合暂不接管。标准 Model、MASK/法线贴图/实例化/蒙皮及中性 feature 3D Tiles 已验证；未映射材质按对象保留原生。
+
+compact-v1 是独立消费者契约，不能用旧 MaterialChannels 的编码读取。四颜色附件＋独立覆盖共 57 字节/像素，约 112.7 MiB/1080p，不含 Hi-Z/AO。支持矩阵、资源与复现入口见 [B02_COMPLETION.md](B02_COMPLETION.md)。

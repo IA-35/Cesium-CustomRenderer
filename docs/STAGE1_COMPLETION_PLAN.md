@@ -2,9 +2,11 @@
 
 > 执行方式：由当前会话亲自执行，使用 executing-plans 按批次推进；不下发执行端会话、不启用子代理。本文是开发计划，不是完成报告。勾选框仅在对应代码、运行证据和验收条件都满足后更新。
 
+> 通用范围纠偏：CCR面向通用Cesium场景，B00默认无外部资产的合成验证；校园仅是可选集成用例。详见 [RENDERER_SCOPE.md](RENDERER_SCOPE.md)。
+
 **Goal：** 在现有 CCR 独立项目内，完成阶段一的主照明接管、透明兼容、性能基础与基础环境/后期；产出可复现构建的 CCR SDK。
 **Architecture：** 保留 Cesium 1.143 的场景管理、3D Tiles 调度、几何处理、拾取和 HDR 底座；由 CCR 组织受支持不透明材质的 G-buffer/PBR 照明、自定义太阳阴影、透明前向与环境后期。未适配材质走明确标记的兼容路径，不悄悄重光照、不把后处理重放当作已完成架构替代。
-**Tech Stack：** JavaScript ES modules、Cesium 1.143.0、WebGL2/GLSL ES 3.00、Node test、Chrome/WebGL 数值及校园场景验证、Webpack UMD。
+**Tech Stack：** JavaScript ES modules、Cesium 1.143.0、WebGL2/GLSL ES 3.00、Node test、Chrome/WebGL 数值、多位置合成与可选真实场景验证、Webpack UMD。
 
 编制日期：2026-09-15。当前开发仓库 HEAD 为 b2b182e，后续功能大量存在于未提交工作区；执行前必须重新记录工作区快照。当前任务仅制定计划，没有执行下列功能开发。
 
@@ -15,7 +17,7 @@
 - 逐文件复用清单：[STAGE1_REUSE_MAP.md](./STAGE1_REUSE_MAP.md)；后续任务中的 R01–R15 对应其条目。
 - CCR 根目录：`G:/_JavaScript/_IAsCesiumLib/cesium customRenderer`。
 - Tianjing 根目录：`G:/_JavaScript/新版cesium示例/tianjingmap-3d`，只读参考。
-- 校园基准：[examples/campus.html](<../examples/campus.html>)；合成夹具补充验证，不能取代校园验收。
+- 核心基准：无外部资产的合成夹具及跨地理位置回归；[examples/campus.html](<../examples/campus.html>)仅作可选真实资产集成，不定义管线范围。
 
 **延续用户已确定的范围：**
 
@@ -70,10 +72,10 @@ flowchart TD
 
 | 数据 | 计划格式/来源 | 关键约束 |
 | --- | --- | --- |
-| normalRoughMetal | 复用RGBA8八面体法线/感知roughness/metalness | 保持编码、法线方向、粗糙度平方次数一致 |
+| normalRoughMetal | B02 compact-v1：RGBA32F，原生XYZ法线＋roughness | 旧增强布局不变；不能按旧八面体格式解释新数据 |
 | albedoOcclusion | RGBA16F | 线性基础色与材质AO，不能用已照明主颜色代替 |
-| emissiveFlags | RGBA16F | 自发光保持HDR；已知有效位保持兼容 |
-| eyeDepth | R32F | 正值米制视深度，0背景，负值未知；消费者禁止跨语义误用 |
+| emissiveFlags | B02 compact-v1：RGBA32F | HDR自发光；低十位材质flags，高位环境group ID |
+| eyeDepth | B02 compact-v1：RGBA32F，深度/eye X/eye Y/metalness | R通道仍为正米制视深度，0背景，负值未知；禁止作为窗口深度 |
 | depth/stencil | 每视锥几何目标 | 保留log-depth、MASK、裁剪、模板和拾取原语义 |
 | transparency coverage | 独立R8 pass | 保守覆盖不等于alpha或透射率 |
 | opaque HDR / indirect specular | 照明resolve输出/可选独立目标 | SSR替换同一次照明的环境镜面分量；不再依赖重放原生照明获取它 |
@@ -109,7 +111,7 @@ finalSpecular = mix(environmentSpecular, ssrSpecular, confidence)
 | B09 | Tonemap与影视后期、光斑/光柱 | B03、B08 | 逐项独立可控，曝光映射一次 |
 | B10 | TAA稳定性收口及空间AA组合回归 | B03、B07、B08、B09 | 不用模糊掩盖抖动，能力边界有证据 |
 | B11 | 全管线生命周期、能力降级与默认值 | B04–B10 | 异常恢复、多Viewer和资源压力通过 |
-| B12 | 正式校园验收、SDK与发布准备 | B11 | 固定负载画质/性能与源码/UMD一致 |
+| B12 | 通用场景矩阵验收、SDK与发布准备 | B11 | 固定负载画质/性能与源码/UMD一致 |
 | B13 | 5000+延迟光源（暂缓） | B02、B03、B05、用户恢复此项 | 实际光照与性能通过后才关闭原始缺口 |
 
 建议严格按表内顺序亲自执行，每批只处理自己的功能和必要依赖。B04/B05技术上可交换；不并行修改同一管线。B01–B03为第一个架构检查点，B04–B08为第二个稳定性检查点，B09–B12为候选交付检查点。B13不阻塞前十二批，但阻止“原文全部完成”的结论。
@@ -150,21 +152,20 @@ B00工具修复可关闭；当前场景总体质量验收仍有明确未通过�
 
 ### B02：精简G-buffer与主不透明延迟照明
 
-**复用：** R02、R04、R05、R08。
-**新增：** `src/lighting/DeferredLighting143.js`、`src/lighting/deferredLightingShader143.js`、`tests/rendering/deferred-lighting.test.mjs`、`tests/rendering/deferred-lighting-fixture.js`。
-**修改：** `src/channels/MaterialChannels143.js`、`MaterialTarget143.js`、`materialShader143.js`、`src/pipeline/FrameBridge143.js`、`src/VisualPipeline.js`。
+2026-09-16：受支持的单采样 OIT 标准 PBR 路径及审查 R1–R9 已修复，详见 [B02_COMPLETION.md](B02_COMPLETION.md)。旧失败证据保留，不再作为当前结论。
 
-- [ ] 建立支持矩阵：标准metallic/roughness OPAQUE、MASK、法线贴图、双面、实例化/蒙皮；先支持统一CCR太阳与环境。模型独立IBL/自定义lightColor未映射时标为兼容，不用全局值覆盖它。
-- [ ] 在现有材质求值后提取四附件布局；透明coverage另画。用4/6/8槽模拟能力测试，验证不依赖8槽才能开启基本延迟照明。
-- [ ] 复用STANDARD_PBR_VALID及现有拒绝规则。MASK solid片元正常照明，孔洞保留背景；feature ID中性不应误判改色，但确有style、outline、classification的分支在适配前走兼容。
-- [ ] 实现太阳直接光＋SH/环境漫反射＋预滤镜面IBL＋自发光；环境数据复用EnvironmentLighting的来源和方向约定。照明resolve不得读取已照明颜色推导albedo。
-- [ ] 接入自定义太阳阴影可见性与HBAO，分别只作用到约定光照项；添加直射/间接/镜面/自发光诊断输出，定位过曝及色偏。
-- [ ] 在实验模式下将受支持原生opaque颜色draw替换为CCR材质draw，保留需要的depth/pick/ID流程。证明同一对象没有“原生PBR一次＋材质重放一次＋CCR再照明一次”的重复路径。
-- [ ] 比较独立原生参考与CCR：roughness/metalness网格、法线贴图、HDR自发光、白/灰/色卡、太阳角度变化；参考图不能由待测shader生成。
-- [ ] MSAA先在单采样MRT+多采样主色模式验证边缘安全；覆盖不一致像素保留兼容色，不制造黑边。完成适配前诊断明确partial，不能声称完整MSAA延迟覆盖。
-- [ ] 完成后接通现有setters及按需依赖，实验默认关闭，直到B03通过才可切换候选默认。
+- [x] 标准 OPAQUE/MASK、法线贴图、双面、实例化、蒙皮与中性 feature 3D Tiles 支持矩阵；其他材质按对象兼容。
+- [x] 四颜色附件 compact-v1，独立 R8 透明覆盖，共享原生深度；四槽能力模拟通过。
+- [x] 单太阳直接光＋真实模型 SH/预滤镜面 IBL＋自发光；复用原生材质求值和 IBL 实现。
+- [x] 自定义太阳阴影作用于直接光，HBAO 在照明前生成并只作用于间接光；保留分项诊断。
+- [x] 实际替换主颜色命令：受支持对象原生主颜色 PBR draw 为 0；保留拾取、深度及原生几何变换。
+- [x] 独立原生线性 HDR 对照，不变的 ≤0.01 绝对或 ≤2% 相对误差门槛；七材质全部纳入、高光、地理位置、log-depth 开关、多视锥。
+- [x] 首次启用、局部 setters、无全局引擎、UMD、资源释放与可重试故障；实验默认关闭。
+- [x] MSAA/OIT关闭/SSR/TAA 等不支持组合明确回到 enhanced，保留原生颜色。
+- [ ] **MSAA 延迟几何接管尚未实现**：现为安全增强回退，不声称完成原计划的单采样 MRT＋多采样主色混合覆盖。
+- [ ] **排序透明与 SSR/TAA 延迟组合**：由 B03/B10 接续；不能据当前单采样通过就切为候选默认。
 
-**通过：** 平面内部像素误差门槛先定为绝对误差≤0.01或相对误差≤2%（线性HDR，以较宽者判；排除轮廓1px并另测边缘）。零太阳/零IBL只余自发光；灯光变化不改变材质附件；受支持对象原生PBR主颜色执行数为0，拾取仍有效。不同量化/IBL实现若无法达到门槛，记录差异并修复，不能单纯改曝光抵消。
+精度选择：为避免锐利 GGX 高光误差，法线和 eye-space 坐标保持 FLOAT；compact-v1 实际布局与显存成本见交接。功能通过不等于低显存或正式性能达标。B02 标准不透明核心已形成可提交阶段，上述跨模式缺口仍公开保留，阶段一整体未完成。
 
 ### B03：透明前向与兼容合成闭环
 
@@ -241,7 +242,7 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **修改：** SSR trace/resolve、材质适配、透明前向；必要时在 `examples/campus.js` 添加独立演示几何，不改用户真实资产。
 
 - [ ] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准，SSR关/开时基础PBR色不应跳变。
-- [ ] 在校园选标准玻璃、池水平面、局部湿地面三个代表，支持范围明确为标准PBR模型、指定Cesium Primitive材质与Globe water mask路径。
+- [ ] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证，支持范围明确为标准PBR模型、指定Cesium Primitive材质与Globe water mask路径。
 - [ ] 普通Primitive提取实际法线/roughness和材质反射响应；Globe保留影像颜色，对water mask区域建立独立receiver契约，非水地面不擅自金属化。
 - [ ] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自B03，不照搬Tianjing全局scene._reflectTexture。
 - [ ] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与SSR共用能量/roughness尺度，不能miss采样最后像素或突然变黑。
@@ -271,7 +272,7 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 
 **复用：** R09、R12、R13。
 **新增：** `src/stages/toneMapping143.js`、`src/stages/lensEffects143.js`、`tests/rendering/lens-effects.test.mjs`、`tests/rendering/lens-effects-fixture.js`。
-**修改：** VisualPipeline、HdrCoordinator、environmentStages、API、campus控制面板。
+**修改：** VisualPipeline、HdrCoordinator、environmentStages、API、通用示例控制面板。
 
 - [ ] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
 - [ ] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
@@ -303,7 +304,7 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 - [ ] 冻结曝光/太阳/云时间时，测边缘位置序列和灰度剖面；不能通过降低分辨率/增大模糊核让抖动指标变好。
 - [ ] 回归FXAA/SMAA三质量档、MSAA实际样本、TAA启停/resize/切模式/相机cut，以及B09的镜头效果组合。
 
-**通过：** 静态收敛后边缘位置峰峰值≤0.25像素、连续亮度无周期跳闪；静态细线对比相对现有SMAA参考损失≤10%作为拟定门槛；相机cut当帧丢弃旧历史，移动遮挡后的旧轮廓最多2帧内消退。指标与人工校园序列观感同时判断，超门槛不直接加模糊。
+**通过：** 静态收敛后边缘位置峰峰值≤0.25像素、连续亮度无周期跳闪；静态细线对比相对现有SMAA参考损失≤10%作为拟定门槛；相机cut当帧丢弃旧历史，移动遮挡后的旧轮廓最多2帧内消退。指标与多个独立场景的连续序列观感同时判断，超门槛不直接加模糊。
 
 ### B11：生命周期、能力降级与默认策略
 
@@ -321,18 +322,18 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 
 **通过：** 无新增pageerror/GL错误，无过期纹理/双重释放，资源数量稳定；恢复后真实渲染输出通过颜色与拾取检查。仅isDestroyed/valid返回值不算画面恢复证据。
 
-### B12：校园正式验收与SDK候选产物
+### B12：通用场景矩阵验收与SDK候选产物
 
 **复用：** R01、R14、R15。
 **修改：** `scripts/check-stage1-acceptance.cjs`、`scripts/build-rendering-sdk.cjs`、API、README、算法来源与许可证记录。
 **产物：** `build/<candidateVersion>/CCR.min.js`、manifest、外置引擎接入示例、候选zip、`docs/STAGE1_ACCEPTANCE.md`及本地证据目录。
 
-- [ ] 固定1920×1080实际drawing buffer、目标硬件/浏览器、资产hash、时间/镜头轨迹及曝光。分“现有增强基线”“CCR默认”“校园推荐组合”三配置，并登记实际开关值。
+- [ ] 固定1920×1080实际drawing buffer、目标硬件/浏览器、资产hash、时间/镜头轨迹及曝光。分“隔离基线”“CCR默认”“效果组合”三配置，并登记实际开关值。
 - [ ] 预热至少30秒，前台连续记录每条轨迹60秒、重复3轮；若窗口不在前台、配置/资产变化、GPU disjoint，整组不用于性能结论。
-- [ ] 性能目标先沿用历史校园要求：平均≥30FPS且帧时间P95≤33.3ms；这是待达到门槛，不是当前事实。GPU分项、CPU帧时间、资源峰值、draw/三角形一并记录。
+- [ ] 性能门槛按目标硬件、模型复杂度与效果组合分别制定。历史校园平均≥30FPS/P95≤33.3ms只属于一个应用用例，不作为所有Cesium场景的统一负载定义。GPU分项、CPU帧时间、资源峰值、draw/三角形一并记录。
 - [ ] 若目标硬件/原生场景本身达不到门槛，分别报告原生、旧CCR、新CCR瓶颈，不以静态缓存样本代替动态场景，也不更改负载以“通过”。
 - [ ] 逐条画质验收：卫星底图可见、天空不漂白、树荫明显且稳定、无阴影浮空/重影、SSR旋转不骤黑、高空云不扩距、AA不模糊抖动、玻璃水与雾正确排序。
-- [ ] 检查拾取/选中、瓦片加载、缩放/旋转、近远切换及实际campus业务交互；不恢复RuoYi登录全量验收。
+- [ ] 检查拾取/选中、瓦片加载、缩放/旋转、近远切换及多个独立集成用例的场景交互；不恢复RuoYi登录全量验收。
 - [ ] 使用同一配置分别加载源码ESM与UMD，检查导出CCR、效果/依赖资源、API和图像一致；manifest记录工作树hash，不能只记录旧HEAD。
 - [ ] 用 `npm pack --dry-run` 核对已有ESM包内容，离线最小消费者验证UMD；版本号在候选证据冻结时确定，不在计划中预支发布版本。
 - [ ] 阶段提交准备只包含本阶段已审阅代码/文档/必要公开资产；校园私有资源、令牌不进入分发包。保留旧阶段可恢复包，不删除用户工作区。
@@ -437,5 +438,5 @@ node scripts/check-camera-shadows.cjs
 | 用户额外要求：默认CCR、自定义全球跟随阴影 | B03＋B04＋B11 | 正常路径由CCR管理，无手动迁移阴影原点 |
 | 可整合SDK产物及总体验收 | B12 | 源码/UMD、清单、画质、性能和发布状态可追溯 |
 
-**下一轮执行入口：B00→B01。** 先固定当前校园基线并验证透明前执行桥；B01/B02/B03未通过前，不用镜头滤镜数量替代核心架构推进。多光源不自动恢复。
+**下一轮执行入口：B03，并接续B02跨模式缺口。** 以通用合成、材质与地理位置矩阵验证，不再将校园作为唯一主基准；B01/B02/B03未通过前，不用镜头滤镜数量替代核心架构推进。多光源不自动恢复。
 

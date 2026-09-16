@@ -1,4 +1,4 @@
-// These legacy compressed leaf mips average alpha to .25-.31. Their omitted
+// Example-only: these legacy compressed leaf mips average alpha to .25-.31. Their omitted
 // glTF cutoff defaults to .5 and erases distant crowns, including shadow casters.
 // Scope the compatibility value to this verified asset, without editing it.
 export default class FoliageMask143 {

@@ -1,6 +1,6 @@
 ﻿import test from 'node:test'
 import assert from 'node:assert/strict'
-import FoliageMask143 from '../../src/environment/FoliageMask143.js'
+import FoliageMask143 from '../../examples/compat/LegacyFoliageMask.js'
 
 test('verified foliage cutoff applies to copied draw maps and restores on disable', () => {
   const scene = { frameState: { frameNumber: 1 }, updateDerivedCommands() {} }

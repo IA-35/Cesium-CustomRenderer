@@ -57,3 +57,13 @@ test('opaque alpha does not make a solid black image nonblank',()=>{
  assert.equal(fixtureUtils.hasColorVariation(new Uint8Array([0,0,0,255,0,0,0,255])),false)
  assert.equal(fixtureUtils.hasColorVariation(new Uint8Array([0,0,0,255,1,0,0,255])),true)
 })
+
+test('a generic baseline does not borrow an unrelated global campus camera', () => {
+ const before=globalThis.campus
+ let calls=0
+ globalThis.campus={look(){calls++}}
+ try {
+  assert.throws(()=>fixtureUtils.applyShot({}, {pitch:0,range:1}, null), /origin/)
+  assert.equal(calls,0)
+ } finally { if(before===undefined)delete globalThis.campus;else globalThis.campus=before }
+})

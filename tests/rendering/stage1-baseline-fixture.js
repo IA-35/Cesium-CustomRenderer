@@ -13,7 +13,7 @@
 //     silently skipped. `?imagery=none` only suppresses the external imagery request; it may not
 //     be used to turn a campus-basemap failure into a pass.
 
-/** Frozen JulianDate for every baseline capture (summer solstice, 12:00 local at 123.42E). */
+/** Fixed UTC timestamp for replay; each geographic input keeps its own solar orientation. */
 export const BASELINE_TIME = '2026-06-21T04:00:00Z'
 
 /** Cloud animation time frozen alongside the clock so the shell noise does not drift. */
@@ -21,19 +21,14 @@ export const BASELINE_CLOUD_TIME = 0
 
 const DEG = Math.PI / 180
 
-/**
- * The seven B00 views. `look` is applied through `campus.look(pitch, range)` when the campus
- * page is driving the run, otherwise through an equivalent absolute camera view.
- *
- * `kind` distinguishes the two families the plan asks for:
- *   fixed   — a stationary camera, used for image comparison
- *   orbit   — a continuous trajectory sampled at fixed time steps
+/** Camera shots relative to the supplied test origin.
+ * Historical IDs are retained for golden compatibility; they do not imply an asset type.
  */
 export const BASELINE_SHOTS = [
   { id: 'near', kind: 'fixed', title: '固定近景', pitch: -0.25, range: 220, description: 'close building detail, shading and shadows' },
-  { id: 'panorama', kind: 'fixed', title: '全景', pitch: -0.35, range: 1800, description: 'whole campus, shadow cascades and fog' },
-  { id: 'tree-road', kind: 'fixed', title: '树荫道路', pitch: -0.12, range: 420, description: 'foliage MASK/cutout and contact shadows' },
-  { id: 'glass-water', kind: 'fixed', title: '玻璃/水', pitch: -0.18, range: 260, description: 'translucent surfaces, OIT/SSR inputs' },
+  { id: 'panorama', kind: 'fixed', title: '全景', pitch: -0.35, range: 1800, description: 'scene overview, shadows and fog' },
+  { id: 'tree-road', kind: 'fixed', title: '低角度近景', pitch: -0.12, range: 420, description: 'low-angle geometric detail' },
+  { id: 'glass-water', kind: 'fixed', title: '表面斜视', pitch: -0.18, range: 260, description: 'oblique surface view; material coverage uses dedicated fixtures' },
   { id: 'horizon', kind: 'fixed', title: '地平线', pitch: 0.02, range: 1500, description: 'ground/sky blend, atmosphere, fog' },
   { id: 'high-altitude', kind: 'fixed', title: '高空', pitch: -1.45, range: 26000, description: 'fixed 12-50 km cloud fade from above' },
   { id: 'orbit', kind: 'orbit', title: '连续绕行轨迹', pitch: -0.3, range: 900, samples: 8, description: 'continuous orbit used to catch temporal instability' },
@@ -89,21 +84,9 @@ export function freezeTime(viewer, iso = BASELINE_TIME) {
   })
 }
 
-/**
- * Apply one baseline shot.
- *
- * `campus.look` is preferred when available because the campus page owns its own origin/tile
- * bookkeeping. Note that Cesium's `camera.lookAt` leaves the camera in a *reference frame* that it
- * re-derives every frame from the transform, so both paths must pin the resulting view explicitly;
- * otherwise the camera drifts a little between two otherwise identical runs.
- */
+/** Apply a camera shot using the explicitly supplied world origin. */
 export function applyShot(viewer, shot, origin) {
-  const campus = globalThis.campus
-  if (campus && typeof campus.look === 'function') {
-    campus.look(shot.pitch, shot.range)
-    return
-  }
-  if (!origin) throw new Error('applyShot needs either window.campus.look or an origin')
+  if (!origin) throw new Error('The baseline fixture must supply its own origin')
   holdView(viewer, origin, 0, shot.pitch, shot.range)
 }
 
@@ -273,7 +256,8 @@ export async function runBaseline(fixture, options = {}) {
   const pipeline = fixture.pipeline
 
   freezeTime(viewer)
-  const origin = fixture.origin || pipeline.campusOrigin || Cesium.Cartesian3.fromDegrees(123.42, 41.77, 0)
+  const origin = fixture.origin || pipeline.campusOrigin
+  if (!origin) throw new Error('The baseline fixture must supply its own origin')
 
   // Shadow texel stabilization has history: start from the same camera before creating it.
   // Do not change the production shadow algorithm or disable it to get deterministic pictures.
@@ -425,7 +409,7 @@ export function baselineConfigurations() {
     { ...structuredClone(base), id: 'ccr-default', title: 'CCR默认阴影与SMAA',
       options: { ...base.options, shadows: true, shadowMode: 'custom' },
       antialiasing: { mode: 'smaa', msaaSamples: 1, spatialAaQuality: 'balanced' } },
-    { ...structuredClone(base), id: 'campus-quality', title: '校园效果组合',
+    { ...structuredClone(base), id: 'campus-quality', title: '效果组合（历史配置ID）',
       options: { ...base.options, shadows: true, shadowMode: 'custom' },
       screenSpaceAO: { enabled: true, algorithm: 'hbao' }, reflections: { enabled: true },
       bloom: { enabled: true }, antialiasing: { mode: 'smaa', msaaSamples: 4, spatialAaQuality: 'balanced' } },

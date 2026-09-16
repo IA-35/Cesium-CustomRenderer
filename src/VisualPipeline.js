@@ -4,7 +4,6 @@ import configureShadowBias from './shadowBias143.js'
 import createCampusShadowMap from './shadowMap143.js'
 import DirectionalShadowPass from './shadows/DirectionalShadowPass.js'
 import EnvironmentRenderer from './environment/EnvironmentRenderer.js'
-import FoliageMask143 from './environment/FoliageMask143.js'
 import SmaaPass143 from './antialiasing/SmaaPass143.js'
 import FxaaPass143 from './antialiasing/FxaaPass143.js'
 import TaaPass143 from './antialiasing/TaaPass143.js'
@@ -12,6 +11,7 @@ import ScreenSpaceGeometry143 from './channels/ScreenSpaceGeometry143.js'
 import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
+import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
 import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
@@ -61,9 +61,9 @@ export default class VisualPipeline {
   }
 
   restore() {
+    if (this.deferredLighting) this.deferredLighting.setEnabled(false)
     if (this.fxaa) this.fxaa.setEnabled(false)
     if (this.hdrBloom) this.hdrBloom.setEnabled(false)
-    if (this.foliageMask) this.foliageMask.setEnabled(false)
     if (this.transparentReflections) this.transparentReflections.setEnabled(false)
     if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(false)
     if (this.screenSpaceAO) this.screenSpaceAO.setEnabled(false)
@@ -111,8 +111,6 @@ export default class VisualPipeline {
       this.write(v.shadowMap, 'softShadows', true)
       configureShadowBias(this)
     }
-    if (!this.foliageMask) this.foliageMask = new FoliageMask143(s)
-    this.foliageMask.setEnabled(true)
     this.write(s, 'highDynamicRange', true)
     this.write(p, 'tonemapper', C.Tonemapper.ACES)
     this.write(p, 'exposure', o.exposure)
@@ -163,12 +161,71 @@ export default class VisualPipeline {
       this.environmentRenderer.setEnabled(true)
     } else if (this.environmentRenderer) this.environmentRenderer.setEnabled(false)
     this.applyGeometry()
+    this.applyLighting()
     this.applyMaterialChannels()
     this.applyScreenSpaceReflections()
     this.applyTransparentReflections()
     this.applyScreenSpaceAO()
     this.applyHdrBloom()
     s.requestRender()
+  }
+
+  /**
+   * B02: deferred lighting. Deliberately experimental and off by default -- the plan only allows it
+   * to become a candidate default after B03 closes the opaque/transparent loop, and MSAA coverage is
+   * not taken over. It owns its compact material producer without changing explicit channel options.
+   */
+  applyLighting() {
+    if (this.destroyed || !this.enabled || this.suspensions.size) {
+      if (this.deferredLighting) this.deferredLighting.setEnabled(false)
+      return
+    }
+    const o = this.options
+    const requested = o.lightingMode === 'deferred'
+    if (requested && !this.deferredLighting) {
+      this.deferredLighting = new DeferredLighting143({
+        Cesium: this.Cesium,
+        scene: this.viewer.scene,
+        getOptions: () => this.options,
+        prepareAo: color => {
+          if (!this.screenSpaceAO?.enabled) return null
+          this.screenSpaceAO.prepareVisibility(this.viewer.scene.context, color)
+          return this.screenSpaceAO.getVisibilityTexture()
+        },
+        getShadowVisibility: () => this._deferredShadowVisibility(),
+      })
+    }
+    if (this.deferredLighting) {
+      if (o.lightingDebugMode !== undefined) this.deferredLighting.setDebugMode(o.lightingDebugMode)
+      if (o.lightingAoStrength !== undefined) this.deferredLighting.set({ aoStrength: o.lightingAoStrength })
+      this.deferredLighting.setTerms({
+        direct: o.lightingDirect !== false,
+        indirect: o.lightingIndirect !== false,
+        emissive: o.lightingEmissive !== false,
+        shadow: o.lightingShadow !== false,
+        ao: o.lightingAo !== false,
+      })
+      this.deferredLighting.setEnabled(requested)
+    }
+  }
+
+  /**
+   * Shadow inputs for the deferred pass, in the form its shader expects.
+   *
+   * Returns null when no custom shadow is active; the shader then treats `campus_shadowParams.w < 0.5`
+   * as "no shadows this frame" and uses full visibility, rather than sampling an unbound texture.
+   */
+  _deferredShadowVisibility() {
+    const shadow = this.customShadow
+    if (!shadow?.enabled || !shadow.ready || !shadow.target) return null
+    const C = this.Cesium
+    return { texture: shadow.target.depth, matrix: shadow.light.receiverMatrix(this.viewer.camera),
+      params: new C.Cartesian4(1 / shadow.target.size, shadow.light.texelWorld, shadow.light.depthSpan, 1) }
+  }
+
+  getActiveMaterialChannels() {
+    const compact = this.deferredLighting?.materials
+    return compact?.getTextures() ? compact : this.materialChannels
   }
 
   applyGeometry() {
@@ -195,7 +252,9 @@ export default class VisualPipeline {
 
   applyMaterialChannels() {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
-    const depthPyramidEnabled = this.options.depthPyramidEnabled || this.options.screenSpaceAoEnabled || this.options.screenSpaceReflectionEnabled
+    const inline = this.options.lightingMode === 'deferred' && this.viewer.scene.msaaSamples <= 1 &&
+      this.viewer.scene.orderIndependentTranslucency && !this.options.screenSpaceReflectionEnabled && this.options.antialiasing !== 'taa'
+    const depthPyramidEnabled = this.options.depthPyramidEnabled || (this.options.screenSpaceAoEnabled && !inline) || this.options.screenSpaceReflectionEnabled
     const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled
     if (enabled && !this.materialChannels) {
       this.materialChannels = new MaterialChannels143(this.Cesium, this.viewer.scene)
@@ -239,7 +298,7 @@ export default class VisualPipeline {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
     const o = this.options, scene = this.viewer.scene
     if (o.screenSpaceAoEnabled && !this.screenSpaceAO) {
-      this.screenSpaceAO = new ScreenSpaceAo143(this.Cesium, scene, () => this.materialChannels, () => this.options)
+      this.screenSpaceAO = new ScreenSpaceAo143(this.Cesium, scene, () => this.getActiveMaterialChannels(), () => this.options)
     }
     if (this.screenSpaceAO) this.screenSpaceAO.setEnabled(o.screenSpaceAoEnabled)
     if (updateNativeAO) {
@@ -447,6 +506,7 @@ export default class VisualPipeline {
           : this.fxaa && this.fxaa.enabled ? this.fxaa.getDiagnostics() : { effective: fxaa ? 'fxaa' : 'off' } },
       resolution: renderResolution(this.viewer), geometry: this.getGeometryDiagnostics(), materials: this.getMaterialDiagnostics(),
       albedo: this.getAlbedoDiagnostics(),
+      lighting: this.getLightingDiagnostics(),
       taa: this.getTaaDiagnostics(),
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
@@ -465,6 +525,51 @@ export default class VisualPipeline {
   }
   invalidateShadows() {
     if (this.customShadow && !this.destroyed) this.customShadow.invalidate()
+  }
+
+  /**
+   * B02 deferred lighting control. Experimental: `enhanced` (the default) keeps native forward
+   * lighting and is never changed implicitly.
+   *
+   * @param {object} settings
+   * @param {'enhanced'|'deferred'} [settings.mode]
+   * @param {boolean} [settings.direct] sun term
+   * @param {boolean} [settings.indirect] SH diffuse + prefiltered specular IBL
+   * @param {boolean} [settings.emissive]
+   * @param {boolean} [settings.shadow] attenuate the sun term only
+   * @param {boolean} [settings.ao] attenuate the indirect term only
+   * @param {number} [settings.aoStrength] 0..1 blend of the AO visibility
+   * @param {number} [settings.debugMode] 0=off, 1=direct, 2=indirect, 3=emissive, 4=shadow, 5=AO, 6=material, 7=albedo
+   */
+  setLighting(settings = {}) {
+    if (this.destroyed) return this.getLightingDiagnostics()
+    const input = settings || {}
+    const patch = { lightingMode: input.mode, lightingAoStrength: input.aoStrength, lightingDebugMode: input.debugMode }
+    for (const key of ['Direct', 'Indirect', 'Emissive', 'Shadow', 'Ao']) patch['lighting' + key] = input[key.toLowerCase()]
+    this.options = normalizeOptions(patch, this.options)
+    this.applyLighting()
+    this.applyMaterialChannels()
+    this.applyScreenSpaceAO()
+    return this.getLightingDiagnostics()
+  }
+
+  getLightingDiagnostics() {
+    const requested = this.options.lightingMode === 'deferred' ? 'deferred' : 'enhanced'
+    let reason = null
+    if (this.destroyed) reason = 'Destroyed'
+    else if (!this.enabled) reason = 'Pipeline disabled'
+    else if (this.suspensions.size) reason = 'Suspended'
+    else if (requested === 'enhanced') reason = 'Enhanced (native forward) lighting requested'
+    if (this.deferredLighting) {
+      const actual = this.deferredLighting.getDiagnostics()
+      return { requested, ...actual, ...(reason ? { valid: false, reason, enabled: false } : {}) }
+    }
+    return {
+      requested, enabled: false, attached: false, valid: false, failed: false,
+      reason: reason || 'Deferred lighting was not created',
+      error: null, partial: false, stats: null,
+      terms: null, coverage: null,
+    }
   }
 
   // Runtime frame-budget control. Off by default so deterministic measurements can
@@ -538,7 +643,8 @@ export default class VisualPipeline {
       this.viewer.scene.requestRender()
     }
     pipelines.delete(this.viewer)
-    if (this.foliageMask) this.foliageMask.destroy()
+    // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
+    if (this.deferredLighting) this.deferredLighting.destroy()
     if (this.transparentReflections) this.transparentReflections.destroy()
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()
     if (this.screenSpaceAO) this.screenSpaceAO.destroy()

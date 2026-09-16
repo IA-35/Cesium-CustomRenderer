@@ -13,6 +13,20 @@ function pipeline() {
   return p
 }
 
+test('lighting partial updates preserve mode and explicit material requests', () => {
+  const p = pipeline()
+  p.applyLighting = () => {}
+  p.applyMaterialChannels = () => {}
+  p.applyScreenSpaceAO = () => {}
+  p.getLightingDiagnostics = () => ({ mode: p.options.lightingMode })
+  p.setLighting({ mode: 'deferred' })
+  p.setLighting({ debugMode: 1, aoStrength: 99 })
+  assert.equal(p.options.lightingMode, 'deferred')
+  assert.equal(p.options.lightingAoStrength, 1)
+  assert.equal(p.options.materialChannelsEnabled, false)
+  assert.equal(p.options.albedoEnabled, false)
+})
+
 test('partial color grading preserves unrelated adjustments and scene options', () => {
   const p = pipeline()
   p.setColorGrading({ brightness: 1.2, saturation: 1.1 })

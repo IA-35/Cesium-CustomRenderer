@@ -33,7 +33,7 @@ vec2 campus_materialOctNormal(vec3 normalEC) {
 // Accept only the bundled ModelFS, including Cesium's known log-depth rename.
 // ShaderBuilder can concatenate all stages into one source; replace the matched
 // stage substring, never every occurrence of a color assignment in that source.
-export function materialSources(C, program, reflection = false, opaqueColor = false, albedo = false) {
+export function materialSources(C, program, reflection = false, opaqueColor = false, albedo = false, neutralFeatures = false) {
   reflection = reflection || opaqueColor
   const vs = program && program.vertexShaderSource
   let fs = program && program.fragmentShaderSource
@@ -68,7 +68,8 @@ export function materialSources(C, program, reflection = false, opaqueColor = fa
     'HAS_MODEL_COLOR', 'HAS_SELECTED_FEATURE_ID', 'USE_CPU_STYLING', 'HAS_PRIMITIVE_OUTLINE', 'HAS_CLIPPING_PLANES',
     'ENABLE_CLIPPING_POLYGONS', 'HAS_EDGE_VISIBILITY', 'HAS_EDGE_VISIBILITY_MRT', 'HAS_SILHOUETTE', 'HAS_POINT_CLOUD_COLOR_STYLE']
   const standardPbrValid = albedoValid && normalValid && metallicValid &&
-    !standardPbrInvalidDefines.some(define => defines.has(define))
+    !standardPbrInvalidDefines.some(define => defines.has(define) &&
+      !(neutralFeatures && ['HAS_SELECTED_FEATURE_ID', 'USE_CPU_STYLING'].includes(define)))
   let flags = MATERIAL_FLAGS.SURFACE
   if (normalValid) flags |= MATERIAL_FLAGS.NORMAL_VALID
   if (!custom) flags |= MATERIAL_FLAGS.EMISSIVE_VALID
@@ -148,5 +149,5 @@ export function materialSources(C, program, reflection = false, opaqueColor = fa
     const location = 4 + (reflection ? 2 : 0) + (opaqueColor ? 1 : 0)
     fragmentShaderSource.sources.unshift(`layout(location = ${location}) out vec4 campus_albedoOcclusion;`)
   }
-  return { vertexShaderSource: vs, fragmentShaderSource }
+  return { vertexShaderSource: vs, fragmentShaderSource, standardPbrValid }
 }
