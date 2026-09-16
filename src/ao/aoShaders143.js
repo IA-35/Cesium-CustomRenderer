@@ -33,7 +33,7 @@ bool aoReceiver(ivec2 pixel) {
     float depth = texelFetch(u_depth, pixel, 0).r;
     float flagsValue = texelFetch(u_flags, pixel, 0).a;
     if (!aoFinite(depth) || depth <= 0.0 || !aoFinite(flagsValue)) return false;
-    int flags = int(flagsValue + 0.5);
+    int flags = int(mod(flagsValue, 1024.0) + 0.5);
     return (flags & 3) == 3 && (flags & (16 | 32 | 64)) == 0;
 }
 vec3 aoNormal(ivec2 pixel) {

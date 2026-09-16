@@ -95,4 +95,8 @@ node scripts/check-stage1-baseline.cjs --target fixtures --mode update --configu
 
 ## 7. B02 当前阶段
 
-标准不透明 PBR 的单采样 OIT 延迟接管及原审查缺陷修复见 [B02_COMPLETION.md](B02_COMPLETION.md)。默认通用合成基准保持只读比较，未用更新 golden 掩盖回归。B02 的 MSAA 延迟几何、排序透明及 SSR/TAA 组合仍有公开缺口；不将安全增强回退等同于这些模式已被延迟接管。
+标准不透明 PBR 的单采样 OIT 延迟接管及原审查缺陷修复见 [B02_COMPLETION.md](B02_COMPLETION.md)。默认通用合成基准保持只读比较，未用更新 golden 掩盖回归。B02 的 MSAA 延迟几何、排序模式不透明延迟接点及 TAA 组合仍有公开缺口；SSR 已由 B03 接通；不将安全增强回退等同于这些模式已被延迟接管。
+
+## 8. B03 完成验收
+
+透明前向修复、延迟环境镜面 SSR 替换、水/粒子、MASK/异步 tile/style/选中轮廓及显式兼容矩阵已通过。当前证据与复现入口见 [B03_COMPLETION.md](B03_COMPLETION.md) 和 [B03_VALIDATION.json](B03_VALIDATION.json)。原 stage1-B03 首轮报告保留为历史，不能代替修复后的验收。

@@ -1,0 +1,380 @@
+{
+  "date": "2026-09-16",
+  "baseCommit": "3199614",
+  "engine": "Cesium 1.143.0",
+  "status": "B03 accepted within documented supported/compatible matrix",
+  "unitTests": {
+    "passed": 452,
+    "failed": 0
+  },
+  "transparencyModes": [
+    {
+      "mode": "mrt",
+      "singleError": 0.002197265625,
+      "stackedError": 0.0682373046875,
+      "nativeOitDelta": 0,
+      "alpha0": 0,
+      "alpha1": 0.001953125,
+      "foregroundDelta": 0,
+      "shadowDelta": 0.197265625,
+      "shadowOffDelta": 0,
+      "shadowRemovedDelta": 0,
+      "termsDelta": 0.31802380084991455,
+      "pickPreserved": true,
+      "bridgeReleased": true,
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "mode": "multipass",
+      "singleError": 0.000244140625,
+      "stackedError": 0.0692138671875,
+      "nativeOitDelta": 0,
+      "alpha0": 0,
+      "alpha1": 0.00048828125,
+      "foregroundDelta": 0,
+      "shadowDelta": 0.197265625,
+      "shadowOffDelta": 0,
+      "shadowRemovedDelta": 0,
+      "termsDelta": 0.31802380084991455,
+      "pickPreserved": true,
+      "bridgeReleased": true,
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "mode": "sorted",
+      "singleError": 0.0001220703125,
+      "stackedError": 0.000152587890625,
+      "nativeOitDelta": 0,
+      "alpha0": 0,
+      "alpha1": 0,
+      "foregroundDelta": 0,
+      "shadowDelta": 0.19732666015625,
+      "shadowOffDelta": 0,
+      "shadowRemovedDelta": 0,
+      "termsDelta": 0.31802380084991455,
+      "pickPreserved": true,
+      "bridgeReleased": true,
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "mode": "umd",
+      "singleError": 0.002197265625,
+      "stackedError": 0.0682373046875,
+      "nativeOitDelta": 0,
+      "alpha0": 0,
+      "alpha1": 0.001953125,
+      "foregroundDelta": 0,
+      "shadowDelta": 0.197265625,
+      "shadowOffDelta": 0,
+      "shadowRemovedDelta": 0,
+      "termsDelta": 0.31802380084991455,
+      "pickPreserved": true,
+      "bridgeReleased": true,
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "mode": "no-global",
+      "singleError": 0.002197265625,
+      "stackedError": 0.0682373046875,
+      "nativeOitDelta": 0,
+      "alpha0": 0,
+      "alpha1": 0.001953125,
+      "foregroundDelta": 0,
+      "shadowDelta": 0.197265625,
+      "shadowOffDelta": 0,
+      "shadowRemovedDelta": 0,
+      "termsDelta": 0.31802380084991455,
+      "pickPreserved": true,
+      "bridgeReleased": true,
+      "errors": [],
+      "pageErrors": []
+    }
+  ],
+  "negativeControl": {
+    "disabledForwardRejected": true,
+    "reason": "transparent lighting negative-control gate",
+    "modes": [
+      "mrt",
+      "multipass",
+      "sorted"
+    ]
+  },
+  "reflections": {
+    "source": {
+      "zeroDifference": 0,
+      "changed": 60968,
+      "hits": 20536,
+      "specularParity": {
+        "compared": 314556,
+        "failures": 0
+      },
+      "source": {
+        "valid": true,
+        "source": "deferred-lighting",
+        "layout": "compact-v1"
+      },
+      "resize": {
+        "released": true,
+        "valid": true,
+        "width": 600,
+        "expected": 600
+      },
+      "release": {
+        "textures": true,
+        "bytes": 0,
+        "legacy": "native-replay"
+      },
+      "numericChecks": 28,
+      "glass": {
+        "deltaPixels": 8281,
+        "changed": 24822,
+        "presentedChanged": 16730,
+        "lighting": true
+      }
+    },
+    "umd": {
+      "zeroDifference": 0,
+      "changed": 60968,
+      "hits": 20536,
+      "specularParity": {
+        "compared": 314556,
+        "failures": 0
+      },
+      "source": {
+        "valid": true,
+        "source": "deferred-lighting",
+        "layout": "compact-v1"
+      },
+      "resize": {
+        "released": true,
+        "valid": true,
+        "width": 600,
+        "expected": 600
+      },
+      "release": {
+        "textures": true,
+        "bytes": 0,
+        "legacy": "native-replay"
+      },
+      "numericChecks": 28,
+      "glass": {
+        "deltaPixels": 8281,
+        "changed": 24822,
+        "presentedChanged": 16730,
+        "lighting": true
+      }
+    }
+  },
+  "families": [
+    {
+      "oit": true,
+      "waterLit": [
+        0.10498046875,
+        0.2239990234375,
+        0.3896484375
+      ],
+      "waterShadow": [
+        0.05517578125,
+        0.129638671875,
+        0.25048828125
+      ],
+      "particleLit": [
+        0.69677734375,
+        0.45361328125,
+        0.270751953125
+      ],
+      "particleOff": [
+        0.1981201171875,
+        0.221923828125,
+        0.26220703125
+      ],
+      "particleRestored": [
+        0.69677734375,
+        0.45361328125,
+        0.270751953125
+      ],
+      "opaqueLit": [
+        1,
+        0.464599609375,
+        0.0169830322265625
+      ],
+      "opaqueOff": [
+        0,
+        0,
+        0
+      ],
+      "particleCount": 1,
+      "destroyed": true,
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "oit": false,
+      "waterLit": [
+        0.10491943359375,
+        0.2239990234375,
+        0.3896484375
+      ],
+      "waterShadow": [
+        0.05517578125,
+        0.129638671875,
+        0.25048828125
+      ],
+      "particleLit": [
+        0.7001953125,
+        0.455322265625,
+        0.27099609375
+      ],
+      "particleOff": [
+        0.1983642578125,
+        0.22216796875,
+        0.262451171875
+      ],
+      "particleRestored": [
+        0.7001953125,
+        0.455322265625,
+        0.27099609375
+      ],
+      "opaqueLit": [
+        1,
+        0.464599609375,
+        0.0169830322265625
+      ],
+      "opaqueOff": [
+        0,
+        0,
+        0
+      ],
+      "particleCount": 1,
+      "destroyed": true,
+      "errors": [],
+      "pageErrors": []
+    }
+  ],
+  "content": [
+    {
+      "oit": true,
+      "mask": {
+        "holeDelta": 0,
+        "solidDelta": 0
+      },
+      "tile": {
+        "loaded": 1,
+        "patched": 1,
+        "picked": true,
+        "styleNativeDelta": 0,
+        "restoreDelta": 0,
+        "styleChanged": true,
+        "passSwitchPatched": 1,
+        "passSwitchRestored": 0,
+        "passSwitchChanged": true
+      },
+      "outline": {
+        "pixels": 1238,
+        "pickPreserved": true,
+        "mode": "enhanced",
+        "reason": "Complex stencil uses enhanced rendering"
+      },
+      "compatibility": {
+        "delta": 0.000244140625,
+        "pick": true,
+        "id": "custom"
+      },
+      "globe": {
+        "loaded": true,
+        "delta": 0,
+        "visible": true
+      },
+      "classification": {
+        "delta": 0,
+        "visibleDelta": 0.4988441467285156,
+        "mode": "enhanced",
+        "reason": "Unsupported command family uses enhanced rendering"
+      },
+      "errors": [],
+      "pageErrors": []
+    },
+    {
+      "oit": false,
+      "mask": {
+        "holeDelta": 0,
+        "solidDelta": 0
+      },
+      "tile": {
+        "loaded": 1,
+        "patched": 1,
+        "picked": true,
+        "styleNativeDelta": 0,
+        "restoreDelta": 0,
+        "styleChanged": true,
+        "passSwitchPatched": 1,
+        "passSwitchRestored": 0,
+        "passSwitchChanged": true
+      },
+      "outline": {
+        "pixels": 1238,
+        "pickPreserved": true,
+        "mode": "enhanced",
+        "reason": "Sorted transparency uses enhanced rendering"
+      },
+      "compatibility": {
+        "delta": 0,
+        "pick": true,
+        "id": "custom"
+      },
+      "globe": {
+        "loaded": true,
+        "delta": 0,
+        "visible": true
+      },
+      "classification": {
+        "delta": 0,
+        "visibleDelta": 0.4988441467285156,
+        "mode": "enhanced",
+        "reason": "Sorted transparency uses enhanced rendering"
+      },
+      "errors": [],
+      "pageErrors": []
+    }
+  ],
+  "regressions": {
+    "B02MatrixCases": 22,
+    "B02RecoveryCases": 7,
+    "B01BridgeModes": 7,
+    "stage1SourceSceneChecks": 29,
+    "stage1UmdSceneChecks": 29,
+    "stage1Resize": [
+      [
+        801,
+        603
+      ],
+      [
+        1280,
+        720
+      ]
+    ],
+    "stage1PageErrors": 0,
+    "stage1HttpErrors": 0,
+    "sourceAndUmdSdk": true,
+    "defaultFixtureGoldenComparison": true,
+    "goldenUpdated": false
+  },
+  "build": {
+    "bytes": 357648,
+    "gzipBytes": 118825,
+    "sha256": "11e10e083fa0e130c63bf36b57451f278f3bf059307593ab6eaa9e720fec4b2d",
+    "verifiedSourceHashes": 65
+  },
+  "boundaries": [
+    "OIT weighted layering remains approximate",
+    "MSAA opaque deferred and TAA deferred combinations remain enhanced fallback",
+    "Sorted transparent forward preserves native ordering; opaque uses enhanced mode",
+    "Classification/complex stencil uses temporary enhanced compatibility",
+    "B08 cloud/transparency view segmentation and B13 multi-light are outside B03",
+    "No formal FPS/P95 or all-hardware certification"
+  ]
+}

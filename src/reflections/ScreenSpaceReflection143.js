@@ -104,7 +104,7 @@ export default class ScreenSpaceReflection143 {
       try {
         this.error = null
         this._createStages()
-        this.detach = registerHdrEffect(this.scene, 5, (...args) => this._execute(...args))
+        this.detach = registerHdrEffect(this.scene, 5, (...args) => this.getMaterials()?.compactActive ? args[1] : this._execute(...args))
         this.enabled = true
         this.reason = 'Not rendered'
       } catch (error) { this._fail(error) }
@@ -151,6 +151,7 @@ export default class ScreenSpaceReflection143 {
       if (this.outputFrame === undefined) this.stats.bypasses++
     }
   }
+  prepareOpaque(context,color){return this._execute(context,color)}
 
   _validateTargets(context) {
     const targets = [...new Set(Object.values(this.stages).map(stage => stage._textureCache.getFramebuffer(stage.name)))]
@@ -185,7 +186,9 @@ export default class ScreenSpaceReflection143 {
       bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0),
       uniformBuffers: { camera: this.cameraUniforms ? this.cameraUniforms.getDiagnostics() : null,
         reflection: this.reflectionUniforms ? this.reflectionUniforms.getDiagnostics() : null },
-      scope: 'screen-space reflection replacing supported native specular before AO and environment',
+      lightingSource: this.getMaterials()?.getReflectionDiagnostics?.().source || 'native-replay',
+      scope: this.getMaterials()?.compactActive ? 'replace deferred environment specular before OIT composition'
+        : 'screen-space reflection replacing supported native specular before AO and environment',
       allocationScope: 'distinct active SSR collection textures, excludes materials/Hi-Z/source HDR' }
   }
 

@@ -11,9 +11,9 @@ function requireAvailableDepth(program) {
 
 // Unknown opaque surfaces must overwrite far material values, not merely depth.
 // Keep their original discard and gl_FragDepth logic, but mark all material data invalid.
-export function invalidMaterialSources(C, program, reflection = false, opaqueColor = false, albedo = false) {
+export function invalidMaterialSources(C, program, reflection = false, opaqueColor = false, albedo = false, nativeDepthAvailable = false) {
   reflection = reflection || opaqueColor
-  requireAvailableDepth(program)
+  if(!nativeDepthAvailable)requireAvailableDepth(program)
   const fs = program.fragmentShaderSource.clone()
   if (fs.sources.some(source => /layout\s*\(\s*location\s*=\s*[1-9]/.test(source))) {
     throw new Error('Unsupported opaque MRT shader')
@@ -42,8 +42,8 @@ void main() {
 
 // Binary conservative coverage: preserve fragment discard and depth, but neither
 // blend into color nor write depth. Even zero-alpha fragments may over-mask safely.
-export function transparencySources(C, program) {
-  requireAvailableDepth(program)
+export function transparencySources(C, program, nativeDepthAvailable = false) {
+  if(!nativeDepthAvailable)requireAvailableDepth(program)
   const fs = program.fragmentShaderSource.clone()
   if (fs.sources.some(source => /layout\s*\(\s*location\s*=\s*[1-9]/.test(source))) throw new TransparencyScopeError('Unsupported transparent MRT shader')
   fs.defines.push('CESIUM_REDIRECTED_COLOR_OUTPUT')

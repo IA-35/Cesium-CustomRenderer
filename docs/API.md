@@ -590,7 +590,7 @@ bridge.install()
 
 ```js
 pipeline.setAntiAliasing({ mode: 'smaa' }) // 单采样；MSAA 走增强回退
-pipeline.setScreenSpaceReflections({ enabled: false })
+pipeline.setScreenSpaceReflections({ enabled: true, transparent: true }) // B03 支持延迟镜面替换与玻璃反射
 pipeline.setLighting({ mode: 'deferred' })
 pipeline.setLighting({ aoStrength: 0.8, debugMode: 0 }) // 未传 mode 时保留当前模式
 console.log(pipeline.getLightingDiagnostics())
@@ -600,8 +600,17 @@ pipeline.setLighting({ mode: 'enhanced' })
 
 如需 AO，请另外通过 setScreenSpaceAO 开启；lighting.ao 仅决定是否消费可用的 AO。shadow 同理，消费现有自定义太阳阴影。开关 direct、indirect、emissive、shadow、ao 分别控制对应项，aoStrength 限定 0–1。debugMode：0 正常、1 直接、2 间接、3 自发光、4 阴影可见性、5 AO、6 roughness/metalness、7 albedo。
 
-诊断 requested 是请求模式，activeMode/valid 才是本帧结果；reason 说明回退或故障。默认 enhanced 不变。MSAA、多种非透视/分类模式、排序透明及 SSR/TAA 组合暂不接管。标准 Model、MASK/法线贴图/实例化/蒙皮及中性 feature 3D Tiles 已验证；未映射材质按对象保留原生。
+诊断 requested 是请求模式，activeMode/valid 才是本帧结果；reason 说明回退或故障。默认 enhanced 不变。MSAA、多种非透视/分类模式、排序模式的不透明延迟接点及 TAA 组合暂不接管；SSR 延迟组合已由 B03 支持。标准 Model、MASK/法线贴图/实例化/蒙皮及中性 feature 3D Tiles 已验证；未映射材质按对象保留原生。
 
 几何接管或照明失败会恢复本帧已接管的原生颜色并停用延迟模块，reason 保留故障；显式切到 enhanced 再切回 deferred 可重试。所需的传统 AO 材质依赖自动恢复，在后续帧重新有效。运行范围或全兼容对象造成的软回退可以自动恢复接管，无需反复切换 mode。
 
 compact-v1 是独立消费者契约，不能用旧 MaterialChannels 的编码读取。四颜色附件＋独立覆盖共 57 字节/像素，约 112.7 MiB/1080p，不含 Hi-Z/AO。支持矩阵、资源与复现入口见 [B02_COMPLETION.md](B02_COMPLETION.md)。
+
+
+### 10.4 B03 透明前向与延迟 SSR
+
+`setLighting({mode:'deferred'})` 自动启用支持范围内的透明前向。标准 PBR 模型保留原生材质/alpha/IBL 输入，动态消费 `direct`、`indirect`、`emissive`、`shadow`。标准 Water 接收同源太阳、阴影与环境；ParticleSystem billboard 使用自发光语义。复杂模板/分类及未映射 shader 保持兼容。
+
+`getLightingDiagnostics().transparentForward` 提供当前帧 patchedCommands、patchedFamilies、compatibilityReasons、valid/reason。`partial` 表示仍有不支持的 Cesium shader 类型，详细矩阵见 [B03_COMPLETION.md](B03_COMPLETION.md)。
+
+`getScreenSpaceReflectionDiagnostics().lightingSource` 区分 `deferred-lighting` 与 `native-replay`；延迟 SSR 在 OIT 合成前替换环境镜面，透明 SSR 再通过原有 delta/OIT 合成。新附件只在 SSR 启用时分配，额外成本为 24 B/像素，不含 SSR 中间纹理及水环境探针。`getLightingDiagnostics().resources.reflectionBytes` 报告这些附件实际占用。

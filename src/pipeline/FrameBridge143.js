@@ -3,7 +3,6 @@
 // Sorted transparency has no opaque write boundary and is explicitly observation-only.
 const VERSION = /^1\.143(?:\.0)?$/
 export const FRAME_BRIDGE_PHASES = ['opaqueFrame', 'opaqueReadHook', 'translucent', 'resolve']
-
 function halfFloat(bits) {
   const sign = bits & 0x8000 ? -1 : 1, exponent = (bits >> 10) & 31, fraction = bits & 1023
   return sign * (exponent === 0 ? fraction * 2 ** -24
@@ -12,7 +11,7 @@ function halfFloat(bits) {
 export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   if (!C || !scene) throw new Error('createFrameBridge requires { Cesium, scene }')
   if (!VERSION.test(C.VERSION)) throw new Error('FrameBridge143 requires Cesium 1.143')
-  const callbacks = new Set(), viewIds = new WeakMap()
+  const callbacks = new Set(), commandCallbacks = new Set(), viewIds = new WeakMap()
   let viewCount = 0, installation, activeContext, enabled = true
   const state = { installed: false, destroyed: false, generation: 0, frameGeneration: 0,
     frameNumber: undefined, scratch: {}, errors: [], uploadProgram: undefined }
@@ -103,9 +102,37 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
       if (isRender()) { stats.resolves++; dispatch('resolve') }
       return result
     })
+    // B03: a per-command hook *before* the engine derives its OIT/alpha/log-depth variants.
+    //
+    // `updateDerivedCommands(command)` is called for every command during the visible-set build, and
+    // OIT caches its derived programs keyed on `command.shaderProgram` identity. Patching the
+    // translucent command's shader any later would be too late: the derived translucent command would
+    // already hold the native program, and the patched shader would never be what actually draws.
+    // Exposed as a callback so the transparent-forward pass can install its own patch without this
+    // bridge knowing anything about lighting.
+    patch(token, scene, 'updateDerivedCommands', function(native,args) {
+      const command = args[0]
+      stats.derivedCalls = (stats.derivedCalls || 0) + 1
+      if (command?.pass === C.Pass.TRANSLUCENT) stats.translucentDerivedCalls = (stats.translucentDerivedCalls || 0) + 1
+      if (command && isRender()) dispatchCommand(command)
+      return native.apply(this,args)
+    })
     patchView(token)
     } catch (error) { uninstall(); throw error }
     return api
+  }
+  function dispatchCommand(command) {
+    if (!state.installed || !enabled || state.destroyed || !isRender()) return
+    const generation=state.generation
+    for (const record of [...commandCallbacks].sort((a,b) => a.priority - b.priority)) {
+      if (!state.installed || !enabled || state.destroyed || generation !== state.generation) break
+      if (!record.active || !record.enabled) continue
+      try { record.fn(command) }
+      catch (error) {
+        record.enabled = false
+        state.errors.push(String(error?.message || error)); state.errors = state.errors.slice(-8)
+      }
+    }
   }
   function releaseTargets() {
     if (alive(state.scratch.framebuffer)) state.scratch.framebuffer.destroy()
@@ -139,6 +166,18 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     const record = { phase, fn, priority: options.priority ?? priority, enabled: options.enabled !== false, active: true }
     callbacks.add(record)
     return () => { record.active = false; callbacks.delete(record) }
+  }
+  /**
+   * Register a callback for each draw command, before its derived (OIT/alpha) variants
+   * are created. Used by the transparent-forward pass to patch the command's shader in time; see the
+   * `updateDerivedCommands` patch for why the ordering matters.
+   */
+  function onCommand(fn, options = {}) {
+    assertAlive()
+    if (typeof fn !== 'function') throw new Error('onCommand requires a function')
+    const record = { fn, priority: options.priority ?? priority, enabled: options.enabled !== false, active: true }
+    commandCallbacks.add(record)
+    return () => { record.active = false; commandCallbacks.delete(record) }
   }
   function findOpaqueTargets() {
     if (!scene._environmentState?.useOIT) return []
@@ -253,9 +292,9 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   }
   function destroy() {
     if (state.destroyed) return
-    uninstall(); releaseGpu(); callbacks.clear(); state.destroyed = true
+    uninstall(); releaseGpu(); callbacks.clear(); commandCallbacks.clear(); state.destroyed = true
   }
-  const api = { install, uninstall, on, getDiagnostics, findOpaqueTargets, readOpaqueColor, uploadOpaqueColor, destroy,
+  const api = { install, uninstall, on, onCommand, getDiagnostics, findOpaqueTargets, readOpaqueColor, uploadOpaqueColor, destroy,
     setEnabled(value) { assertAlive(); enabled = !!value },
     get installed() { return state.installed }, get scene() { return scene }, get state() { return state } }
   return api

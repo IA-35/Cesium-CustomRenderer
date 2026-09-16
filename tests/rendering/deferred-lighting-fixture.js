@@ -135,6 +135,10 @@ export function planeGlb(C, material) {
   }
   if(material.unlit){gltf.extensionsUsed=['KHR_materials_unlit'];mat.extensions={KHR_materials_unlit:{}}}
   if(material.clearcoat){gltf.extensionsUsed=['KHR_materials_clearcoat'];mat.extensions={KHR_materials_clearcoat:{clearcoatFactor:.8,clearcoatRoughnessFactor:.1}}}
+  // Translucent geometry needs an explicit glTF alphaMode. Without it glTF defaults to OPAQUE and the
+  // baseColorFactor alpha is ignored, so a "glass" pane silently becomes an opaque plane. A B03
+  // reconnaissance run measured three opaque tiles while claiming to test blending because of this.
+  if(material.blend)mat.alphaMode='BLEND'
   gltf.buffers=arrays.map(array=>{
     let binary='';for(const b of new Uint8Array(array.buffer))binary+=String.fromCharCode(b)
     return {uri:'data:application/octet-stream;base64,'+btoa(binary),byteLength:array.byteLength}

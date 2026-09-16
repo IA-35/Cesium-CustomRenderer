@@ -1,13 +1,15 @@
 import { createFrameBridge } from '../pipeline/FrameBridge143.js'
 import DeferredGeometry143 from './DeferredGeometry143.js'
 import { deferredLightingShaderSource } from './deferredLightingShader143.js'
+import DeferredReflectionTarget143 from './DeferredReflectionTarget143.js'
 
 export default class DeferredLighting143 {
-  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, getShadowVisibility=()=>null, onGeometryAvailability=()=>{} }={}) {
+  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, prepareReflections=color=>color, getShadowVisibility=()=>null, onGeometryAvailability=()=>{} }={}) {
     if(!C||!scene||!/^1\.143(?:\.0)?$/.test(C.VERSION))throw new Error('Deferred lighting requires Cesium 1.143 and scene')
-    Object.assign(this,{C,scene,getOptions,prepareAo,getShadowVisibility,onGeometryAvailability,enabled:false,failed:false,destroyed:false,
+    Object.assign(this,{C,scene,getOptions,prepareAo,prepareReflections,getShadowVisibility,onGeometryAvailability,enabled:false,failed:false,destroyed:false,
       reason:'Disabled',error:null,outputFrame:undefined,programs:new Map(),groups:[],targets:new Map()})
     this.materials=new DeferredGeometry143(C,scene,this)
+    this.reflections=new DeferredReflectionTarget143(C,scene)
     this.terms={direct:true,indirect:true,emissive:true,shadow:true,ao:true}
     this.aoStrength=1;this.debugMode=0
     this.stats={frames:0,draws:0,lastAoValid:false,lastShadowValid:false}
@@ -70,14 +72,14 @@ export default class DeferredLighting143 {
     return group
   }
   ensureProgram(group){
-    const C=this.C,ctx=this.scene.context,key=group.diffuse+':'+group.specular
+    const C=this.C,ctx=this.scene.context,reflection=!!this.getOptions().screenSpaceReflectionEnabled,key=group.diffuse+':'+group.specular+':'+reflection
     let entry=this.programs.get(key)
     if(!entry){
       const options={depthTest:{enabled:false},depthMask:false,blending:{enabled:false}}
       const state=C.RenderState.fromCache(options)
       let command
       try{
-        command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,group),{renderState:state})
+        command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,{...group,reflection}),{renderState:state})
         const saved=ctx._gl.getParameter(ctx._gl.CURRENT_PROGRAM)
         try{command.shaderProgram._bind()}finally{ctx._gl.useProgram(saved)}
         entry={command,options};this.programs.set(key,entry)
@@ -91,6 +93,14 @@ export default class DeferredLighting143 {
   writeTarget(){
     const C=this.C,ctx=this.scene.context,texture=this.scene._view.oit?._opaqueTexture
     if(!texture||texture.isDestroyed())return null
+    if(this.getOptions().screenSpaceReflectionEnabled){
+      for(const fb of this.targets.values())fb.destroy()
+      this.targets.clear()
+      const target=this.reflections.update(texture)
+      target.clear.execute(ctx)
+      return target.lighting
+    }
+    this.reflections.destroy();this.reflectionFrame=undefined
     for(const [old,fb]of this.targets)if(old!==texture){fb.destroy();this.targets.delete(old)}
     if(!this.targets.has(texture)){
       const fb=new C.Framebuffer({context:ctx,colorTextures:[texture],destroyAttachments:false})
@@ -144,6 +154,12 @@ export default class DeferredLighting143 {
         command.execute(ctx,state)
         this.stats.draws++
       }
+      if(this.getOptions().screenSpaceReflectionEnabled){
+        this.reflectionFrame=this.scene.frameState.frameNumber
+        const reflected=this.prepareReflections(opaque)
+        if(reflected!==opaque)this.reflections.copy(reflected,this.reflections.target.color)
+        this.reflections.copy(opaque,this.reflections.target.snapshot)
+      }
       this.outputFrame=this.scene.frameState.frameNumber;this.reason=null;this.stats.frames++
     }catch(error){this.recover(error)}
     finally{gl.bindFramebuffer(gl.READ_FRAMEBUFFER,read);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,draw);ctx._currentFramebuffer=cached;us.viewport=viewport}
@@ -170,6 +186,11 @@ export default class DeferredLighting143 {
     this.programs.clear()
     if(this.white&&!this.white.isDestroyed())this.white.destroy();this.white=null
     this.groups=[];this.groupFrame=undefined;this.outputFrame=undefined
+    this.reflections.destroy();this.reflectionFrame=undefined
+  }
+  getReflectionTextures(){
+    const t=this.reflections.target
+    return t&&this.reflectionFrame===this.scene.frameState.frameNumber?{reflectionSpecular:t.reflectionSpecular,reflectionResponse:t.reflectionResponse,opaqueColor:t.opaqueColor}:{}
   }
   getDiagnostics(){
     return {enabled:this.enabled,attached:!!this.bridge,failed:this.failed,error:this.error,
@@ -178,7 +199,8 @@ export default class DeferredLighting143 {
       activeMode:this.enabled&&this.outputFrame===this.scene.frameState.frameNumber?'deferred':'enhanced',
       terms:{...this.terms},debugMode:this.debugMode,stats:{...this.stats,...this.materials.stats},
       groupCount:this.groups.length,colorAttachmentCount:4,materialLayout:'compact-v1',
-      resources:{lightingFramebuffers:this.targets.size,lightingPrograms:this.programs.size,materialPrograms:this.materials.programs.size}}
+      resources:{lightingFramebuffers:this.targets.size+(this.reflections.target?4:0),lightingPrograms:this.programs.size,materialPrograms:this.materials.programs.size,
+        reflectionBytes:(this.reflections.target?.textures||[]).reduce((sum,t)=>sum+t.sizeInBytes,0)}}
   }
   destroy(){if(this.destroyed)return;this.detach();this.materials.destroy();this.destroyed=true;this.enabled=false}
 }

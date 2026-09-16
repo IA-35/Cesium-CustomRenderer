@@ -9,7 +9,7 @@ export function compactMaterialSources(C, source, forceInvalid = false) {
   const nativeStyling = C._shadersCPUStylingStageFS && source.fragmentShaderSource.sources.some(s => s.includes(C._shadersCPUStylingStageFS.trim()))
   const material = materialSources(C, source, false, false, true, !!nativeStyling)
   const supported = !forceInvalid && !!material?.standardPbrValid
-  const result = supported ? material : invalidMaterialSources(C, source, false, false, true)
+  const result = supported ? material : invalidMaterialSources(C, source, false, false, true, true)
   const fragmentShaderSource = result.fragmentShaderSource.clone()
   fragmentShaderSource.sources = fragmentShaderSource.sources.map(text => text
     .replace('layout(location = 3) out float campus_transparentCoverage;', '')
@@ -77,13 +77,14 @@ export default class DeferredGeometry143 {
     if (!s.frameState.passes.render || s.frameState.passes.pick || s.frameState.passes.depth) return 'Not a color frame'
     if (!s._environmentState.useOIT) return 'Sorted transparency uses enhanced rendering'
     if (s.msaaSamples > 1) return 'MSAA uses enhanced rendering; compact geometry has single-sample native depth'
-    if (o.screenSpaceReflectionEnabled || o.antialiasing === 'taa') return 'SSR/TAA combination uses enhanced rendering until its deferred contract is available'
+    if (o.antialiasing === 'taa') return 'TAA combination uses enhanced rendering until its deferred contract is available'
     if (s._environmentState.useWebVR || s._environmentState.useInvertClassification || s._globeTranslucencyState?.translucent) return 'Unsupported view/classification mode'
     return null
   }
 
   prepare() {
     this.frame = undefined; this.groups = []; this.captured = []; this.ready = false
+    this.owner.reflectionFrame=undefined
     this.owner.groups=[];this.owner.groupFrame=this.scene.frameState.frameNumber
     this.stats = { materialDraws: 0, nativeSupportedColorDraws: 0, compatibilityDraws: 0, coverageDraws: 0 }
     this.reason = this.scopeReason()
@@ -96,6 +97,12 @@ export default class DeferredGeometry143 {
         C.Pass.CESIUM_3D_TILE_CLASSIFICATION_IGNORE_SHOW, C.Pass.VOXELS, C.Pass.GAUSSIAN_SPLATS,
         C.Pass.CESIUM_3D_TILE_EDGES, C.Pass.CESIUM_3D_TILE_EDGES_DIRECT].some(p => bin.indices[p] > 0)) {
         this.reason = 'Unsupported command family uses enhanced rendering'; this.owner.setGeometryAvailable(false); return
+      }
+      for(const pass of [C.Pass.OPAQUE,C.Pass.CESIUM_3D_TILE,C.Pass.TRANSLUCENT])for(let i=0;i<(bin.indices[pass]||0);i++){
+        const stencil=bin.commands[pass][i].renderState?.stencilTest
+        if(stencil?.enabled&&(stencil.frontFunction!==C.StencilFunction.ALWAYS||stencil.backFunction!==C.StencilFunction.ALWAYS)){
+          this.reason='Complex stencil uses enhanced rendering';this.owner.setGeometryAvailable(false);return
+        }
       }
     }
     try {
@@ -193,7 +200,7 @@ export default class DeferredGeometry143 {
     const source=command.shaderProgram,key='coverage:'+source.id
     let record=this.programs.get(key)
     if(!record){
-      const sources=transparencySources(this.C,source)
+      const sources=transparencySources(this.C,source,true)
       record={_program:this.C.ShaderProgram.fromCache({context:this.scene.context,...sources,attributeLocations:source._attributeLocations})}
       this.programs.set(key,record)
     }
@@ -292,7 +299,7 @@ export default class DeferredGeometry143 {
       }
     } finally {this.busy=false;us.viewport=viewport;us.updatePass(pass)}
     const options=this.owner.getOptions()
-    if(options.screenSpaceAoEnabled||options.depthPyramidEnabled)this.depthPyramid.update(this.target.eyeDepth,this.frame,this.target.transparency)
+    if(options.screenSpaceAoEnabled||options.depthPyramidEnabled||options.screenSpaceReflectionEnabled)this.depthPyramid.update(this.target.eyeDepth,this.frame,this.target.transparency)
     else this.depthPyramid.release()
     for(const [key,r]of this.programs)if(r.frame<this.frame-120){r._program.destroy();r._invalid?.destroy();r._recovery?.destroy();this.programs.delete(key)}
     for(const [key,r]of this.states)if(r.frame<this.frame-120){this.C.RenderState.removeFromCache(r.options);this.states.delete(key)}
@@ -341,8 +348,10 @@ export default class DeferredGeometry143 {
   getTextures() {
     if(!this.ready||this.frame!==this.scene.frameState.frameNumber||!this.target)return null
     const {normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency}=this.target
-    return {normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency}
+    return {normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency,...this.owner.getReflectionTextures()}
   }
+  getReflectionDiagnostics(){return {valid:!!this.getTextures()?.reflectionSpecular,source:'deferred-lighting',layout:'compact-v1'}}
+  getOpaqueColorDiagnostics(){return {valid:!!this.getTextures()?.opaqueColor,source:'deferred-lighting'}}
   getDepthPyramidLevels(){return this.depthPyramid.getLevels()}
   get compactActive(){return !!this.getTextures()}
   getDiagnostics(){return {enabled:this.enabled,valid:!!this.getTextures(),reason:this.reason,compact:true,colorAttachmentCount:4,

@@ -105,3 +105,5 @@ node scripts/check-frame-bridge.cjs
 ```
 
 校园示例需要自备 `assets/campus-assets/`。影像URL和Ion token通过服务器进程环境 `CCR_EXAMPLE_IMAGERY_URL` / `CCR_EXAMPLE_ION_TOKEN` 配置，示例源码与SDK不保存访问凭据。详细配置、其他基准命令和支持边界见 [API](docs/API.md)。
+
+B03 已完成标准透明 PBR、Water/ParticleSystem 前向渲染及延迟 SSR 环境镜面替换；支持矩阵、明确兼容边界和验收入口见 [B03 完成交接](docs/B03_COMPLETION.md)。默认增强模式保持不变，延迟模式通过 `setLighting({ mode: "deferred" })` 显式开启。

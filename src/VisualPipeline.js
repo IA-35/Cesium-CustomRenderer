@@ -12,6 +12,7 @@ import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
+import TransparentForward143 from './pipeline/TransparentForward143.js'
 import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
 import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
@@ -61,6 +62,7 @@ export default class VisualPipeline {
   }
 
   restore() {
+    if (this.transparentForward) this.transparentForward.setEnabled(false)
     if (this.deferredLighting) this.deferredLighting.setEnabled(false)
     if (this.fxaa) this.fxaa.setEnabled(false)
     if (this.hdrBloom) this.hdrBloom.setEnabled(false)
@@ -194,6 +196,7 @@ export default class VisualPipeline {
         },
         getShadowVisibility: () => this._deferredShadowVisibility(),
         onGeometryAvailability: () => this.applyMaterialChannels(),
+        prepareReflections: color => this.screenSpaceReflections?.enabled ? this.screenSpaceReflections.prepareOpaque(this.viewer.scene.context,color) : color,
       })
     }
     if (this.deferredLighting) {
@@ -208,6 +211,50 @@ export default class VisualPipeline {
       })
       this.deferredLighting.setEnabled(requested)
     }
+    this.applyTransparentForward(requested)
+  }
+
+  /**
+   * B03: translucent surfaces must use the same CCR lighting terms as the opaque pass.
+   *
+   * Measured before this existed: with every CCR term disabled the opaque backdrop went to [0,0,0]
+   * while the glass layer's contribution stayed bit-identical, i.e. glass was lit by native Cesium and
+   * ignored CCR completely. This shares the opaque pass's shadow input so the two agree, and stays
+   * off whenever deferred opaque lighting is not itself active -- a second, independent lighting model
+   * for translucency is exactly what the plan forbids.
+   */
+  applyTransparentForward(deferredRequested) {
+    if (this.destroyed || !this.enabled || this.suspensions.size) {
+      if (this.transparentForward) this.transparentForward.setEnabled(false)
+      return
+    }
+    const requested = deferredRequested !== false && this.options.lightingMode === 'deferred'
+    if (requested && !this.transparentForward) {
+      this.transparentForward = new TransparentForward143({
+        Cesium: this.Cesium,
+        scene: this.viewer.scene,
+        getShadowVisibility: () => this._deferredShadowVisibility(),
+        getOptions: () => this.options,
+        // Must NOT be getLightingDiagnostics(): that getter itself reports the transparent-forward
+        // diagnostics, so passing it here creates a cycle
+        // (diagnostics -> scopeReason -> diagnostics -> ...) that throws inside the frame bridge and
+        // silently disables the per-command callback.
+        //
+        // Also deliberately not `activeMode === 'deferred'`: that requires the deferred pass to have
+        // already rendered *this* frame, but translucent commands are derived before the opaque pass
+        // runs, so it would reject every real per-command call. "Live, attached and not failed" is the
+        // correct ordering-safe predicate.
+        isDeferredActive: () => {
+          const live = this.deferredLighting
+          if (!live) return false
+          const diagnostics = live.getDiagnostics()
+          return diagnostics.enabled === true && diagnostics.failed !== true && diagnostics.attached === true &&
+            this.viewer.scene.msaaSamples <= 1 && this.options.antialiasing !== 'taa' &&
+            this.viewer.scene.highDynamicRange && this.viewer.scene.mode === this.Cesium.SceneMode.SCENE3D
+        },
+      })
+    }
+    if (this.transparentForward) this.transparentForward.setEnabled(requested)
   }
 
   /**
@@ -254,9 +301,9 @@ export default class VisualPipeline {
   applyMaterialChannels() {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
     const inline = this.options.lightingMode === 'deferred' && this.viewer.scene.msaaSamples <= 1 &&
-      this.viewer.scene.orderIndependentTranslucency && !this.options.screenSpaceReflectionEnabled && this.options.antialiasing !== 'taa' &&
+      this.viewer.scene.orderIndependentTranslucency && this.options.antialiasing !== 'taa' &&
       !this.deferredLighting?.failed && this.deferredLighting?.geometryAvailable !== false
-    const depthPyramidEnabled = this.options.depthPyramidEnabled || (this.options.screenSpaceAoEnabled && !inline) || this.options.screenSpaceReflectionEnabled
+    const depthPyramidEnabled = this.options.depthPyramidEnabled || ((this.options.screenSpaceAoEnabled || this.options.screenSpaceReflectionEnabled) && !inline)
     const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled
     if (enabled && !this.materialChannels) {
       this.materialChannels = new MaterialChannels143(this.Cesium, this.viewer.scene)
@@ -315,7 +362,7 @@ export default class VisualPipeline {
   applyScreenSpaceReflections() {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
     if (this.options.screenSpaceReflectionEnabled && !this.screenSpaceReflections) {
-      this.screenSpaceReflections = new ScreenSpaceReflection143(this.Cesium, this.viewer.scene, () => this.materialChannels, () => this.options)
+      this.screenSpaceReflections = new ScreenSpaceReflection143(this.Cesium, this.viewer.scene, () => this.getActiveMaterialChannels(), () => this.options)
     }
     if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(this.options.screenSpaceReflectionEnabled)
   }
@@ -323,7 +370,7 @@ export default class VisualPipeline {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
     const enabled = this.options.screenSpaceReflectionEnabled && this.options.screenSpaceReflectionTransparent
     if (enabled && !this.transparentReflections) {
-      this.transparentReflections = new TransparentReflection143(this.Cesium, this.viewer.scene, () => this.materialChannels, () => this.options)
+      this.transparentReflections = new TransparentReflection143(this.Cesium, this.viewer.scene, () => this.getActiveMaterialChannels(), () => this.options)
     }
     if (this.transparentReflections) this.transparentReflections.setEnabled(enabled)
   }
@@ -564,13 +611,19 @@ export default class VisualPipeline {
     else if (requested === 'enhanced') reason = 'Enhanced (native forward) lighting requested'
     if (this.deferredLighting) {
       const actual = this.deferredLighting.getDiagnostics()
-      return { requested, ...actual, ...(reason ? { valid: false, reason, enabled: false } : {}) }
+      return {
+        requested, ...actual, ...(reason ? { valid: false, reason, enabled: false } : {}),
+        transparentForward: this.transparentForward
+          ? this.transparentForward.getDiagnostics()
+          : { enabled: false, valid: false, reason: 'Transparent forward was not created', partial: true },
+      }
     }
     return {
       requested, enabled: false, attached: false, valid: false, failed: false,
       reason: reason || 'Deferred lighting was not created',
       error: null, partial: false, stats: null,
       terms: null, coverage: null,
+      transparentForward: { enabled: false, valid: false, reason: 'Deferred lighting was not created', partial: true },
     }
   }
 
@@ -646,6 +699,7 @@ export default class VisualPipeline {
     }
     pipelines.delete(this.viewer)
     // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
+    if (this.transparentForward) this.transparentForward.destroy()
     if (this.deferredLighting) this.deferredLighting.destroy()
     if (this.transparentReflections) this.transparentReflections.destroy()
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()

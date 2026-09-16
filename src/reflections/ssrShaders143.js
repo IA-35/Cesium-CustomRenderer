@@ -30,19 +30,21 @@ bool reflectionInside(ivec2 p) {
     return all(greaterThanEqual(p, ivec2(0))) && all(lessThan(p, textureSize(u_depth, 0)));
 }
 vec3 reflectionNormal(ivec2 p) {
+    if(texelFetch(u_flags,p,0).a>=1024.0)return normalize(texelFetch(u_material,p,0).xyz);
     vec2 xy = texelFetch(u_material, p, 0).rg * 2.0 - 1.0;
     vec3 n = vec3(xy, 1.0 - abs(xy.x) - abs(xy.y));
     if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * vec2(n.x >= 0.0 ? 1.0 : -1.0, n.y >= 0.0 ? 1.0 : -1.0);
     return normalize(n);
 }
 vec3 reflectionPosition(ivec2 p) {
+    if(texelFetch(u_flags,p,0).a>=1024.0){vec4 eye=texelFetch(u_depth,p,0);return vec3(eye.yz,-eye.x);}
     vec2 uv = (vec2(p) + 0.5) / vec2(textureSize(u_depth, 0));
     vec4 h = u_inverseProjection * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
     return h.xyz * (texelFetch(u_depth, p, 0).r / -h.z);
 }
 bool reflectionReceiver(ivec2 p) {
     if (!reflectionInside(p) || texelFetch(u_depth, p, 0).r <= 0.0 || texelFetch(u_transparency, p, 0).r > 0.0) return false;
-    int flags = int(texelFetch(u_flags, p, 0).a + 0.5);
+    int flags = int(mod(texelFetch(u_flags, p, 0).a, 1024.0) + 0.5);
     return (flags & 3) == 3 && (flags & (16 | 32 | 64)) == 0 && texelFetch(u_specular, p, 0).a > 0.5;
 }
 ivec2 reflectionAnchor(ivec2 p) { return min(p * 2, textureSize(u_depth, 0) - 1); }
@@ -141,7 +143,7 @@ vec4 traceReflection(ivec2 receiver, vec3 position, vec3 normal, float roughness
             if (texelFetch(u_transparency, pixel, 0).r > 0.0) return miss;
             #endif
             if (length(vec2(pixel - receiver)) > 2.0 && overlap) {
-                int flags = int(texelFetch(u_flags, pixel, 0).a + 0.5);
+                int flags = int(mod(texelFetch(u_flags, pixel, 0).a, 1024.0) + 0.5);
                 float facing = dot(reflectionNormal(pixel), -direction);
                 if ((flags & 2) == 0 || facing <= 0.02) return miss;
                 vec2 uv = (vec2(pixel) + 0.5) / size;

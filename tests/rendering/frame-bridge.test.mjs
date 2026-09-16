@@ -311,6 +311,15 @@ test('callbacks registered while disabled stay disabled until enabled', () => {
   assert.equal(count, 1)
 })
 
+test('disabled command dispatch and mid-dispatch uninstall obey bridge lifecycle',()=>{
+ const C={...fakeCesium(),Pass:{TRANSLUCENT:9}}, {scene}=fakeScene();scene.updateDerivedCommands=()=>{}
+ const bridge=createFrameBridge({Cesium:C,scene});let calls=0
+ bridge.onCommand(()=>{calls++;bridge.uninstall()});bridge.onCommand(()=>calls++)
+ bridge.install();bridge.setEnabled(false);scene.updateDerivedCommands({pass:9});assert.equal(calls,0)
+ bridge.setEnabled(true);scene.updateDerivedCommands({pass:9});assert.equal(calls,1)
+ bridge.destroy()
+})
+
 test('context loss retires the installation instead of reusing invalid GPU resources', () => {
   const { scene } = fakeScene()
   const listeners = new Map()

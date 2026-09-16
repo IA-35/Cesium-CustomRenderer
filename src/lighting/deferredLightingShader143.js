@@ -2,7 +2,9 @@ import { pcf } from '../shadows/shaderAdapter143.js'
 export const DEFERRED_DEBUG_MODES = Object.freeze({ OFF:0, DIRECT:1, INDIRECT:2, EMISSIVE:3, SHADOW:4, AO:5, MATERIAL:6, ALBEDO:7 })
 
 // The material inputs are already linear; eyeDepth is metres, never window depth.
-export function deferredLightingShaderSource(C, { diffuse=false, specular=false } = {}) {
+export function deferredLightingShaderSource(C, { diffuse=false, specular=false, reflection=false } = {}) {
+  const ibl=reflection?C._shadersImageBasedLightingStageFS.replace('vec3 specularContribution = radiance * FssEss * model_iblFactor.y;',
+    'vec3 specularContribution = radiance * FssEss * model_iblFactor.y; ccr_specular=specularContribution; ccr_response=FssEss*model_iblFactor.y;'):C._shadersImageBasedLightingStageFS
   return new C.ShaderSource({
     defines: [...(diffuse?['DIFFUSE_IBL','CUSTOM_SPHERICAL_HARMONICS']:[]),
       ...(specular?['SPECULAR_IBL','CUSTOM_SPECULAR_IBL']:[])],
@@ -23,7 +25,8 @@ uniform vec3 model_sphericalHarmonicCoefficients[9];
 uniform samplerCube model_specularEnvironmentMaps;
 uniform float model_specularEnvironmentMapsMaximumLOD;
 in vec2 v_textureCoordinates;
-`, pcf, C._shadersImageBasedLightingStageFS, `
+${reflection?'layout(location = 1) out vec4 ccr_specularOutput;\nlayout(location = 2) out vec4 ccr_responseOutput;\nvec3 ccr_specular=vec3(0.0);\nvec3 ccr_response=vec3(0.0);':''}
+`, pcf, ibl, `
 void main() {
   vec4 e=texture(u_emissiveFlags,v_textureCoordinates);
   float group=floor(e.a/1024.0);
@@ -59,6 +62,8 @@ void main() {
   else if(u_debugMode==6.0)color=vec3(nrm.w,positionMetal.w,0.0);
   else if(u_debugMode==7.0)color=albedo.rgb;
   out_FragColor=vec4(color,1.0);
+  ${reflection?`ccr_specularOutput=vec4(ccr_specular*ao*u_terms.y,${specular?'float(u_debugMode==0.0)':'0.0'});
+  ccr_responseOutput=vec4(ccr_response*ao*u_terms.y,material.roughness);`:''}
 }
 `],
   })

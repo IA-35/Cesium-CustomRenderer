@@ -1,6 +1,7 @@
 import { reflectionCommon, traceFunctions, traceShader, resolveShader } from '../../src/reflections/ssrShaders143.js'
 import DepthPyramid143 from '../../src/channels/DepthPyramid143.js'
 import { transparentVisibility } from '../../src/reflections/transparentReflectionShader143.js'
+import { common as aoCommon } from '../../src/ao/aoShaders143.js'
 
 export function runSyntheticReflectionChecks(C, viewer) {
   const scene = viewer.scene, context = scene.context, gl = context._gl, size = 64
@@ -57,6 +58,12 @@ export function runSyntheticReflectionChecks(C, viewer) {
   const pixel = (data, width, x, y) => Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 4))
   try {
     updateDepth()
+    for(const group of [1,8192,16383]){
+      flags.copyFrom({source:{width:size,height:size,arrayBufferView:fill([0,0,0,group*1024+783])}})
+      check('compactSsrFlags'+group,run(reflectionCommon+'\nvoid main(){out_FragColor=vec4(float(reflectionReceiver(ivec2(20,32))));}',1,1).pixels[0]===1)
+      check('compactAoFlags'+group,run(aoCommon+'\nvoid main(){out_FragColor=vec4(float(aoReceiver(ivec2(20,32))));}',1,1).pixels[0]===1)
+    }
+    flags.copyFrom({source:{width:size,height:size,arrayBufferView:fill([0,0,0,15])}})
     const comparison = `uniform highp sampler2D u_depth; uniform bool campus_transparentStrictDepth;
       void main(){vec4 campus_transparentNative=vec4(1.0);${transparentVisibility('10.0')}out_FragColor=vec4(1.0);}`
     check('strictTransparentDepthRejectsEqualOpaqueSurface', run(comparison, 1, 1, { campus_transparentStrictDepth: true }).pixels[0] === 0)
