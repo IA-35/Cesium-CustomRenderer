@@ -1,5 +1,6 @@
 import MaterialTarget143, { materialTargetSupport } from './MaterialTarget143.js'
 import { materialSources } from './materialShader143.js'
+import { primitiveReflectionSources, globeWaterSources, primitiveReflectionDiagnostics } from '../reflections/PrimitiveReflection143.js'
 import DepthPyramid143 from './DepthPyramid143.js'
 
 class TransparencyScopeError extends Error {}
@@ -108,7 +109,8 @@ export default class MaterialChannels143 {
     this.outputFrame = undefined
     this.programs = new Map()
     this.states = new Map()
-    this.stats = { frames: 0, draws: 0, invalidators: 0, transparentDraws: 0, frustumCount: 0 }
+    this.stats = { frames: 0, draws: 0, invalidators: 0, transparentDraws: 0, frustumCount: 0,
+      standardPbrDraws: 0, primitiveDraws: 0, globeWaterDraws: 0, depthOnlySkips: 0 }
     this.depthPyramidEnabled = false
     this.reflectionRequested = false
     this.reflectionEnabled = false
@@ -187,14 +189,46 @@ export default class MaterialChannels143 {
     let record = this.programs.get(programKey)
     if (!record) {
       requireAvailableDepth(source)
+      // 三条互斥路径，顺序即优先级：
+      //   1. materialSources   —— 标准 PBR Model（B02 的延迟着色消费者）；
+      //   2. primitiveReflectionSources / globeWaterSources —— B07 新增，普通 Primitive
+      //      与 Globe 水掩码区域。它们只填反射/AO 消费者真正读取的字段，且**不**设置
+      //      STANDARD_PBR_VALID，因此不会被 DeferredLighting 二次照亮；
+      //   3. invalidMaterialSources —— 仍未知的不透明遮挡物，保守写零并标记 eyeDepth=-1，
+      //      阻止远处材质残留。这条路径不能被取消，否则未支持对象会污染延迟数据。
       const material = !transparent && materialSources(C, source, this.reflectionEnabled, this.opaqueColorEnabled, this.albedoEnabled)
-      const sources = transparent ? transparencySources(C, source) : material || invalidMaterialSources(C, source, this.reflectionEnabled, this.opaqueColorEnabled, this.albedoEnabled)
+      const options = { reflection: this.reflectionEnabled, opaqueColor: this.opaqueColorEnabled, albedo: this.albedoEnabled }
+      const primitive = !transparent && !material ? primitiveReflectionSources(C, source, options) : null
+      const globe = !transparent && !material && !primitive
+        ? globeWaterSources(C, source, { reflection: this.reflectionEnabled, opaqueColor: this.opaqueColorEnabled })
+        : null
+      const sources = transparent ? transparencySources(C, source)
+        : material || primitive || globe || invalidMaterialSources(C, source, this.reflectionEnabled, this.opaqueColorEnabled, this.albedoEnabled)
       record = { program: C.ShaderProgram.fromCache({ context: scene.context, ...sources,
-        attributeLocations: source._attributeLocations }), material: !!material }
+        attributeLocations: source._attributeLocations }), material: !!material, primitive: !!primitive, globe: !!globe }
       this.programs.set(programKey, record)
     }
     record.frame = frame
-    if (record.material && Object.values(command.renderState.colorMask).every(value => value === false)) throw new Error('Depth-only model replay not supported')
+    // 只写深度的命令（colorMask 全 false）不能参与材质颜色重放。
+    //
+    // 原实现只对标准 PBR 路径抛错，其它路径被静默放过；但下面会**强制打开**
+    // colorMask（options.colorMask = 全 true），于是一个本不写颜色的全屏命令
+    // 会把它自己的材质结果刷满整张 MRT。
+    //
+    // 实测到的具体后果：replayMaterialFrusta 在 GLOBE 之后执行 clearDepth 并绘制
+    // scene._depthPlane._command（GlobeFS 派生、全屏四边形）。该命令走到
+    // invalidMaterialSources，把整屏写成 depth=-1 / flags=0。在只有 Globe 的
+    // 场景里没有任何不透明几何去覆盖它，于是整帧材质数据全是 -1——水面接收端
+    // 一像素都不剩。这不是水面契约的问题，而是这条深度命令污染了整张通道。
+    //
+    // 正确行为：跳过该命令的颜色写入（它本来就只负责深度），而不是抛错中断整批
+    // 重放——深度平面是 Cesium 的正常组成，抛弃它会让 globe 深度契约失效。
+    if (Object.values(command.renderState.colorMask).every(value => value === false)) {
+      // 标准 PBR 路径此前用抛错表达这一情况，保留该契约以免改变既有行为。
+      if (record.material) throw new Error('Depth-only model replay not supported')
+      this.stats.depthOnlySkips++
+      return
+    }
     const stateKey = transparent ? `transparent:${command.renderState.id}` : command.renderState.id
     let state = this.states.get(stateKey)
     if (!state) {
@@ -223,7 +257,12 @@ export default class MaterialChannels143 {
     derived.execute(scene.context, transparent ? this.target.transparencyPassState : this.target.passState)
     this.stats.draws++
     if (transparent) this.stats.transparentDraws++
-    else if (!record.material) this.stats.invalidators++
+    // 三条不透明路径分别计数：把未知遮挡物与 B07 新接入的对象混在一个数字里，
+    // 就无法从诊断上区分「接入成功」和「退化为兼容」，等于静默跳过。
+    else if (record.material) this.stats.standardPbrDraws++
+    else if (record.primitive) this.stats.primitiveDraws++
+    else if (record.globe) this.stats.globeWaterDraws++
+    else this.stats.invalidators++
   }
 
   _render() {
@@ -265,7 +304,8 @@ export default class MaterialChannels143 {
           }
         }
       }
-      Object.assign(this.stats, { draws: 0, invalidators: 0, transparentDraws: 0, frustumCount: bins.length })
+      Object.assign(this.stats, { draws: 0, invalidators: 0, transparentDraws: 0, frustumCount: bins.length,
+        standardPbrDraws: 0, primitiveDraws: 0, globeWaterDraws: 0, depthOnlySkips: 0 })
       replayMaterialFrusta(C, scene, this.target, (command, transparent) => this._draw(command, transparent))
       this.outputFrame = scene.frameState.frameNumber
       this.reason = null
@@ -315,14 +355,21 @@ export default class MaterialChannels143 {
       reason: this._scopeReason() || this.reason, error: this.error, stats: { ...this.stats },
       bytes: this.target ? this.target.bytes : 0, allocationScope: 'owned MRT textures including depth-stencil; excludes driver overhead',
       format: 'RGBA8 normal/roughness/metallic + RGBA16F emissive/flags + R32F eye-depth + R8 transparency',
-      opaqueOnly: true, unsupportedSurfacesHaveInvalidDepth: true,
+      // B07 之后不再是「仅不透明」：普通 Primitive 与 Globe 水掩码区域也参与。
+      // 保留 opaqueOnly 字段以兼容既有读者，但如实标注其含义已收窄。
+      opaqueOnly: false,
+      opaqueOnlyNote: 'B07 起普通 Primitive 与 Globe 水掩码区域也写入本通道；不再仅限不透明对象',
+      unsupportedSurfacesHaveInvalidDepth: true,
       materialLayoutVersion: 2,
       albedoContractVersion: 1,
       reflectionContractVersion: 1,
       opaqueColorContractVersion: 1,
       depthContractVersion: 2,
       transparencyContract: 'R8 binary conservative visible forward-fragment coverage; main transparency/OIT unchanged',
-      depthContract: 'positive=known eye metres; zero=background; negative=unknown opaque occluder' }
+      depthContract: 'positive=known eye metres; zero=background; negative=unknown opaque occluder',
+      // B07 新增覆盖。刻意与「标准 PBR」分开报告：普通 Primitive 与 Globe 水掩码
+      // 只提供反射/AO 消费者所需的字段，不参与延迟着色，不能被算进 standardPbr。
+      primitiveReflection: primitiveReflectionDiagnostics() }
   }
 
   setDepthPyramidEnabled(value) {

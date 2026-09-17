@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "b94a9b88372a7c513da66c455611c32cd89fd8f1",
+  "sourceCommit": "336b90d449b5b1d2fb5c1fc0e5dff89247a47253",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b",
@@ -39,7 +39,7 @@
     "src/buffers/UniformBuffer143.js": "35f97d8bf1159db4e1a2c9d8d4e07f4186d3037b3b563b5c803c4c0afcfc3206",
     "src/channels/DepthPyramid143.js": "e3737eeef11615382f77f67e25f055c09b6a1fb4e47f5de602680a317b2dc809",
     "src/channels/geometryEncoding.js": "dd49299286c469fdf58ed12b794d722ceedd974d4ffd5f36605f74627b52c5a6",
-    "src/channels/MaterialChannels143.js": "d0697273dbbbee5b1e76a2b0f0c0c78b10cf444d3ce2c2133935147b2dd2acba",
+    "src/channels/MaterialChannels143.js": "c2e63e3926907a8d81f2baaecad4f2baa25aafe5237e7735aafa5230bf311620",
     "src/channels/materialShader143.js": "3042782d0516f5eeff3039f5bfe3797c7705bc413a4ac051559c93343edfb602",
     "src/channels/MaterialTarget143.js": "3027b219d488e02897aa04f3a6c46015adf14fb5daaac6928d41a44039975fcb",
     "src/channels/reflectionShader143.js": "cf53c365a41cb49e41f895e7e045dccd102f248511c0ac5c3eade7376eb441e5",
@@ -68,6 +68,7 @@
     "src/pipeline/transparentForwardShader143.js": "d30ee71f5d6a322d863999552d454da3e8432651e4c7f46e12217dc7f9b3603f",
     "src/presets.js": "05514963f82255817f741a66091b0bd9d7b8b6eb678d599cda558be1311bc809",
     "src/reflections/OitCompatibility143.js": "b8c6e326c4e5cbd004e7305c8ad4e197ed84b05cb9353842801fe724cce7d18a",
+    "src/reflections/PrimitiveReflection143.js": "226841ef08cb2333571e3c3f08b90e2931554ac79d41def56124e5611b245d81",
     "src/reflections/ScreenSpaceReflection143.js": "0ceed48b35ba64caa50c98021c1e704c02a5132a798551cecfddd908a2753c1d",
     "src/reflections/ssrShaders143.js": "43610c18be40907288dd99f17993d46642a898250bf851d1a8cd3fc1c0220b7e",
     "src/reflections/TransparentReflection143.js": "fa218ca1d32194c410f170b4f37bc4bf00a10cc681e4c7e2d938001fb6447bb6",
@@ -89,7 +90,7 @@
     "src/visibility/OcclusionCulling143.js": "434c8dcf253d41b9cacf8b8f3214fd949c4859df8ca7025769e460c181235bda",
     "src/VisualPipeline.js": "dceaf483e2d975c9e3dbd8419ff004e208079f4e18302afd5fc594a08097a0d9"
   },
-  "bytes": 405013,
-  "gzipBytes": 132342,
-  "sha256": "e6ef023ee231d500ada9a9feae9e596c0b897d836b02b64e6c2730776a807179"
+  "bytes": 415916,
+  "gzipBytes": 136718,
+  "sha256": "8bc0ca51902c20d414685b9cbfa5211000717cdd002ac669fb140e4f9a1ecf7d"
 }

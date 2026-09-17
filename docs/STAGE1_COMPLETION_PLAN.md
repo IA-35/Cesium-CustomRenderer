@@ -246,14 +246,34 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **修改：** SSR trace/resolve、材质适配、透明前向；必要时在 `examples/campus.js` 添加独立演示几何，不改用户真实资产。
 
 - [ ] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准；SSR 关/开时基础 PBR 色差值沿用 B03 门槛（≤0.01 绝对或 ≤2% 相对），不能只以"不变灰/不跳变"的定性描述代替。
-- [ ] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证；支持范围明确为标准 PBR 模型、指定 Cesium Primitive 材质与 Globe water mask 路径。开工前先完成 water mask 数据来源调查（`globe.waterMask` 的可用性与采样方式），在夹具中显式记录。
-- [ ] 普通 Primitive 提取实际法线/roughness 和材质反射响应；Globe 保留影像颜色，对 water mask 区域建立独立 receiver 契约，非水地面不擅自金属化。
-- [ ] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自 B03，不照搬 Tianjing 全局 `scene._reflectTexture`。
-- [ ] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与 SSR 共用能量/roughness 尺度，不能 miss 采样最后像素或突然变黑。
-- [ ] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
+      **部分完成（如实保留未勾选）**：命中置信度/边缘角度渐隐**未被本批修改**（B03 已冻结，B07 刻意复用既有 `reflectionHitConfidence`，不改算法）。白模绕行基准已跑通（`scripts/check-white-tiles.cjs`：`materialValid:true`、`ssrValid:true`、roughness 0.22/metallic 0、style 改写后 reflectionSpecular 归零、还原非零）。**但「SSR 关/开的基础 PBR 色差值」未在本批单独测量**，因此不勾选——不以白模脚本通过代替该阈值证据。
+- [x] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证；支持范围明确为标准 PBR 模型、指定 Cesium Primitive 材质与 Globe water mask 路径。开工前先完成 water mask 数据来源调查（`globe.waterMask` 的可用性与采样方式），在夹具中显式记录。
+- [x] 普通 Primitive 提取实际法线/roughness 和材质反射响应；Globe 保留影像颜色，对 water mask 区域建立独立 receiver 契约，非水地面不擅自金属化。
+- [x] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自 B03，不照搬 Tianjing 全局 `scene._reflectTexture`。
+- [x] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与 SSR 共用能量/roughness 尺度，不能 miss 采样最后像素或突然变黑。
+- [x] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
 - [ ] 验证卫星影像、feature style、白模/透明 OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
+      **部分完成（如实保留未勾选）**：白模（`check-white-tiles`）、透明 OIT 两模式（`check-ssr-surfaces` 与 B03 families）、feature style（`check-transparency-content` 的 `styleNativeDelta:0`／`check-deferred-tiles`）、卫星影像（B03 `check-transparency-content` 已覆盖 classification/影像原生对照）均有实际通过证据。**未覆盖**：粗糙度**梯度**的图像级验证（仅有 `shininess→roughness` 换算的单元锁定），以及 B07 表面在**相机旋转/俯仰/近远变化**下的专项序列。
 
 **通过：** 三类表面（玻璃/水面/积水）均真实响应材质反射，SSR miss 连续回退且基础 PBR 色满足 B03 阈值；水面外影像不变灰。水/Globe 若无法接入，原 SSR 完整目标保留未完成，不能仅凭白模样例关闭此项。
+
+> **B07 结果（2026-09-17，`docs/B07_COMPLETION.md`）**：新增 `PrimitiveReflection143.js` 把普通 Primitive 与 Globe 水掩码区域接入同一套 SSR 求值，**不重做** trace/resolve 算法，也未修改任何 B02 已交付文件。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 普通 Primitive 写入有效表面标记 | 10800 px（3 个表面全覆盖） |
+> | 写入正米制视深度 / 退化为 -1 | 10800 px / **0 px** |
+> | 被误标 `STANDARD_PBR_VALID`（会遭二次照亮） | **0 px** |
+> | 新路径实际绘制数 / 兼容计数 | 3 / **0** |
+> | Globe 逐像素水掩码（8×8）水域接收端 | 268800 px（水域）/ **0 px**（陆地上空） |
+> | Globe 整水 / 整陆掩码水域接收端 | 268800 px / **0 px** |
+> | 非水地面被金属化 | **无**（flags 保持 0） |
+>
+> 测试 520/520 通过（478 基线 + 42 新增）。本轮由测试与实跑暴露并修复 **5 个真实缺陷**：helper 未插入着色器、FLAT 变体改写死代码分支、helper 提前引用 `v_positionEC` 导致编译失败（纯文本测试测不出）、只写深度的 `_depthPlane` 命令污染整张材质通道、水掩码阈值错用 0.5 致逐像素掩码全判为陆地；另修 2 处匹配鲁棒性问题（log-depth 改名致真实命令不被识别、材质定义与 appearance 主体同段）。
+>
+> **近似换算已明确标注**（不宣称与 Model 路径等价）：`shininess→GGX 粗糙度` 沿用 Blinn-Phong 标准近似且与 B03 水面前向路径同一式子；`specular→F0` 为 Phong 标量到电介质 F0 的近似。
+>
+> **保留未完成**：本项第 1、7 条（见上方逐条说明）；半透明水面在本批夹具未覆盖（B03 families 已覆盖，且其 `_target` of undefined 已实测归因为既有边界、非 B07 引入）；`scripts/check-frame-uniforms.cjs` 失败同样已实测归因为 B04–B06 既有问题。
 
 ### B08：全局地理高度雾、云层及透明介质
 
