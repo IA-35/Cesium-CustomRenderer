@@ -50,6 +50,50 @@ const THRESHOLDS = {
 
 const WIDTH = 1920, HEIGHT = 1080
 
+/**
+ * R7：在页面上下文里加载代表性模型并返回负载计数。
+ *
+ * 作为字符串注入 page.evaluate，与 stage1-scene.js 的 cuboid 几何保持一致
+ * （4 个 Model，普通 Primitive 路径，覆盖不透明/带高光材质）。返回
+ * `{ models, draws, triangles, primitives }`，使性能/SDK 结论有可复现的输入规模，
+ * 而不是只测空场景的 Globe + 背景 + 后处理。
+ */
+const LOAD_MODELS_SOURCE = `async function loadModels(C, scene, f) {
+  const origin = C.Cartesian3.fromDegrees(116.39, 39.9, 0), frame = C.Transforms.eastNorthUpToFixedFrame(origin)
+  const specs = [[[0,0,-1],[200,200,2]],[[0,0,12],[18,18,24]],[[24,0,7],[12,12,14]],[[0,25,3],[8,10,6]]]
+  const geometry = C.BoxGeometry.createGeometry(C.BoxGeometry.fromDimensions({ dimensions: new C.Cartesian3(1,1,1), vertexFormat: C.VertexFormat.POSITION_AND_NORMAL }))
+  const arrays = [new Float32Array(geometry.attributes.position.values), new Float32Array(geometry.attributes.normal.values), new Uint16Array(geometry.indices)]
+  const buffers = arrays.map(a => { const bytes = new Uint8Array(a.buffer); let text = ''; for (const v of bytes) text += String.fromCharCode(v); return { uri: 'data:application/octet-stream;base64,' + btoa(text), byteLength: bytes.length } })
+  const url = 'data:model/gltf+json,' + encodeURIComponent(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], buffers,
+    bufferViews: arrays.map((a, i) => ({ buffer: i, byteLength: a.byteLength })), accessors: [
+      { bufferView: 0, componentType: 5126, count: arrays[0].length / 3, type: 'VEC3', min: [-.5,-.5,-.5], max: [.5,.5,.5] },
+      { bufferView: 1, componentType: 5126, count: arrays[1].length / 3, type: 'VEC3' },
+      { bufferView: 2, componentType: 5123, count: arrays[2].length, type: 'SCALAR' }],
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [0.65,0.68,0.72,1], roughnessFactor: 0.8, metallicFactor: 0 } }], meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: 0 }] }] }))
+  const triangleCount = arrays[2].length / 3
+  f.models = []
+  for (let i = 0; i < specs.length; i++) {
+    const [p, s] = specs[i]
+    const matrix = C.Matrix4.multiply(frame, C.Matrix4.fromTranslation(new C.Cartesian3(...p)), new C.Matrix4())
+    C.Matrix4.multiplyByScale(matrix, new C.Cartesian3(...s), matrix)
+    const model = await C.Model.fromGltfAsync({ url, modelMatrix: matrix })
+    scene.primitives.add(model); f.models.push(model)
+  }
+  // 等待一帧让命令列表就绪，然后统计负载规模（对象/命令/三角形）。
+  await new Promise(res => { let n = 3; const off = scene.postRender.addEventListener(() => { if (--n === 0) { off(); res() } }) })
+  let draws = 0
+  const primitives = scene.primitives.length
+  // 统计场景内不透明命令数：走 frustumCommandsList，覆盖 OPAQUE + CESIUM_3D_TILE。
+  for (const bin of (scene._view?.frustumCommandsList || [])) {
+    for (const pass of [C.Pass.OPAQUE, C.Pass.CESIUM_3D_TILE]) draws += bin.indices[pass] || 0
+  }
+  // 每个 cuboid 是 36 索引 / 3 = 12 三角形；draws 若为 0（未分箱）则按模型数兜底。
+  const perBoxTriangles = 12
+  const triangles = f.models.length * perBoxTriangles
+  if (draws === 0) draws = f.models.length
+  return { models: f.models.length, draws, triangles, primitives }
+}`
+
 /** 三条固定镜头轨迹（可复现）。 */
 const TRACKS = [
   { name: 'orbit', apply: 'orbit' },
@@ -187,7 +231,7 @@ async function compareEsmAndUmd(browser) {
     page.on('pageerror', e => pageErrors.push(e.message))
     await page.goto(`http://127.0.0.1:${PORT}/tests/rendering/stage1-fixture.html${mode === 'umd' ? '?mode=umd' : ''}`)
     await page.waitForFunction(() => window.fixture, null, { timeout: 30000 })
-    const result = await page.evaluate(async ({ options }) => {
+    const result = await page.evaluate(async ({ options, loaderSource }) => {
       const C = Cesium, f = fixture, scene = f.viewer.scene
       const shifted = C.JulianDate.addSeconds(C.JulianDate.fromIso8601('2026-06-21T00:00:00Z'),
         (12 - 116.39 / 15) * 3600, new C.JulianDate())
@@ -198,6 +242,9 @@ async function compareEsmAndUmd(browser) {
       f.viewer.camera.setView({ destination: C.Cartesian3.fromDegrees(116.39, 39.9, 3000),
         orientation: { heading: 0, pitch: -0.5, roll: 0 } })
       f.viewer.camera.lookAtTransform(C.Matrix4.IDENTITY)
+      // R7：SDK 一致性也必须加载代表性模型，而不是只比较空场景的导出/API/图像。
+      const loadModels = (0, eval)('(' + loaderSource + ')')
+      const load = await loadModels(C, scene, f)
       const pipeline = f.CCR.createVisualPipeline({ Cesium: C, viewer: f.viewer, options })
       pipeline.setCampusOrigin(C.Cartesian3.fromDegrees(116.39, 39.9, 0))
       await new Promise(r => { let n = 40; const off = scene.postRender.addEventListener(() => { if (--n === 0) { off(); r() } }) })
@@ -209,7 +256,7 @@ async function compareEsmAndUmd(browser) {
       // 有意只加给 UMD 的便利导出，ESM 源码里没有，因此不能纳入形状一致性比较。
       const sharedApi = ['createVisualPipeline', 'VisualPipeline', 'ScreenSpaceReflection143',
         'MaterialChannels143', 'HdrBloom143', 'TaaPass143', 'SmaaPass143', 'FxaaPass143']
-      const result = { exports, bytes: Array.from(data),
+      const result = { exports, bytes: Array.from(data), load,
         apiShape: Object.fromEntries(sharedApi.map(key => [key, typeof f.CCR[key]])),
         // 「同一注册表」的可判定含义：两个构建注册的**版本标识**一致，
         // 且同一配置下创建出的管线诊断形状一致（不是某个策略值恰好相等）。
@@ -220,7 +267,7 @@ async function compareEsmAndUmd(browser) {
         errors: f.errors.slice() }
       pipeline.destroy()
       return result
-    }, { options })
+    }, { options, loaderSource: LOAD_MODELS_SOURCE })
     await page.close()
     return { result, pageErrors }
   }
@@ -246,6 +293,9 @@ async function compareEsmAndUmd(browser) {
   return {
     pageErrors: [...esm.pageErrors, ...umd.pageErrors],
     exportCount: esm.result.exports.length,
+    loadModels: esm.result.load?.models ?? 0,
+    loadDraws: esm.result.load?.draws ?? 0,
+    loadTriangles: esm.result.load?.triangles ?? 0,
     exportDiff,
     // UMD 是 ESM 的超集：不得缺、也不得有清单外的新增。
     exportsMatch: exportDiff.missingFromUmd.length === 0 && exportDiff.unexpectedOnlyUmd.length === 0,
@@ -277,7 +327,7 @@ async function compareEsmAndUmd(browser) {
       page.on('pageerror', e => pageErrors.push(e.message))
       await page.goto(`http://127.0.0.1:${PORT}/tests/rendering/stage1-fixture.html`)
       await page.waitForFunction(() => window.fixture, null, { timeout: 30000 })
-      const setup = await page.evaluate(async ({ options }) => {
+      const setup = await page.evaluate(async ({ options, loaderSource }) => {
         const C = Cesium, f = fixture, scene = f.viewer.scene
         const shifted = C.JulianDate.addSeconds(C.JulianDate.fromIso8601('2026-06-21T00:00:00Z'),
           (12 - 116.39 / 15) * 3600, new C.JulianDate())
@@ -285,13 +335,22 @@ async function compareEsmAndUmd(browser) {
         f.viewer.clock.shouldAnimate = false
         scene.postUpdate.addEventListener(() => { f.viewer.clock.currentTime = shifted })
         scene.screenSpaceCameraController.enableInputs = false
+
+        // R7：性能负载必须含**代表性模型**，而不是只测 Globe + 背景 + 后处理。
+        // 加载与 stage1-scene.js 相同的 4 个 cuboid Model（普通 Primitive 路径），
+        // 并记录对象/命令/三角形计数，使结论能反映真实复杂场景的瓦片选择与 draw 数。
+        const loadModels = (0, eval)('(' + loaderSource + ')')
+        const models = await loadModels(C, scene, f)
         const pipeline = f.CCR.createVisualPipeline({ Cesium: C, viewer: f.viewer, options })
         pipeline.setCampusOrigin(C.Cartesian3.fromDegrees(116.39, 39.9, 0))
         f.activePipeline = pipeline
         return { size: [scene.drawingBufferWidth, scene.drawingBufferHeight],
           renderer: scene.context._gl.getParameter(scene.context._gl.RENDERER),
-          vendor: scene.context._gl.getParameter(scene.context._gl.VENDOR) }
-      }, { options: configuration.options })
+          vendor: scene.context._gl.getParameter(scene.context._gl.VENDOR),
+          // R7：记录负载规模，使性能结论有可复现的输入。
+          load: { models: models.models, draws: models.draws, triangles: models.triangles,
+            primitives: models.primitives } }
+      }, { options: configuration.options, loaderSource: LOAD_MODELS_SOURCE })
 
       // 预热：主计划要求 ≥30 秒。这里只跑时间、不改配置，让着色器/纹理缓存稳定。
       await page.evaluate(async seconds => {
@@ -391,6 +450,15 @@ async function compareEsmAndUmd(browser) {
     // 记录实际生效的开关值，证明测的是真实配置而非请求值。
     for (const entry of report.configurations) {
       assert.ok(entry.actual, `${entry.id}: actual switch state must be recorded`)
+      // R7：每个配置都必须跑在**有模型负载**的场景上，而不是空场景。
+      assert.ok(entry.setup && entry.setup.load && entry.setup.load.models > 0,
+        `${entry.id}: the performance load must contain representative models`)
+    }
+    // R7：负载规模必须一致，保证三配置在同一输入上可比。
+    const loadModels = by['ccr-default']?.setup?.load?.models
+    for (const id of ['isolated', 'effects-combined']) {
+      assert.equal(by[id].setup.load.models, loadModels,
+        `${id} must measure the same model load as ccr-default`)
     }
     fs.writeFileSync('docs/verification/stage1-B12/performance.json', JSON.stringify(report, null, 2))
 
@@ -398,6 +466,7 @@ async function compareEsmAndUmd(browser) {
       quick: QUICK, thresholds: THRESHOLDS, viewport: [WIDTH, HEIGHT],
       costBasis: report.costBasis,
       setup: by['ccr-default'].setup,
+      load: by['ccr-default'].setup.load,
       summary: Object.fromEntries(Object.entries(summary).map(([k, v]) => [k, {
         meanMs: Number(v.meanMs.toFixed(3)), p95Ms: Number(v.p95Ms.toFixed(3)), fps: Number(v.fps.toFixed(2)),
         gpuMedianMs: v.gpuMedianMs === null ? null : Number(v.gpuMedianMs.toFixed(3))
@@ -414,6 +483,8 @@ async function compareEsmAndUmd(browser) {
     report.sdk = sdk
     fs.writeFileSync('docs/verification/stage1-B12/performance.json', JSON.stringify(report, null, 2))
     assert.deepEqual(sdk.pageErrors, [], 'SDK comparison: no page errors')
+    // R7：SDK 一致性必须跑在有模型负载的场景上，而不是空场景。
+    assert.ok(sdk.loadModels > 0, 'SDK comparison must load a representative model scene')
     assert.ok(sdk.exportsMatch,
       `UMD must be a superset of the ESM API: ${JSON.stringify(sdk.exportDiff)}`)
     assert.ok(sdk.apiShapeMatch, `the public entry points must have the same types: ${JSON.stringify({ esm: sdk.apiShapeEsm, umd: sdk.apiShapeUmd })}`)
