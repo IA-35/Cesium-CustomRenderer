@@ -37,7 +37,7 @@ test('every effect shader returns the source unchanged when its strength is zero
   const cases = [
     ['tiltShift', tiltShiftShader, /if \(tiltParams\.w <= 0\.0 \|\| tiltParams\.z <= 0\.0\) \{ out_FragColor = source; return; \}/],
     ['blur', blurShader, /if \(blurParams\.y <= 0\.0 \|\| blurParams\.x <= 0\.0\) \{ out_FragColor = source; return; \}/],
-    ['depthOfField', depthOfFieldShader, /if \(dofParams\.w <= 0\.0 \|\| dofParams\.z <= 0\.0\) \{ out_FragColor = source; return; \}/],
+    ['depthOfField', depthOfFieldShader, /if \(dofParams\.w <= 0\.0 \|\| dofParams\.z <= 0\.0 \|\| depthAvailable < 0\.5\) \{ out_FragColor = source; return; \}/],
     ['chromaticAberration', chromaticAberrationShader, /if \(aberration <= 0\.0\) \{ out_FragColor = source; return; \}/],
     ['lightShaft', lightShaftShader, /if \(shaftAvailable < 0\.5 \|\| shaftParams\.x <= 0\.0 \|\| shaftParams\.y < 1\.0\)/],
     ['sunFlare', sunFlareShader, /if \(flareParams\.z < 0\.5 \|\| flareParams\.x <= 0\.0 \|\| sunColor\.a <= 0\.0\)/]
@@ -128,6 +128,18 @@ test('depth of field treats unknown depth as far rather than as in-focus', () =>
 test('depth of field reads the B02 metric depth contract', () => {
   assert.match(depthOfFieldShader, /uniform sampler2D depthTexture;/)
   assert.match(depthOfFieldShader, /B02 材质深度：正数为已知米制视深度/)
+})
+
+test('depth of field fails closed when metric depth is not produced (R4)', () => {
+  // 单独开启景深时，若 eyeDepth 未生产，shader 不得把 defaultTexture（颜色）
+  // 当深度读，而应严格返回原图。depthAvailable 必须在任何深度采样之前短路。
+  assert.match(depthOfFieldShader, /uniform float depthAvailable;/)
+  assert.match(depthOfFieldShader, /depthAvailable < 0\.5\) \{ out_FragColor = source; return; \}/)
+  const guard = depthOfFieldShader.search(/depthAvailable < 0\.5\) \{ out_FragColor = source; return; \}/)
+  const mainStart = depthOfFieldShader.indexOf('void main')
+  const firstDepthReadInMain = depthOfFieldShader.indexOf('dofEyeDepth(v_textureCoordinates)', mainStart)
+  assert.ok(guard >= 0 && firstDepthReadInMain >= 0 && guard < firstDepthReadInMain,
+    'the depthAvailable guard must come before the depth sample inside main')
 })
 
 // --- 互斥规则 ---------------------------------------------------------------

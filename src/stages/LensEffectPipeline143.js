@@ -167,6 +167,7 @@ export default class LensEffectPipeline143 {
       create('depthOfField', depthOfFieldShader, {
         sourceSize: sizeOf,
         depthTexture: () => this._depthTexture() || scene.context.defaultTexture,
+        depthAvailable: () => this._depthTexture() ? 1 : 0,
         dofParams: () => new C.Cartesian4(o.depthOfFieldFocus, o.depthOfFieldRange, o.depthOfFieldRadius, o.depthOfFieldStrength)
       })
     }

@@ -142,6 +142,7 @@ uniform sampler2D colorTexture;
 uniform sampler2D depthTexture;
 uniform vec4 dofParams;       // x=focus(m), y=range(m), z=radius(px), w=strength
 uniform vec2 sourceSize;
+uniform float depthAvailable; // 1 = metric depth produced this frame, 0 = not available
 in vec2 v_textureCoordinates;
 
 float dofEyeDepth(vec2 uv) {
@@ -152,7 +153,9 @@ float dofEyeDepth(vec2 uv) {
 
 void main() {
     vec4 source = texture(colorTexture, v_textureCoordinates);
-    if (dofParams.w <= 0.0 || dofParams.z <= 0.0) { out_FragColor = source; return; }
+    // 强度 0、半径 0，或米制深度不可用（本帧未生产）时严格 identity。
+    // 不能把 defaultTexture（颜色）当深度读，否则会按错误距离模糊（R4）。
+    if (dofParams.w <= 0.0 || dofParams.z <= 0.0 || depthAvailable < 0.5) { out_FragColor = source; return; }
     float depth = dofEyeDepth(v_textureCoordinates);
     // 未知深度（背景或未知遮挡）按最远处处理：给最大模糊而不是当成焦内。
     float effective = depth > 0.0 ? depth : dofParams.x + dofParams.y * 4.0;

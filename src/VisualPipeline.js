@@ -334,7 +334,10 @@ export default class VisualPipeline {
       this.viewer.scene.orderIndependentTranslucency && this.options.antialiasing !== 'taa' &&
       !this.deferredLighting?.failed && this.deferredLighting?.geometryAvailable !== false
     const depthPyramidEnabled = this.options.depthPyramidEnabled || ((this.options.screenSpaceAoEnabled || this.options.screenSpaceReflectionEnabled) && !inline)
-    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled || !!(this.occlusionCulling?.needsDepth&&!inline)
+    // B09 景深单独开启时也需要米制视深度（R4）：材质通道的依赖推导此前漏掉了它，
+    // 导致 eyeDepth 未生产而 depthOfField shader 只能读 defaultTexture（颜色而非深度）。
+    const depthOfFieldNeedsDepth = this.options.depthOfFieldEnabled && !this.options.tiltShiftEnabled && !this.options.blurEnabled
+    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled || depthOfFieldNeedsDepth || !!(this.occlusionCulling?.needsDepth&&!inline)
     if (enabled && !this.materialChannels) {
       this.materialChannels = new MaterialChannels143(this.Cesium, this.viewer.scene)
       this.materialChannels.shouldCull=command=>!!this.occlusionCulling?.shouldCull(command)

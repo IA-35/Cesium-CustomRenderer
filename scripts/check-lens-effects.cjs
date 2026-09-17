@@ -70,6 +70,8 @@ async function capture(page, options) {
       variance,
       hash: null,
       diagnostics: pipeline.getLensEffectsDiagnostics(),
+      materialChannels: (pipeline.getActiveMaterialChannels && pipeline.getActiveMaterialChannels())
+        ? (pipeline.getActiveMaterialChannels().getDiagnostics ? pipeline.getActiveMaterialChannels().getDiagnostics() : null) : null,
       errors: f.errors.slice()
     }
     pipeline.destroy()
@@ -214,7 +216,9 @@ async function injectShaftCase(browser) {
       // 真实效果（确认确实改变画面，否则前面的 identity 结论没有区分力）。
       ['blur-active', { blurEnabled: true, blurRadius: 8, blurStrength: 1 }],
       ['aberration-active', { chromaticAberrationEnabled: true, chromaticAberrationStrength: 3 }],
-      ['shaft-active', { lightShaftEnabled: true, lightShaftStrength: 1 }]
+      ['shaft-active', { lightShaftEnabled: true, lightShaftStrength: 1 }],
+      // R4：单独开启景深必须请求米制深度生产，不能读 defaultTexture 当深度。
+      ['dof-active-depth', { depthOfFieldEnabled: true, depthOfFieldFocus: 50, depthOfFieldRange: 30, depthOfFieldRadius: 5, depthOfFieldStrength: 1 }]
     ]
     for (const [name, options] of cases) {
       const result = await capture(page, options)
@@ -284,6 +288,16 @@ async function injectShaftCase(browser) {
     assert.equal(exclusive.lens.effective.depthOfField, false)
     assert.match(exclusive.lens.suppressed.blur || '', /Suppressed by tiltShift/)
     assert.match(exclusive.lens.suppressed.depthOfField || '', /Suppressed by tiltShift/)
+
+    // R4：单独开启景深必须请求米制深度生产（materialChannels 被启用并产出 eyeDepth），
+    // 而不是读 defaultTexture（颜色）当深度。诊断必须反映深度真正可用。
+    const dofDepth = by['dof-active-depth']
+    assert.ok(dofDepth.materialChannels && dofDepth.materialChannels.enabled === true,
+      'depthOfField alone must enable the material channels to produce metric depth')
+    assert.ok(dofDepth.materialChannels.valid === true,
+      `material channels must be valid when depthOfField runs, got reason=${dofDepth.materialChannels.reason}`)
+    assert.ok(dofDepth.diagnostics.stats.stageExecutions > 0,
+      'the depthOfField stage must actually execute')
 
     console.log(JSON.stringify(report.cases.map(c => ({
       name: c.name, mean: Number(c.mean.toFixed(4)), hash: c.hash,
