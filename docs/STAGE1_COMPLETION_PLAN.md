@@ -380,15 +380,35 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 **新增：** `tests/rendering/stage1-lifecycle-fixture.js`、`scripts/check-stage1-lifecycle.cjs`。
 **修改：** 各新模块destroy/ownership、VisualPipeline、presets、诊断与API。
 
-- [ ] 对4/6/8 MRT槽、浮点附件不可用、OIT两模式、MSAA支持交集、非3D和多视锥建立能力矩阵，诊断包含requested/active/reason/generation。
-- [ ] 默认仍由CCR管理天空、环境、阴影、HDR和SMAA。延迟模式仅在B01–B03/覆盖矩阵全部通过后进入候选默认；不支持时明确增强模式。
-- [ ] HBAO、SSR、Bloom按场景预设显式开启；不能“默认CCR”就自动全开高成本效果。镜头模糊/色差/光斑默认关闭。
+- [x] 对4/6/8 MRT槽、浮点附件不可用、OIT两模式、MSAA支持交集、非3D和多视锥建立能力矩阵，诊断包含requested/active/reason/generation。
+- [x] 默认仍由CCR管理天空、环境、阴影、HDR和SMAA。延迟模式仅在B01–B03/覆盖矩阵全部通过后进入候选默认；不支持时明确增强模式。
+- [x] HBAO、SSR、Bloom按场景预设显式开启；不能“默认CCR”就自动全开高成本效果。镜头模糊/色差/光斑默认关闭。
 - [ ] 20轮启停、嵌套暂停、resize、2个Viewer独立操作、tile异步到达、外部wrapper和参数修改、错误后再次启用。
+      **部分完成（如实保留未勾选）**：20 轮启停、**嵌套暂停**（含重复 suspend 幂等）、resize（4 种尺寸）、**2 个 Viewer 独立操作**已实测通过。**未在本脚本覆盖**：**tile 异步到达**、**外部 wrapper 和参数修改**（这两项在 B04–B06 的既有检查中有覆盖，但未纳入本 B11 脚本）、**错误后再次启用**（B02 的 `check-deferred-recovery.cjs` 已覆盖，本批未重复）。
 - [ ] 实际调用WEBGL_lose_context进行丢失/恢复验证：全管线generation重置、纹理/program/UBO/query重新创建，旧异步回调不复活。
-- [ ] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
+      **部分完成（如实保留未勾选）**：**已实际调用 `WEBGL_lose_context`** 并实测上下文真的丢失（`contextLost: true`），丢失期间**每个效果都如实报告失效并给出原因**（`ssr: "Context lost"`、`materials: "Context lost"`），请求渲染不抛错。**但本环境无法验证恢复链路**：Chrome + headless 下 `extension.restoreContext()` 实测**不生效**——2.5 秒后 `isContextLost()` 仍为 `true`，且浏览器**从不触发** `webglcontextrestored`（已单独实测确认）。因此「generation 重置、纹理/program/UBO 重建、旧异步回调不复活」**未获验证**，因为无法进入恢复态。这是**环境限制而非 CCR 缺陷**，但结论上必须保留未勾选。
+- [x] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
 - [ ] 30分钟交互压力测试，观察自有资源数/估算字节/查询数量不随循环增长；失败路径仍呈现明确可用画面。
+      **部分完成（如实保留未勾选）**：压力脚本已固化**交互脚本**与**漂移阈值**（±5%，按前后半段峰值比较，避免首尾法被早期高水位掩盖）。短时运行（1 分钟、579 循环）漂移**严格为 0**。**完整 30 分钟运行尚未取得结果**，因此不勾选。
 
 **通过：** 无新增pageerror/GL错误，无过期纹理/双重释放，资源数量稳定；恢复后真实渲染输出通过颜色与拾取检查。仅isDestroyed/valid返回值不算画面恢复证据。
+
+> **B11 结果（2026-09-17，`docs/B11_COMPLETION.md`）**：新增 `src/diagnostics/capabilityMatrix143.js`（能力矩阵 + 默认策略）、`scripts/check-stage1-lifecycle.cjs`、`scripts/check-stage1-stress.cjs`。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 能力矩阵 | 从真实场景探测，`generation` = 真实帧号，六项均带 requested/active/reason/generation |
+> | MRT 槽位判定 | 按实际请求附件数（4/6/7/8）与设备上限的**交集**判定，原因给出「需要几个/给几个」 |
+> | 默认策略 | CCR 托管 5 项开启；10 项高成本效果默认关闭；延迟模式覆盖不全时 `effectiveMode: 'enhanced'` |
+> | MSAA × 延迟几何 | 已知缺口做成**必须回退**判定（`not implemented`），不能被静默当成已支持 |
+> | 20 轮启停 | 资源后半段峰值 ≤ 前半段 ×1.05（实测增长 0%） |
+> | 嵌套暂停 | 释放其一仍暂停；重复 suspend 幂等；单次 resume 清除 |
+> | resize | 4 种尺寸 materials/SSR 均有效，无新渲染错误 |
+> | 2 个 Viewer | 独立操作互不影响 |
+> | context-loss | 真的丢失；期间每个效果如实报告失效并带原因；渲染不抛错 |
+> | 压力测试（1 分钟 579 循环） | 资源字节/目标数/UBO 字节/UBO 数量漂移**均为 0%** |
+>
+> 测试 631/631 通过。**保留未完成**：tile 异步/外部 wrapper/错误后再启用未纳入本脚本；**恢复链路因环境不触发 `webglcontextrestored` 而无法验证**；完整 30 分钟压力运行。
 
 ### B12：通用场景矩阵验收与SDK候选产物
 

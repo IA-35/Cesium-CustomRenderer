@@ -21,6 +21,7 @@ import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
 import PerformanceGovernor143 from './performance/PerformanceGovernor143.js'
 import { selectMsaaSamples, renderResolution, readMsaaAttachments, resolveMsaaPolicy } from './antialiasing/settings143.js'
+import { capabilityDiagnostics } from './diagnostics/capabilityMatrix143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
@@ -633,6 +634,81 @@ export default class VisualPipeline {
     const actual = this.screenSpaceReflections ? this.screenSpaceReflections.getDiagnostics() : { enabled: false, valid: false }
     return { ...actual, ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
   }
+  /**
+   * B11: capability matrix probed from the live scene.
+   *
+   * Every field is read from the real context/scene rather than assumed, so the
+   * matrix answers "why is this not active" with a measured reason. `generation`
+   * is the frame number, which lets a caller detect a stale report.
+   */
+  probeCapabilities() {
+    // 极简测试夹具可能既没有 Cesium 命名空间也没有完整 scene；能力探测只用于诊断，
+    // 绝不能因为夹具不完整而抛错并拖垮整条 getRenderDiagnostics 链。
+    const C = this.Cesium || {}
+    const s = this.viewer && this.viewer.scene
+    const context = s && s.context
+    const gl = context && context._gl
+    const limits = gl && typeof gl.getParameter === 'function'
+      ? { maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), maxColorAttachments: gl.getParameter(gl.MAX_COLOR_ATTACHMENTS) }
+      : {}
+    // 材质布局按当前实际请求的附件数计算（与 MaterialTarget143 同一规则）。
+    const reflection = !!(this.options.screenSpaceReflectionEnabled)
+    const opaqueColor = reflection && !!this.options.screenSpaceReflectionTransparent
+    const albedo = !!this.options.albedoEnabled
+    const attachmentsNeeded = 4 + (reflection ? 2 : 0) + (opaqueColor ? 1 : 0) + (albedo ? 1 : 0)
+    const oit = s && s._view && s._view.oit
+    const environment = (s && s._environmentState) || {}
+    const frusta = s && s._view && s._view.frustumCommandsList
+    // frameState 在极简测试夹具里可能不存在；能力探测用于诊断，绝不能因此抛错
+    // 而拖垮整条诊断链。
+    const frameState = s && s.frameState
+    return {
+      generation: frameState && Number.isFinite(frameState.frameNumber) ? frameState.frameNumber : 0,
+      attachmentsNeeded,
+      ...limits,
+      floatingPointTexture: !!(context && context.floatingPointTexture),
+      colorBufferFloat: !!(context && context.colorBufferFloat),
+      halfFloatingPointTexture: !!(context && context.halfFloatingPointTexture),
+      colorBufferHalfFloat: !!(context && context.colorBufferHalfFloat),
+      useOIT: !!environment.useOIT,
+      hasMrt: !!oit,
+      hasMultipass: !!(oit && oit._translucentMultipass),
+      accumulationTexture: !!(oit && oit._accumulationTexture),
+      revealageTexture: !!(oit && oit._revealageTexture),
+      requestedSamples: this.msaa ? this.msaa.requested : (s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1),
+      selectedSamples: s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1,
+      deferredGeometryActive: !!(this.deferredLighting && this.deferredLighting.enabled === true &&
+        this.deferredLighting.failed !== true),
+      mode: s ? s.mode : undefined,
+      scene3D: C.SceneMode ? C.SceneMode.SCENE3D : undefined,
+      perspectiveCamera: !!(s && s.camera && s.camera.frustum && C.PerspectiveFrustum &&
+        s.camera.frustum instanceof C.PerspectiveFrustum),
+      frustumCount: frusta ? frusta.length : 0
+    }
+  }  /**
+   * B11: coverage flags for the deferred-default gate.
+   *
+   * These are measured from the live modules rather than hard-coded, so the gate
+   * cannot silently pass: each flag is true only when the corresponding path has
+   * actually reported valid output.
+   */
+  probeCoverage() {
+    const materials = this.getActiveMaterialChannels()
+    const opaqueLoop = !!materials && materials.getTextures() !== null
+    const transparentForward = this.transparentForward
+    return {
+      opaqueLoop,
+      // 透明闭环：B03 的透明前向处于启用状态且未失败。
+      transparentLoop: !!(transparentForward && transparentForward.enabled === true && transparentForward.failed !== true),
+      ssr: !!(this.screenSpaceReflections && this.screenSpaceReflections.getDiagnostics().valid),
+      msaa: this.msaa ? this.msaa.selected <= 1 || this.msaa.combined === true : true
+    }
+  }
+  getCapabilityDiagnostics() {
+    const probe = this.destroyed ? { generation: 0 } : this.probeCapabilities()
+    const coverage = this.destroyed ? {} : this.probeCoverage()
+    return capabilityDiagnostics(probe, this.options, coverage)
+  }
   getRenderDiagnostics() {
     const fxaa = this.viewer.scene.postProcessStages.fxaa.enabled
     return { enabled: this.enabled, suspended: this.suspensions.size > 0, colorGrading: this.getColorGrading(),
@@ -649,6 +725,7 @@ export default class VisualPipeline {
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
       lensEffects: this.getLensEffectsDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
+      capability: this.getCapabilityDiagnostics(),
       performance: this.getPerformanceDiagnostics() }
   }
   getTransparentReflectionDiagnostics() {

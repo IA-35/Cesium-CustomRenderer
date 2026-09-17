@@ -14,7 +14,11 @@
 >
 > **B09 已完成主体**（见 [B09_COMPLETION.md](B09_COMPLETION.md)）：新增 `src/stages/toneMapping143.js`（四条曲线 + 「只映射一次」互斥契约）、`src/stages/lensEffects143.js`（六个效果着色器 + 三模糊互斥解析）、`src/stages/LensEffectPipeline143.js`（管线管理器）。实测六个效果强度 0 时与关闭**整屏逐位相同**；四条曲线诊断均 `exactlyOnce: true`；模糊使梯度能量降低 59%；光柱在完全遮挡（建筑遮日）时**逐位回到 identity（不透墙）**。测试 603/603。因全部默认关闭，两套 golden **未变更**即通过。
 >
-> **B10 按用户指示暂缓**。**下一轮执行入口为 B11**（生命周期 + 能力降级 + 默认策略），随后 B12（通用场景矩阵验收 + SDK 候选产物）。
+> **B11 已完成主体**（见 [B11_COMPLETION.md](B11_COMPLETION.md)）：新增 `src/diagnostics/capabilityMatrix143.js`（六项能力矩阵 + 默认策略）、`scripts/check-stage1-lifecycle.cjs`、`scripts/check-stage1-stress.cjs`，并在 `VisualPipeline` 增加真实场景探测。实测：能力矩阵从真实场景探测（generation = 帧号）；20 轮启停资源增长 **0%**；嵌套暂停（含重复 suspend 幂等）正确；4 种 resize 与 2 个 Viewer 均正常；**实际调用 `WEBGL_lose_context` 后上下文真的丢失**，期间每个效果如实报告失效并带原因、渲染不抛错。压力脚本固化了交互脚本与 ±5% 漂移阈值（前后半段峰值比较），1 分钟 579 循环漂移 **0%**。测试 631/631。
+>
+> **B11 的重要环境限制（必须如实记录）**：Chrome + headless 下 `restoreContext()` **不真正恢复**上下文（2.5 秒后 `isContextLost()` 仍为 `true`，浏览器**从不触发** `webglcontextrestored`，已单独实测确认；Cesium 1.143 自身也完全没有该事件的处理）。因此「generation 重置 / 纹理与 UBO 重建 / 旧异步回调不复活」**无法在本环境验证**，主计划该条**保留未勾选**，不用「丢失侧正确」冒充「恢复已验证」。完整 30 分钟压力运行亦待补。
+>
+> **下一轮执行入口为 B12**（通用场景矩阵验收 + SDK 候选产物）。
 
 ---
 
