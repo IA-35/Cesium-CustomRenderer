@@ -2,6 +2,23 @@
 
 审查基点：`cc2819d`，分支 `codex/stage1-b07-b12`；范围包括 B07–B12 新增实现及 B04–B06 遗留问题。结论：**尚不能通过阶段一当前范围的完成验收**。本次仅审查、复现并写报告，没有修改生产代码、更新 golden 或提交。工作区另有正在修改的 B07 文档及未跟踪 SSR 检查脚本，不纳入已提交版本完成结论，也没有覆盖它们。
 
+## 修复状态（审查后逐项回填，2026-09-17）
+
+按审查建议顺序逐一复现并修复，每项附独立提交与回归证据：
+
+| 编号 | 级别 | 状态 | 修复提交 | 证据 |
+| --- | --- | --- | --- | --- |
+| R1 | P1 | ✅ 已修复 | `080a6eb` | 包裹 `collection.update` 每帧夺回 tonemap 所有权；原生 `enabled=false` 连续 10 帧；`check-lens-effects` 通过 |
+| R2 | P1 | ✅ 已修复 | `080a6eb` | `uniformState.sunPositionWC` 取方向、w=0 无穷远投影；太阳入屏 x 0.23–0.48 / y 0.15–0.50 |
+| R3 | P1 | ✅ 已修复 | `080a6eb` | Primitive/Globe 环境镜面 rgb 归零，保留 alpha 接收端标记；新增回归测试 |
+| R4 | P2 | ✅ 已修复 | `481cf79` | 景深单独开启请求材质通道生产 `eyeDepth`；shader `depthAvailable` fail-closed；新增回归测试 |
+| R5 | P2 | ✅ 已修复 | `07aa38d` | 撤销「环境不允许恢复」错误归因；`preventDefault()` 后可恢复；显式销毁重建出口验证（恢复出 `[203,211,207]`）；记录残留诊断缺口 |
+| R6 | P1 | ✅ 已修复 | `890ea24` | `prepare()`/`shouldCull()` 尊重 `debugCommandFilter`；`check-occlusion-safety` `filtered.hidden=0`/`parity=0`（原 45/189） |
+| R7 | P1 | ✅ 已修复 | `3cfcd6b` | 性能/SDK setup 加载 4 个 cuboid Model 并记录负载计数；三配置负载一致；SDK 比较跑在有模型场景 |
+| R8 | P2 | ✅ 已修复 | `7e30e2b` | Globe SSR 捕获 `computeWaterColor` 波浪法线（捕获非再采样）；新增 R8 回归测试 |
+
+**仍未闭环（如实保留，不声称完成）**：R5 暴露的「恢复后诊断误报 `materialsValid: true` 但画面黑帧」是残留的诊断诚实性缺口（自动重建未实现，显式重建出口已验证）；R7 的「与 B03 校园回归同相机/同数据 60fps 基线对照」及「完整 30s/60s/3 轮性能参数」仍待跑；B08 的透明片元/多视锥/云雾分段合成等既有公开缺口不变。
+
 ## 已执行的复核
 
 - `npm test`：631/631 通过。它未覆盖下面列出的真实接线问题。

@@ -252,6 +252,7 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 - [x] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证；支持范围明确为标准 PBR 模型、指定 Cesium Primitive 材质与 Globe water mask 路径。开工前先完成 water mask 数据来源调查（`globe.waterMask` 的可用性与采样方式），在夹具中显式记录。
 - [x] 普通 Primitive 提取实际法线/roughness 和材质反射响应；Globe 保留影像颜色，对 water mask 区域建立独立 receiver 契约，非水地面不擅自金属化。
 - [x] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自 B03，不照搬 Tianjing 全局 `scene._reflectTexture`。
+      **审查 R8 已修复**：此前 Globe SSR 用 `v_normalEC`（地表法线），未用 `computeWaterColor` 里驱动水面漫反射/高光的**波浪法线**，违反本条的「同一次法线采样」。现已改为在 `computeWaterColor` 内部捕获 `normalEC`（捕获而非再采样，无时间差），标记块优先用捕获法线，无反射海洋/无波浪时回退地表法线（新增 R8 回归测试）。
 - [x] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与 SSR 共用能量/roughness 尺度，不能 miss 采样最后像素或突然变黑。
 - [x] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
 - [x] 验证卫星影像、feature style、白模/透明 OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
@@ -297,6 +298,7 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
       **部分完成（如实保留未勾选）**：介质遮挡 stage 已按同一视线积分（雾 + 阴影可见性），但雾与云仍是**按相机高度二选一排序**（`cameraAltitude < cloudParams.y`），不是真正的分段 T/S 合成。深度引导上采样沿用既有按深度差自适应权重，未针对云/雾轮廓新增专项验证。
 - [ ] 云继续使用现有shell与噪声，只接入新的深度/资源链；固定12–50km、区间为空直接退出、不开高空扩距。
       **部分完成（如实保留未勾选）**：`cloudInterval` 已实现「区间为空直接返回 null，不做无效 raymarch」并有测试；云仍使用现有 shell 与噪声。**但云层档位仍是预设值（clear 档 1600–2800 m），未改为 12–50 km 固定档**。
+      **单位语义已纠正（审查）**：`cloudShell143.js` 的 12000–50000 是**相机到云样本的距离淡出预算**（fade-distance budget），当前已固定；**不是**要求把云层海拔改成 12–50 km。此前把「clear 云层海拔 1600–2800 m」列为「未改为 12–50 km」的理由有误，不应据此抬高云层。
 - [x] **介质遮挡数据产出**：在介质合成阶段产出像素级太阳遮挡/透射率（沿视线积分到太阳的累计介质），作为 B09 Light Shaft 与太阳光斑的输入。B08 只负责"遮挡/透射率"数据，不负责光柱的艺术叠加；光柱的径向积分与合成在 B09 消费该数据。此数据用材质深度/Hi-Z（B02 产出），不依赖 B06 的对象级可见性。
 - [ ] 全球位置测试包括校园、赤道、接近极区、跨经度、山区、云下/中/上、高空俯视和地平线连续移动。
       **部分完成（如实保留未勾选）**：实测覆盖**校园、赤道、接近极区、跨经度（东西）、南半球**共 6 个位置，离散度 0.003%。**未覆盖**：山区、云下/中/上、高空俯视、地平线连续移动。
@@ -358,6 +360,11 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 >
 > 测试 603/603 通过。本轮修复 2 个真实缺陷：Unreal 近似曲线在 `Infinity` 输入下产生 `NaN`（会沿后处理链扩散成整屏花屏）；文件名仅大小写不同导致管理器**覆盖**着色器模块（已改名并新增自动守卫测试）。
 >
+> **审查修正（R1/R2/R4，均已修复并附回归证据）**：
+> 1. **R1（P1）重复映射**：此前「自建曲线关闭原生 tonemap」只设一次 `enabled=false`，但 Cesium `PostProcessStageCollection.update` 每帧重设 `enabled=useHdr`，导致**映射两次**，而诊断仍误报 `exactlyOnce: true`（该字段从配置推导，不证明执行次数）。已改为包裹 `collection.update` 每帧夺回所有权；实测修复后原生 `enabled=false` 连续 10 帧。
+> 2. **R2（P1）太阳位置**：`scene.sun.positionWC` 不存在，`_sunScreen()` 恒走屏外，光柱/光斑生产管线**从未生效**。已改为从 `uniformState.sunPositionWC`（极远点）取方向、按 w=0 无穷远投影、点积判背向；实测太阳入屏 x 0.23–0.48 / y 0.15–0.50。
+> 3. **R4（P2）景深缺深度**：单独开启景深时材质通道依赖推导漏掉它，shader 读 `defaultTexture`（颜色）当深度。已让 `applyMaterialChannels` 在景深单独开启时启用材质通道生产 `eyeDepth`，且 shader 增加 `depthAvailable` fail-closed 门（无米制深度时严格 identity）。
+>
 > **保留未完成**：本项第 5、8、9 条（逐条注明）；景深焦带/深度断层测试、光斑图案化外观、完整 HDR 色阶矩阵未做。
 
 Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharted 2出处不同，见[Epic官方说明](https://dev.epicgames.com/documentation/unreal-engine/color-grading-and-the-filmic-tonemapper-in-unreal-engine)。
@@ -391,7 +398,7 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 - [ ] 20轮启停、嵌套暂停、resize、2个Viewer独立操作、tile异步到达、外部wrapper和参数修改、错误后再次启用。
       **部分完成（如实保留未勾选）**：20 轮启停、**嵌套暂停**（含重复 suspend 幂等）、resize（4 种尺寸）、**2 个 Viewer 独立操作**已实测通过。**未在本脚本覆盖**：**tile 异步到达**、**外部 wrapper 和参数修改**（这两项在 B04–B06 的既有检查中有覆盖，但未纳入本 B11 脚本）、**错误后再次启用**（B02 的 `check-deferred-recovery.cjs` 已覆盖，本批未重复）。
 - [ ] 实际调用WEBGL_lose_context进行丢失/恢复验证：全管线generation重置、纹理/program/UBO/query重新创建，旧异步回调不复活。
-      **部分完成（如实保留未勾选）**：**已实际调用 `WEBGL_lose_context`** 并实测上下文真的丢失（`contextLost: true`），丢失期间**每个效果都如实报告失效并给出原因**（`ssr: "Context lost"`、`materials: "Context lost"`），请求渲染不抛错。**但本环境无法验证恢复链路**：Chrome + headless 下 `extension.restoreContext()` 实测**不生效**——2.5 秒后 `isContextLost()` 仍为 `true`，且浏览器**从不触发** `webglcontextrestored`（已单独实测确认）。因此「generation 重置、纹理/program/UBO 重建、旧异步回调不复活」**未获验证**，因为无法进入恢复态。这是**环境限制而非 CCR 缺陷**，但结论上必须保留未勾选。
+      **部分完成（如实保留未勾选）**：**已实际调用 `WEBGL_lose_context`** 并实测上下文真的丢失（`contextLost: true`），丢失期间**每个效果都如实报告失效并给出原因**（`ssr: "Context lost"`、`materials: "Context lost"`），请求渲染不抛错。**审查 R5 纠正了此前的错误归因**：此前声称「Chrome + headless 下 `restoreContext()` 不生效、`webglcontextrestored` 从不触发」是**错误的**——那是没有在 `webglcontextlost` 监听里调用 `event.preventDefault()`，导致浏览器执行默认（永久）丢失。修正后实测：`preventDefault()` + 事件分派后 `restoreContext()` **确实恢复上下文**（`browserRestoredContext: true`、`isContextLost: false`）。**但 CCR 的旧 GPU 资源不自动重建**：恢复后渲染输出为**黑帧**（`autoRecovered: false`，且诊断错误地报 `materialsValid: true`——这是残留的诊断诚实性缺口）。**已验证的恢复出口是显式销毁重建**：销毁旧 pipeline + Viewer 后重建，恢复出与丢失前完全一致的像素（`[203,211,207]`）。因此「generation 重置、纹理/program/UBO 重建、旧异步回调不复活」的**自动重建**仍未实现，结论保留未勾选；显式重建出口已验证并如实记录。
 - [x] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
 - [ ] 30分钟交互压力测试，观察自有资源数/估算字节/查询数量不随循环增长；失败路径仍呈现明确可用画面。
       **部分完成（如实保留未勾选）**：压力脚本已固化**交互脚本**与**漂移阈值**（±5%，按前后半段峰值比较，避免首尾法被早期高水位掩盖）。实测 **5 分钟 / 2977 循环**与 1 分钟 / 579 循环，五项指标（资源字节/活跃目标数/目标总数/UBO 字节/UBO 数量）漂移**全部为 0%**，末帧画面正常。**未跑满 30 分钟**（按用户指示不必等待；时长不是通过条件，漂移才是），故不勾选。
@@ -413,7 +420,7 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 > | context-loss | 真的丢失；期间每个效果如实报告失效并带原因；渲染不抛错 |
 > | 压力测试（5 分钟 2977 循环） | 资源字节/目标数/UBO 字节/UBO 数量漂移**均为 0%** |
 >
-> 测试 631/631 通过。**保留未完成**：tile 异步/外部 wrapper/错误后再启用未纳入本脚本；**恢复链路因环境不触发 `webglcontextrestored` 而无法验证**；完整 30 分钟压力运行。
+> 测试 631/631 通过。**保留未完成**：tile 异步/外部 wrapper/错误后再启用未纳入本脚本；**恢复链路经审查 R5 纠正后验证为「浏览器可恢复，但 CCR 旧 GPU 资源不自动重建，显式销毁重建出口已验证」**（详见上一条）；完整 30 分钟压力运行。
 
 ### B12：通用场景矩阵验收与SDK候选产物
 
@@ -456,7 +463,9 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 >
 > 测试 631/631 通过。**阈值修正已登记**（rAF 受 vsync 限制无区分力，改用 GPU 中位时间；旧/新阈值与原因均记录，非静默放宽）。过程中发现 UMD 构建产物会过期，一致性检查必须在构建后运行。
 >
-> **保留未完成**：完整性能参数（30 s/60 s/3 轮）运行、逐条画质验收、场景交互矩阵复验、离线最小消费者 UMD 验证、原生/旧 CCR/新 CCR 瓶颈对比、`effects-combined` 像素基线；B10 与 B13 仍暂缓。
+> **审查修正（R7，已修复）**：此前性能/SDK 的 setup **只初始化 Viewer + Globe + pipeline，没有加载任何模型**，所谓固定负载主要测背景与后处理。现已让两个 setup 都加载 4 个 cuboid Model（与 `stage1-scene.js` 相同的代表性场景），并记录 `models/draws/triangles/primitives` 计数，且断言三配置负载规模一致、SDK 比较跑在有模型的场景上。记录到的 `actual.lightingMode` 继续如实暴露「effects-combined 请求 deferred 但实际回退 enhanced」。
+>
+> **保留未完成**：完整性能参数（30 s/60 s/3 轮）运行、逐条画质验收、场景交互矩阵复验、离线最小消费者 UMD 验证、原生/旧 CCR/新 CCR 瓶颈对比（含与 B03 校园回归的同相机/同分辨率/同数据 60fps 基线对照）、`effects-combined` 像素基线；B10 与 B13 仍暂缓。
 
 ### B13：5000+延迟光源，暂缓但保留完整路线
 
