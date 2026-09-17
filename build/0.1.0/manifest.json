@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "8b4462ca81da149e0a94014cf0d25018315d6b19",
+  "sourceCommit": "522597ed2a68e69742bdae21009ab87fcc44d5ce",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b",
@@ -67,7 +67,7 @@
     "src/pipeline/RenderTargetPool143.js": "7af711368ee5390ac0e47acdc4834fe41d83dddf6c10d35278083763244a1712",
     "src/pipeline/TransparentForward143.js": "0a83bf611e023f43b8bee8786a185796fef49a9ebca4657e1721ca20772d17e3",
     "src/pipeline/transparentForwardShader143.js": "d30ee71f5d6a322d863999552d454da3e8432651e4c7f46e12217dc7f9b3603f",
-    "src/presets.js": "05514963f82255817f741a66091b0bd9d7b8b6eb678d599cda558be1311bc809",
+    "src/presets.js": "5e2e958b7159094df20e3a7e5898e54ffd7e42f43fbc1562c9a08945b8f363a0",
     "src/reflections/OitCompatibility143.js": "b8c6e326c4e5cbd004e7305c8ad4e197ed84b05cb9353842801fe724cce7d18a",
     "src/reflections/PrimitiveReflection143.js": "226841ef08cb2333571e3c3f08b90e2931554ac79d41def56124e5611b245d81",
     "src/reflections/ScreenSpaceReflection143.js": "0ceed48b35ba64caa50c98021c1e704c02a5132a798551cecfddd908a2753c1d",
@@ -87,11 +87,14 @@
     "src/shadows/ShadowTarget.js": "9cbd9c6a159dd4ee36d1fb33a216582fe06c3f1df5fabcde8f0230d14b2c769d",
     "src/shadows/shadowUniforms143.js": "267f303c395a521cd475a9a1da8c94fd2f7ad5705c98281e48402ccde82248ab",
     "src/stages/colorGrading.js": "ba6f438223dfd3ca31690840d61c1b97153073ec12ebbbd4d5f65291d80c468b",
+    "src/stages/LensEffectPipeline143.js": "ea31b28b99f0434b95da7e2aaa4311ba84e4df9143f4180132c89cfc079bd7e4",
+    "src/stages/lensEffects143.js": "b0303918eeeab4b943f7b11a12c0f67caf450bfe3effd14276024a03cad4ed17",
+    "src/stages/toneMapping143.js": "51561c2a6152561e1e83ee91a5fafdde4de5b1419e25085864d5de3d1c8b14c6",
     "src/visibility/OccluderCache143.js": "aee3f80dcd6029d785137f0f109df83a4aeb7a2683fe7715261a049ac8c5881a",
     "src/visibility/OcclusionCulling143.js": "434c8dcf253d41b9cacf8b8f3214fd949c4859df8ca7025769e460c181235bda",
-    "src/VisualPipeline.js": "dceaf483e2d975c9e3dbd8419ff004e208079f4e18302afd5fc594a08097a0d9"
+    "src/VisualPipeline.js": "5aff9cce06b05cc966ad2bf5965ebdfe8670b03a351c7683f0c7b46ad101c2d4"
   },
-  "bytes": 424777,
-  "gzipBytes": 140688,
-  "sha256": "0aaa499b76d6bd563a7d5298eee8137a2e99e97911c8ccf99af6aa4240cfe91f"
+  "bytes": 449469,
+  "gzipBytes": 148038,
+  "sha256": "e5b98b05f3d218b3d1ba52a6460e949fac61d73eaff451923c88e4f9deb42c82"
 }

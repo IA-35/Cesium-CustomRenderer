@@ -321,18 +321,39 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **新增：** `src/stages/toneMapping143.js`、`src/stages/lensEffects143.js`、`tests/rendering/lens-effects.test.mjs`、`tests/rendering/lens-effects-fixture.js`。
 **修改：** VisualPipeline、HdrCoordinator、environmentStages、API、通用示例控制面板。
 
-- [ ] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
-- [ ] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
-- [ ] 新映射分支需关闭原生重复tonemap并保留后续gamma/alpha契约；如果无法保证只映射一次，该曲线不可启用。
-- [ ] 移轴：借鉴Tianjing双向9-tap，核归一化，真实textureSize控制像素半径；输入线性HDR、焦带位置/宽度可调。
+- [x] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
+- [x] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
+- [x] 新映射分支需关闭原生重复tonemap并保留后续gamma/alpha契约；如果无法保证只映射一次，该曲线不可启用。
+- [x] 移轴：借鉴Tianjing双向9-tap，核归一化，真实textureSize控制像素半径；输入线性HDR、焦带位置/宽度可调。
 - [ ] “泛焦模糊”本计划明确为可关闭的全屏高斯模糊，并补充基于焦距/焦平面的基础景深，避免术语歧义遗漏目标；优先复用Cesium createBlurStage/createDepthOfFieldStage，若其深度/映射阶段不符，适配shader而非复制collection。
-- [ ] 色彩通道偏移：在显示阶段按像素单位径向偏移R/B，中心和强度0保持原图，alpha不偏移；与hue/saturation分开。
+      **部分完成（如实保留未勾选）**：全屏高斯模糊（核归一化、两遍可分离）与基于 B02 米制深度的基础景深**均已实现**并有 identity/核归一化/未知深度语义的测试。**未做**：景深的**焦带与深度断层**数值/图像测试；且**未复用** Cesium 的 `createBlurStage`/`createDepthOfFieldStage`——因其内部内联 `czm_inverseGamma`，与本管线「HDR 链内、显示编码归原生 tonemap」的契约冲突，直接用会造成二次 gamma；本批走计划给出的出口「适配 shader 而非复制 collection」。
+- [x] 色彩通道偏移：在显示阶段按像素单位径向偏移R/B，中心和强度0保持原图，alpha不偏移；与hue/saturation分开。
 - [ ] 太阳光斑：生成太阳屏幕位置与可见性遮罩，取深度/云透射率遮挡，背向太阳退出；噪声/图案可参考Tianjing lensFlare，但实例自己持有stage。
-- [ ] Light Shaft：**消费 B08 产出的介质遮挡/透射率**做半分辨率径向积分与深度感知合成，初始32样本、单太阳；不重复实现遮挡 mask（B08 已产出）。保留已有三维雾散射，两者强度独立，避免双算同一能量。
-- [ ] HDR流程中TAA位置更改属于B10的明确迁移任务，此批单独验证TAA关闭路径，并保留原链路。所有新增影视效果默认关闭。
+      **部分完成（如实保留未勾选）**：太阳屏幕位置生成、可见性遮罩（消费 B08 遮挡）、**背向太阳退出**与完全遮挡退化为 identity 均已实现并有 GPU 证据。**未做**：噪声/图案化的镜头光斑外观（当前是单个高斯核），以及「镜头后太阳」的连续帧序列。
+- [x] Light Shaft：**消费 B08 产出的介质遮挡/透射率**做半分辨率径向积分与深度感知合成，初始32样本、单太阳；不重复实现遮挡 mask（B08 已产出）。保留已有三维雾散射，两者强度独立，避免双算同一能量。
+- [x] HDR流程中TAA位置更改属于B10的明确迁移任务，此批单独验证TAA关闭路径，并保留原链路。所有新增影视效果默认关闭。
 - [ ] 对0/0.18/1/16/64 HDR色阶、强白光、红绿蓝高光、焦带、深度断层、镜头后太阳、建筑遮日、云遮日、resize做数值与图像测试。
+      **部分完成（如实保留未勾选）**：**建筑遮日**（完全遮挡 → 逐位 identity）与**背向太阳退出**已实测；色调映射的单调性、黑白点、肩部压缩、极端输入有限性（含 `Infinity` 不得产生 NaN）均有数值测试。**未做**：0/0.18/1/16/64 **完整色阶矩阵**、强白光与红绿蓝高光、**焦带**、**深度断层**、云遮日、resize。
 
 **通过：** 所有效果强度0/关闭为identity；常量图模糊不改变亮度；色调映射单调、有确定曝光语义，普通白墙/天空不因Bloom变白幕；光柱/光斑不透墙。每个子项单独完成记录，不能用一个“影视效果完成”掩盖遗漏。
+
+> **B09 结果（2026-09-17，`docs/B09_COMPLETION.md`）**：新增 `toneMapping143.js`（四条曲线 + 只映射一次契约）、`lensEffects143.js`（六个效果着色器 + 互斥解析）、`LensEffectPipeline143.js`（管线管理器）。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 六个效果强度 0 的 identity | **整屏哈希与关闭逐位相同**（6/6） |
+> | `aces` 曲线不改变画面 | 哈希与基线相同（CCR 本就用 ACES） |
+> | `reinhard`/`filmic`/`unrealFilmicApprox` | 均真实改变画面，三者诊断均 `exactlyOnce: true` |
+> | 模糊核归一化 | 梯度能量 **0.1018 → 0.0418**（降低 59%） |
+> | 光柱：太阳可见 | 亮度 0.495 → **1.035**（真实叠加） |
+> | 光柱：**完全遮挡（建筑遮日）** | 亮度 0.495，哈希 **逐位相同 → 不透墙** |
+> | 光柱：背向太阳 | 哈希逐位相同 |
+> | 三模糊互斥 | `active: 'tiltShift'`，另两个带 `Suppressed by tiltShift` |
+> | 默认关闭对既有画面影响 | 两套 golden **未变更**即通过（零影响） |
+>
+> 测试 603/603 通过。本轮修复 2 个真实缺陷：Unreal 近似曲线在 `Infinity` 输入下产生 `NaN`（会沿后处理链扩散成整屏花屏）；文件名仅大小写不同导致管理器**覆盖**着色器模块（已改名并新增自动守卫测试）。
+>
+> **保留未完成**：本项第 5、8、9 条（逐条注明）；景深焦带/深度断层测试、光斑图案化外观、完整 HDR 色阶矩阵未做。
 
 Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharted 2出处不同，见[Epic官方说明](https://dev.epicgames.com/documentation/unreal-engine/color-grading-and-the-filmic-tonemapper-in-unreal-engine)。
 

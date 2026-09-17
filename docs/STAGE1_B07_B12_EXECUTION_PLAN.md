@@ -11,6 +11,10 @@
 > **B08 已完成主体**（见 [B08_COMPLETION.md](B08_COMPLETION.md)）：新增 `src/environment/heightFog143.js`（解析指数积分 + 近零 Taylor 分支 + T/S 分段合并 + 云空区间 + 介质遮挡数据），基础档由数值步进改为解析积分，并产出 B09 所需的像素级介质遮挡数据。实测全球 6 位置同高度响应离散度 **0.003%**；解析式经验证为步进的收敛极限（24 步误差 1%–3%，50 km 俯视时 100%）。测试 550/550。B08 保留了若干未完成项（多视锥透明分段未接入渲染路径、云雾未做真正分段合成、云层档位未改 12–50 km、全球测试未含山区/云下中上/高空俯视），已在主计划逐条注明且**未勾选**对应复选框。
 >
 > **下一轮执行入口为 B09**（Tonemap + 镜头效果 + 光柱/光斑）。B09 的光柱与太阳光斑直接消费 B08 已产出的介质遮挡数据：`EnvironmentRenderer.getMediumOcclusionDiagnostics()` 返回 `{ valid, texture, size, contract, source }`，纹理为半分辨率 RGBA32F，`.r` = 太阳方向介质透射率、`.g` = 太阳可见性、`.b` = 视线介质透射率。
+>
+> **B09 已完成主体**（见 [B09_COMPLETION.md](B09_COMPLETION.md)）：新增 `src/stages/toneMapping143.js`（四条曲线 + 「只映射一次」互斥契约）、`src/stages/lensEffects143.js`（六个效果着色器 + 三模糊互斥解析）、`src/stages/LensEffectPipeline143.js`（管线管理器）。实测六个效果强度 0 时与关闭**整屏逐位相同**；四条曲线诊断均 `exactlyOnce: true`；模糊使梯度能量降低 59%；光柱在完全遮挡（建筑遮日）时**逐位回到 identity（不透墙）**。测试 603/603。因全部默认关闭，两套 golden **未变更**即通过。
+>
+> **B10 按用户指示暂缓**。**下一轮执行入口为 B11**（生命周期 + 能力降级 + 默认策略），随后 B12（通用场景矩阵验收 + SDK 候选产物）。
 
 ---
 

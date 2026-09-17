@@ -11,6 +11,7 @@ import ScreenSpaceGeometry143 from './channels/ScreenSpaceGeometry143.js'
 import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
+import LensEffectPipeline143 from './stages/LensEffectPipeline143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import TransparentForward143 from './pipeline/TransparentForward143.js'
 import {peekRenderTargetPool} from './pipeline/RenderTargetPool143.js'
@@ -174,6 +175,7 @@ export default class VisualPipeline {
     this.applyTransparentReflections()
     this.applyScreenSpaceAO()
     this.applyHdrBloom()
+    this.applyLensEffects()
     s.requestRender()
   }
 
@@ -370,6 +372,64 @@ export default class VisualPipeline {
     const active = !this.destroyed && this.enabled && !this.suspensions.size && requested.enabled
     return { ...(this.hdrBloom ? this.hdrBloom.getDiagnostics() : { enabled: false, valid: false, reason: 'Not requested' }),
       ...(!active ? { enabled: false, valid: false, reason: this.destroyed ? 'Destroyed' : requested.enabled ? 'Pipeline inactive' : 'Not requested' } : {}), requested }
+  }
+
+  /**
+   * B09: tone mapping curve selection and lens effects.
+   *
+   * Only creates the manager when something is actually requested, so the default
+   * configuration adds no stage and therefore no cost.
+   */
+  lensEffectsRequested() {
+    const o = this.options
+    return o.toneMappingCurve !== 'aces' || o.tiltShiftEnabled || o.blurEnabled ||
+      o.depthOfFieldEnabled || o.chromaticAberrationEnabled || o.sunFlareEnabled || o.lightShaftEnabled
+  }
+  applyLensEffects() {
+    if (this.destroyed || !this.enabled || this.suspensions.size) {
+      if (this.lensEffects) this.lensEffects.setEnabled(false)
+      return
+    }
+    const requested = this.lensEffectsRequested()
+    if (requested && !this.lensEffects) {
+      this.lensEffects = new LensEffectPipeline143(this.Cesium, this.viewer.scene, () => this.options,
+        () => this.environmentRenderer?.getMediumOcclusionDiagnostics?.() || null,
+        () => this.getActiveMaterialChannels())
+    }
+    if (this.lensEffects) this.lensEffects.setEnabled(requested)
+  }
+  setLensEffects(settings = {}) {
+    if (!this.destroyed) {
+      const input = settings || {}
+      // 只把白名单/布尔/数值键交给 normalizeOptions；其余键被忽略而不是静默写入。
+      const patch = {}
+      for (const key of ['toneMappingCurve', 'tiltShiftEnabled', 'tiltShiftFocus', 'tiltShiftWidth',
+        'tiltShiftRadius', 'tiltShiftStrength', 'blurEnabled', 'blurRadius', 'blurStrength',
+        'depthOfFieldEnabled', 'depthOfFieldFocus', 'depthOfFieldRange', 'depthOfFieldRadius',
+        'depthOfFieldStrength', 'chromaticAberrationEnabled', 'chromaticAberrationStrength',
+        'sunFlareEnabled', 'sunFlareStrength', 'lightShaftEnabled', 'lightShaftStrength', 'lightShaftSamples']) {
+        if (input[key] !== undefined) patch[key] = input[key]
+      }
+      const before = this.lensEffectsRequested()
+      this.options = normalizeOptions(patch, this.options)
+      if (before !== this.lensEffectsRequested() || !this.lensEffects) this.applyLensEffects()
+      else if (this.lensEffects) { this.lensEffects._release(); this.lensEffects.setEnabled(true) }
+    }
+    return this.lensEffects?.getDiagnostics?.() || { enabled: false, valid: false, reason: 'Not requested' }
+  }
+  getLensEffectsDiagnostics() {
+    const o = this.options
+    const requested = this.lensEffectsRequested()
+    const active = !this.destroyed && this.enabled && !this.suspensions.size && requested
+    const base = this.lensEffects
+      ? this.lensEffects.getDiagnostics()
+      : { enabled: false, valid: false, reason: 'Not requested', activeStages: [] }
+    return { ...base,
+      ...(!active ? { enabled: false, valid: false,
+        reason: this.destroyed ? 'Destroyed' : requested ? 'Pipeline inactive' : 'Not requested' } : {}),
+      requested: { toneMappingCurve: o.toneMappingCurve, tiltShift: o.tiltShiftEnabled, blur: o.blurEnabled,
+        depthOfField: o.depthOfFieldEnabled, chromaticAberration: o.chromaticAberrationEnabled,
+        sunFlare: o.sunFlareEnabled, lightShaft: o.lightShaftEnabled } }
   }
   applyScreenSpaceAO(updateNativeAO = false) {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
@@ -587,6 +647,7 @@ export default class VisualPipeline {
       occlusion: this.getOcclusionDiagnostics(), resourcePool: this.getResourcePoolDiagnostics(), frameUniforms: this.getFrameUniformDiagnostics(),
       taa: this.getTaaDiagnostics(),
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
+      lensEffects: this.getLensEffectsDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
       performance: this.getPerformanceDiagnostics() }
   }
@@ -735,6 +796,10 @@ export default class VisualPipeline {
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()
     if (this.screenSpaceAO) this.screenSpaceAO.destroy()
     if (this.hdrBloom) this.hdrBloom.destroy()
+    // B09: destroy the lens-effect manager before the environment renderer, because
+    // the manager reads the environment's medium-occlusion texture and restores the
+    // native tonemapper it may have disabled.
+    if (this.lensEffects) this.lensEffects.destroy()
     if (this.materialChannels) this.materialChannels.destroy()
     if (this.geometry) this.geometry.destroy()
     if (this.taa) this.taa.destroy()
