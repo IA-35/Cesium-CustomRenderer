@@ -13,6 +13,8 @@ export const defaults = Object.freeze({
   ...environmentDefaults,
   ...defaultFilters, shadows: true, shadowMode: 'custom', shadowDebug: false, shadowStatic: false, shadowSize: 4096, shadowCascades: 1, shadowDistance: 4000,
   msaaCombine: false,
+  renderTargetPoolEnabled: true,
+  occlusionCullingEnabled: false,
   ambientOcclusion: false, fog: true, fogDensity: 0.000025, bloom: false,
   hdrBloomEnabled: false, hdrBloomStrength: 0.15, hdrBloomThreshold: 1, hdrBloomKnee: 0.5, hdrBloomLevels: 5,
   geometryEnabled: false, geometryDebugMode: 'off', materialChannelsEnabled: false, albedoEnabled: false, depthPyramidEnabled: false,
@@ -48,10 +50,12 @@ export function normalizeOptions(input = {}, current = defaults) {
   ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo'].forEach(key => {
     if (typeof input[key] === 'boolean') result[key] = input[key]
   })
+  if (typeof input.renderTargetPoolEnabled==='boolean') result.renderTargetPoolEnabled=input.renderTargetPoolEnabled
+  if (typeof input.occlusionCullingEnabled==='boolean') result.occlusionCullingEnabled=input.occlusionCullingEnabled
   if ([1024, 2048, 4096].includes(input.shadowSize)) result.shadowSize = input.shadowSize
   if (typeof input.hdrBloomEnabled === 'boolean') result.hdrBloomEnabled = input.hdrBloomEnabled
   if (Number.isFinite(input.hdrBloomLevels)) result.hdrBloomLevels = Math.max(2, Math.min(6, Math.round(input.hdrBloomLevels)))
-  if ([1, 4].includes(input.shadowCascades)) result.shadowCascades = input.shadowCascades
+  if ([1, 3, 4].includes(input.shadowCascades)) result.shadowCascades = input.shadowCascades
   if ([4, 8, 16].includes(input.taaJitterSamples)) result.taaJitterSamples = input.taaJitterSamples
   if (['native', 'custom'].includes(input.shadowMode)) result.shadowMode = input.shadowMode
   if (['ssao', 'hbao'].includes(input.screenSpaceAoAlgorithm)) result.screenSpaceAoAlgorithm = input.screenSpaceAoAlgorithm

@@ -42,6 +42,7 @@ export default class DeferredGeometry143 {
       if (!token.active || self.busy || !self.canCapture(command, passState)) {
         return previous.call(this, command, passState, ...args)
       }
+      if(self.owner.shouldCull(command))return
       // Context.draw permits shader/uniform overrides. Capture the effective
       // command so a native override cannot leave stale material data behind it.
       if (args[0] || args[1]) {

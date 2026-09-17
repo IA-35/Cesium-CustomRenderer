@@ -26,7 +26,9 @@ export default class ShadowCache {
     }
     // Opaque/MASK depth writes with LEQUAL produce the same minimum depth
     // regardless of the main camera's tile traversal order.
-    items.sort((a,b) => a[0]-b[0] || a[1]-b[1] || a[2]-b[2] || JSON.stringify(a).localeCompare(JSON.stringify(b)))
+    const tiebreak = new Map()
+    for (const item of items) tiebreak.set(item, JSON.stringify(item))
+    items.sort((a,b) => a[0]-b[0] || a[1]-b[1] || a[2]-b[2] || tiebreak.get(a).localeCompare(tiebreak.get(b)))
     return JSON.stringify([this.revision, this.value(matrix), size, items])
   }
   matches(key) { return key !== null && key === this.key }

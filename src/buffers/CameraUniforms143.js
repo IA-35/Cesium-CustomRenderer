@@ -14,7 +14,7 @@ const owners = new WeakMap()
 export function acquireCameraUniforms(C, scene) {
   let owner = owners.get(scene)
   if (!owner) {
-    owner = { inverse: new C.Matrix4(), data: new Float32Array(40), references: 0,
+    owner = { inverse: new C.Matrix4(), data: new Float32Array(40), references: 0, revision:0,
       buffer: new UniformBuffer143(scene.context._gl, 160) }
     owners.set(scene, owner)
   }
@@ -34,10 +34,10 @@ export function acquireCameraUniforms(C, scene) {
         owner.data[i + 16] = owner.inverse[i]
       }
       owner.data.set([0, 0, scene.drawingBufferWidth, scene.drawingBufferHeight, frustum.near, frustum.far, 0, 0], 32)
-      return owner.buffer.update(owner.data)
+      const bytes=owner.buffer.update(owner.data);if(bytes)owner.revision++;return bytes
     },
     getDiagnostics() {
-      return { ...owner.buffer.getDiagnostics(), references: owner.references, released }
+      return { ...owner.buffer.getDiagnostics(), references: owner.references, viewRevision:owner.revision, released }
     },
     release() {
       if (released) return

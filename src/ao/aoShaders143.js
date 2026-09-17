@@ -1,3 +1,4 @@
+import {cameraBlockGLSL} from '../buffers/CameraUniforms143.js'
 // Deterministic screen-space AO. Resolve attenuates non-emissive HDR lighting,
 // including direct light; it does not isolate Cesium's IBL contribution.
 export const common = `
@@ -6,7 +7,12 @@ uniform highp sampler2D u_material;
 uniform highp sampler2D u_flags;
 uniform highp sampler2D u_hiz;
 uniform highp sampler2D u_transparency;
+#ifdef CCR_CAMERA_UBO
+${cameraBlockGLSL}
+#define u_inverseProjection campusInverseProjection
+#else
 uniform mat4 u_inverseProjection;
+#endif
 uniform float u_radius;
 uniform float u_strength;
 uniform float u_bias;

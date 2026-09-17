@@ -1,4 +1,5 @@
 import GpuTimer from './GpuTimer.js'
+import {peekRenderTargetPool} from '../pipeline/RenderTargetPool143.js'
 
 // Explicit short diagnostic runs only; never installed by the business pipeline.
 // Pass timings are sampled on different frames and must not be added as one frame.
@@ -21,6 +22,7 @@ export default class RenderProfiler143 {
       ['shadow', pipeline.customShadow, 'render'],
       ['materials', pipeline.materialChannels, '_render'],
       ['hiz', pipeline.materialChannels && pipeline.materialChannels.depthPyramid, 'update'],
+      ['occlusion', pipeline.occlusionCulling, 'query'],
       ['ssr', pipeline.screenSpaceReflections, '_execute'],
       ['transparentSsr', pipeline.transparentReflections, '_execute'],
       ['ao', pipeline.screenSpaceAO, '_execute'],
@@ -72,6 +74,7 @@ export default class RenderProfiler143 {
     return { scope: 'diagnostic-only; alternating GPU scopes, CPU submission is not GPU time',
       gpuSupported: this.timer.supported, gpu: [...this.timer.samples], cpu: [...this.cpu],
       frames: [...this.frames], textures: this._textures(), uniformBuffers: this._uniformBuffers(),
+      occlusion: this.pipeline.getOcclusionDiagnostics?.(),
       pending: this.timer.pending.length, discarded: this.timer.discarded,
       skipped: this.timer.skipped, drawScope: 'Context.draw submissions; not unique objects or GPU primitives' }
   }
@@ -87,8 +90,10 @@ export default class RenderProfiler143 {
     const stage = (name, value) => {
       if (value && !value.isDestroyed()) add(name, value.outputTexture)
     }
+    for(const entry of peekRenderTargetPool(this.scene.context)?.entries||[])add(`pool.${entry.id}`,entry.texture)
     if (p.hdrBloom && p.hdrBloom.stages) p.hdrBloom.stages.forEach((value, index) => stage(`bloom.${index}`, value))
-    add('shadow.depth', p.customShadow && p.customShadow.target && p.customShadow.target.depth)
+    if(p.customShadow?.levels) p.customShadow.levels.forEach((level,index)=>add(`shadow.${index}.depth`,level.target.depth))
+    else add('shadow.depth', p.customShadow && p.customShadow.target && p.customShadow.target.depth)
     const materials = p.materialChannels && p.materialChannels.target
     if (materials) for (const name of ['normalRoughMetal', 'emissiveFlags', 'eyeDepth', 'depthStencil', 'transparency', 'reflectionSpecular', 'reflectionResponse', 'opaqueColor', 'albedoOcclusion']) add(`materials.${name}`, materials[name])
     const pyramid = p.materialChannels && p.materialChannels.depthPyramid
@@ -124,12 +129,14 @@ export default class RenderProfiler143 {
       const { bytes, uploads, uploadedBytes } = buffer.getDiagnostics()
       entries.push({ name, bytes, uploads, uploadedBytes })
     }
-    for (const [name, pass] of [['ssr', this.pipeline.screenSpaceReflections], ['transparentSsr', this.pipeline.transparentReflections]]) {
+    for (const [name, pass] of [['ao',this.pipeline.screenSpaceAO],['ssr', this.pipeline.screenSpaceReflections], ['transparentSsr', this.pipeline.transparentReflections]]) {
       if (!pass) continue
       add(`${name}.camera`, pass.cameraUniforms && pass.cameraUniforms.buffer)
       add(`${name}.reflection`, pass.reflectionUniforms)
     }
-    return { scope: 'known reflection uniform buffers only; shared camera storage counted once',
+    for(const [name,pass]of [['shadow',this.pipeline.customShadow],['deferred',this.pipeline.deferredLighting],['transparent',this.pipeline.transparentForward]])add(name+'.sun',pass?.sunUniforms?.buffer)
+    add('environment.frame',this.pipeline.environmentRenderer?.frameUniforms)
+    return { scope: 'CCR camera, solar and effect blocks; shared storage counted once',
       currentBytes: entries.reduce((sum, entry) => sum + entry.bytes, 0), peakBytes: this.peakUniformBufferBytes, entries }
   }
 

@@ -33,7 +33,11 @@ uniform mat3 eyeToShell;
 uniform vec3 shellUp;
 uniform vec2 shellRadiusHeight;
 uniform vec3 shellNoiseOrigin;
+#ifdef CCR_ENV_FRAME_UBO
+#define sunDirectionShell ccrEnvironmentSunShell.xyz
+#else
 uniform vec3 sunDirectionShell;
+#endif
 
 vec2 shellFadeRange() {
     // Fixed view-distance budget at every altitude, including views from orbit.

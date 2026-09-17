@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -335,7 +335,7 @@ test('failed initialization rolls back its stages and registry entry', () => {
   assert.equal(f.viewer.scene.light, light)
 })
 
-test('campus shadow map uses one pass without mutating the native shadow object', () => {
+test('explicit native comparison maps the custom single-cascade default to a supported single cascade', () => {
   const f = fixture()
   const original = f.viewer.shadowMap
   const pipeline = new VisualPipeline(f)

@@ -7,10 +7,12 @@ export function clippingPlanesInLightSpace(C, mainCamera, lightCamera, planes) {
 }
 
 export default class ShadowReceiver143 {
-  constructor(C, scene, uniforms) {
+  constructor(C, scene, uniforms, {cascades=false,sunUbo=false,shouldReceive=()=>true}={}) {
     this.C = C
     this.scene = scene
     this.uniforms = uniforms
+    this.cascades=cascades;this.shouldReceive=shouldReceive
+    this.sunUbo=sunUbo
     this.programs = new Map()
     this.commands = new Map()
     this.castPrograms = new Map()
@@ -40,6 +42,10 @@ export default class ShadowReceiver143 {
   receive(command) {
     if (!command.shaderProgram || !command.receiveShadows) return
     const record = this.commands.get(command)
+    if(!this.shouldReceive(command)){
+      if(record){this.restoreCommand(command,record);this.commands.delete(command)}
+      return
+    }
     const frame = this.scene.frameState.frameNumber
     if (record && command.shaderProgram === record.program) {
       if (command.uniformMap !== record.merged) {
@@ -56,7 +62,7 @@ export default class ShadowReceiver143 {
     this.receiverUsed.set(source.id, frame)
     let program = this.programs.get(source.id)
     if (program === undefined) {
-      const fs = receiverSource(this.C, source.fragmentShaderSource, command.pass === this.C.Pass.GLOBE)
+      const fs = receiverSource(this.C, source.fragmentShaderSource, command.pass === this.C.Pass.GLOBE,this.cascades,this.sunUbo)
       program = fs ? this.C.ShaderProgram.fromCache({ context: this.scene.context,
         vertexShaderSource: source.vertexShaderSource, fragmentShaderSource: fs,
         attributeLocations: source._attributeLocations }) : null
@@ -94,12 +100,12 @@ export default class ShadowReceiver143 {
       options.blending = { enabled: false }
       options.stencilTest = { enabled: false }
       options.polygonOffset = { enabled: true, factor: 1.1, units: 4 }
-      state = C.RenderState.fromCache(options)
+      state = {value:C.RenderState.fromCache(options),options}
       this.castStates.set(command.renderState.id, state)
     }
     const cast = C.DrawCommand.shallowClone(command)
     cast.shaderProgram = program
-    cast.renderState = state
+    cast.renderState = state.value
     cast.framebuffer = framebuffer
     if (command.uniformMap.model_clippingPlanesMatrix && lightCamera) {
       // Model updates this plane transform in the main camera's eye space.
@@ -114,6 +120,9 @@ export default class ShadowReceiver143 {
   restoreCommand(command, record) {
     if (command.shaderProgram === record.program) command.shaderProgram = record.source
     if (command.uniformMap === record.merged) command.uniformMap = record.originalUniforms
+  }
+  restoreTranslucent(){
+    for(const [command,record]of this.commands)if(command.pass===this.C.Pass.TRANSLUCENT){this.restoreCommand(command,record);command.dirty=true;this.commands.delete(command)}
   }
   prune() {
     const cutoff = this.scene.frameState.frameNumber - 120
@@ -133,7 +142,7 @@ export default class ShadowReceiver143 {
       }
     }
     for (const [id, frame] of this.stateUsed) {
-      if (frame < cutoff) { this.castStates.delete(id); this.stateUsed.delete(id) }
+      if (frame < cutoff) { this.C.RenderState.removeFromCache(this.castStates.get(id).options);this.castStates.delete(id); this.stateUsed.delete(id) }
     }
   }
   detach() {
@@ -151,6 +160,7 @@ export default class ShadowReceiver143 {
     }
     this.programs.clear()
     this.castPrograms.clear()
+    for(const state of this.castStates.values())this.C.RenderState.removeFromCache(state.options)
     this.castStates.clear()
     this.receiverUsed.clear()
     this.castUsed.clear()

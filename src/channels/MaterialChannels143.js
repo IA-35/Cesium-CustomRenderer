@@ -169,6 +169,7 @@ export default class MaterialChannels143 {
   }
 
   _draw(original, transparent = false) {
+    if(!transparent&&this.shouldCull?.(original))return
     const C = this.C, scene = this.scene
     if (scene.debugCommandFilter && !scene.debugCommandFilter(original)) return
     let command = original

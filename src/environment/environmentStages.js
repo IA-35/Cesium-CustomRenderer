@@ -41,10 +41,27 @@ float sceneDistance(vec2 uv) {
 
 const raymarchShader = `
 in vec2 v_textureCoordinates;
+#ifdef CCR_ENV_FRAME_UBO
+layout(std140) uniform CCREnvironmentFrame {
+  mat4 ccrEnvironmentEyeToLocal;
+  mat4 ccrEnvironmentInverseProjection;
+  vec4 ccrEnvironmentSunLocal;
+  vec4 ccrEnvironmentSunRadiance;
+  vec4 ccrEnvironmentSkyRadiance;
+  vec4 ccrEnvironmentSunShell;
+};
+#define eyeToLocal ccrEnvironmentEyeToLocal
+#define sunDirectionLocal ccrEnvironmentSunLocal.xyz
+#define sunRadiance ccrEnvironmentSunRadiance.xyz
+#define skyRadiance ccrEnvironmentSkyRadiance.xyz
+#define CCR_ENV_INVERSE_PROJECTION ccrEnvironmentInverseProjection
+#else
 uniform mat4 eyeToLocal;
 uniform vec3 sunDirectionLocal;
 uniform vec3 sunRadiance;
 uniform vec3 skyRadiance;
+#define CCR_ENV_INVERSE_PROJECTION czm_inverseProjection
+#endif
 uniform vec4 fogParams;
 uniform float fogBaseHeight;
 uniform vec4 cloudParams;
@@ -253,7 +270,7 @@ vec4 integrateClouds(vec3 origin, vec3 direction, float limit, float phase) {
 
 void main() {
   vec2 uv = v_textureCoordinates;
-  vec4 eyeRay = czm_inverseProjection * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+  vec4 eyeRay = CCR_ENV_INVERSE_PROJECTION * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
   vec3 direction = normalize((eyeToLocal * vec4(eyeRay.xyz / eyeRay.w, 0.0)).xyz);
   vec3 origin = (eyeToLocal * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float distance = sceneDistance(uv);
@@ -316,7 +333,7 @@ void main() {
 }
 `
 
-export function createEnvironmentStages(C, uniforms, quality = 'balanced', geometry = 'local') {
+export function createEnvironmentStages(C, uniforms, quality = 'balanced', geometry = 'local', frameUbo = false) {
   const id = ++nextId
   const high = quality === 'high'
   const scale = 0.5
@@ -332,7 +349,7 @@ export function createEnvironmentStages(C, uniforms, quality = 'balanced', geome
     rayUniforms[name] = uniforms[name]
   }
   const raymarchStage = new C.PostProcessStage({ name: `environment_raymarch_${id}`,
-    fragmentShader: `${shellDefines}#define FOG_STEPS ${high ? 40 : 24}\n#define CLOUD_STEPS ${high ? 96 : 64}\n#define CLOUD_MAX_DISTANCE ${high ? '50000.0' : '30000.0'}\n${raymarchShader}`,
+    fragmentShader: `${frameUbo?'#define CCR_ENV_FRAME_UBO\n':''}${shellDefines}#define FOG_STEPS ${high ? 40 : 24}\n#define CLOUD_STEPS ${high ? 96 : 64}\n#define CLOUD_MAX_DISTANCE ${high ? '50000.0' : '30000.0'}\n${raymarchShader}`,
     uniforms: rayUniforms, textureScale: scale, pixelFormat: C.PixelFormat.RGBA,
     pixelDatatype: C.PixelDatatype.FLOAT, sampleMode: C.PostProcessStageSampleMode.NEAREST,
     clearColor: new C.Color(0, 0, 0, 1) })

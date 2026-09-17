@@ -3,6 +3,7 @@ import EnvironmentLighting143 from './EnvironmentLighting143.js'
 import { resolveEnvironmentState } from './environmentState.js'
 import { createEnvironmentStages } from './environmentStages.js'
 import createNoiseAtlas from './noiseAtlas.js'
+import UniformBuffer143,{uniformBuffersSupported} from '../buffers/UniformBuffer143.js'
 
 export default class EnvironmentRenderer {
   constructor(C, viewer, getOptions, getShadow) {
@@ -57,9 +58,21 @@ export default class EnvironmentRenderer {
           uniforms[name] = () => { this.updateShellCamera(); return this[name] }
         }
       }
-      this.stages = createEnvironmentStages(C, uniforms, this.state.environmentQuality, this.state.cloudGeometry)
+      if(uniformBuffersSupported(this.scene.context)){
+        this.frameUniforms=new UniformBuffer143(this.scene.context._gl,192);this.frameData=new Float32Array(48);this.frameInputs=uniforms
+      }
+      this.stages = createEnvironmentStages(C, uniforms, this.state.environmentQuality, this.state.cloudGeometry,!!this.frameUniforms)
       return this.stages.composite
-    }, () => this.state.cloudGeometry === 'shell')
+    }, () => this.state.cloudGeometry === 'shell',context=>{
+      if(!this.frameUniforms)return []
+      const data=this.frameData,input=this.frameInputs,matrix=input.eyeToLocal(),inverse=context.uniformState.inverseProjection
+      for(let i=0;i<16;i++){data[i]=matrix[i];data[16+i]=inverse[i]}
+      for(const [offset,name]of [[32,'sunDirectionLocal'],[36,'sunRadiance'],[40,'skyRadiance'],[44,'sunDirectionShell']]){
+        const v=input[name]?.()||C.Cartesian3.ZERO;data[offset]=v.x;data[offset+1]=v.y;data[offset+2]=v.z;data[offset+3]=0
+      }
+      this.frameUniforms.update(data)
+      return [{name:'CCREnvironmentFrame',buffer:this.frameUniforms}]
+    },()=>{this.frameUniforms?.destroy();this.frameUniforms=null;this.frameInputs=null;this.frameData=null})
     this.removeUpdate = this.scene.preUpdate.addEventListener(() => this.update())
   }
 

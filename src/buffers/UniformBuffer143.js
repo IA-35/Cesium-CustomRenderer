@@ -73,6 +73,20 @@ export default class UniformBuffer143 {
   }
 }
 
+export function uniformBuffersSupported(context){
+  const gl=context?._gl
+  return !!context?.webgl2&&['createBuffer','deleteBuffer','bindBuffer','bufferData','bufferSubData','getParameter',
+    'getUniformBlockIndex','getProgramParameter','uniformBlockBinding','bindBufferBase','bindBufferRange',
+    'getIndexedParameter','getActiveUniformBlockParameter'].every(key=>typeof gl?.[key]==='function')
+}
+
+// A shader program's uniform-block layout is immutable once linked: block indices,
+// data sizes and the active-block count never change for the life of the program.
+// Cache only that static part so repeated binds (per draw for the sun frame, per
+// frame for AO/SSR/environment) stop re-querying the driver. Current binding values
+// are intentionally re-read each call because they are mutated and restored here.
+const blockLayoutCache = new WeakMap() // WebGLProgram -> { count, blocks: Map<name, {block,size}|null> }
+
 export function withUniformBlocks(gl, programs, bindings, callback) {
   const limit = gl.getParameter(gl.MAX_UNIFORM_BUFFER_BINDINGS)
   if (bindings.length > limit) throw new Error('Not enough uniform buffer bindings')
@@ -82,20 +96,29 @@ export function withUniformBlocks(gl, programs, bindings, callback) {
       // Cesium lazily links programs; this getter initializes without binding it.
       void program.allUniforms
       if (!program._program) throw new Error('Uniform block program not initialized')
+      let layout = blockLayoutCache.get(program._program)
+      if (!layout) {
+        layout = { count: gl.getProgramParameter(program._program, gl.ACTIVE_UNIFORM_BLOCKS), blocks: new Map() }
+        blockLayoutCache.set(program._program, layout)
+      }
       const requested = new Set()
       bindings.forEach(({ name, buffer }, index) => {
         if (buffer.gl !== gl || buffer.isDestroyed()) throw new Error('Unavailable uniform buffer')
-        const block = gl.getUniformBlockIndex(program._program, name)
-        if (block === gl.INVALID_INDEX || block === 0xffffffff) return
-        const size = gl.getActiveUniformBlockParameter(program._program, block, gl.UNIFORM_BLOCK_DATA_SIZE)
-        if (size !== buffer.byteLength) throw new Error(`Uniform block ${name} layout size ${size} differs from ${buffer.byteLength}`)
-        const previous = gl.getActiveUniformBlockParameter(program._program, block, gl.UNIFORM_BLOCK_BINDING)
-        mappings.push({ program: program._program, block, previous, index, applied: false })
-        requested.add(block)
+        let entry = layout.blocks.get(name)
+        if (entry === undefined) {
+          const block = gl.getUniformBlockIndex(program._program, name)
+          entry = (block === gl.INVALID_INDEX || block === 0xffffffff) ? null
+            : { block, size: gl.getActiveUniformBlockParameter(program._program, block, gl.UNIFORM_BLOCK_DATA_SIZE) }
+          layout.blocks.set(name, entry)
+        }
+        if (!entry) return
+        if (entry.size !== buffer.byteLength) throw new Error(`Uniform block ${name} layout size ${entry.size} differs from ${buffer.byteLength}`)
+        const previous = gl.getActiveUniformBlockParameter(program._program, entry.block, gl.UNIFORM_BLOCK_BINDING)
+        mappings.push({ program: program._program, block: entry.block, previous, index, applied: false })
+        requested.add(entry.block)
         used.add(index)
       })
-      const count = gl.getProgramParameter(program._program, gl.ACTIVE_UNIFORM_BLOCKS)
-      for (let block = 0; block < count; block++) {
+      for (let block = 0; block < layout.count; block++) {
         if (!requested.has(block)) occupied.add(gl.getActiveUniformBlockParameter(program._program, block, gl.UNIFORM_BLOCK_BINDING))
       }
     }

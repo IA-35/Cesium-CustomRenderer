@@ -38,7 +38,7 @@ const origin = `http://127.0.0.1:${port}`
         const frames=n=>new Promise(resolve=>{const off=viewer.scene.postRender.addEventListener(()=>{if(--n===0){off();resolve()}})})
         await frames(12)
         const size=[viewer.canvas.width,viewer.canvas.height]
-        const output=pipeline.hdrBloom.collection.outputTexture
+        const output=pipeline.hdrBloom.pooled?.getDiagnostics().output||pipeline.hdrBloom.collection.outputTexture
         const rebuilt=output.width===size[0]&&output.height===size[1]
         pipeline.setScreenSpaceAO({algorithm:'ssao'});await frames(4)
         const ssao=pipeline.getScreenSpaceAODiagnostics().valid

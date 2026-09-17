@@ -2,11 +2,13 @@ import { createFrameBridge } from '../pipeline/FrameBridge143.js'
 import DeferredGeometry143 from './DeferredGeometry143.js'
 import { deferredLightingShaderSource } from './deferredLightingShader143.js'
 import DeferredReflectionTarget143 from './DeferredReflectionTarget143.js'
+import {shadowUniforms} from '../shadows/shadowUniforms143.js'
+import {acquireSunUniforms} from '../buffers/SunUniforms143.js'
 
 export default class DeferredLighting143 {
-  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, prepareReflections=color=>color, getShadowVisibility=()=>null, onGeometryAvailability=()=>{} }={}) {
+  constructor({ Cesium:C, scene, getOptions=()=>({}), prepareAo=()=>null, prepareReflections=color=>color, getShadowVisibility=()=>null, onGeometryAvailability=()=>{},shouldCull=()=>false }={}) {
     if(!C||!scene||!/^1\.143(?:\.0)?$/.test(C.VERSION))throw new Error('Deferred lighting requires Cesium 1.143 and scene')
-    Object.assign(this,{C,scene,getOptions,prepareAo,prepareReflections,getShadowVisibility,onGeometryAvailability,enabled:false,failed:false,destroyed:false,
+    Object.assign(this,{C,scene,getOptions,prepareAo,prepareReflections,getShadowVisibility,onGeometryAvailability,shouldCull,enabled:false,failed:false,destroyed:false,
       reason:'Disabled',error:null,outputFrame:undefined,programs:new Map(),groups:[],targets:new Map()})
     this.materials=new DeferredGeometry143(C,scene,this)
     this.reflections=new DeferredReflectionTarget143(C,scene)
@@ -23,6 +25,7 @@ export default class DeferredLighting143 {
     if(this.enabled||this.failed)return
     try{
       this.enabled=true
+      this.sunUniforms=acquireSunUniforms(this.C,this.scene)
       this.geometryAvailable=undefined
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
       this.off=this.bridge.on('translucent',()=>this.render())
@@ -79,7 +82,7 @@ export default class DeferredLighting143 {
       const state=C.RenderState.fromCache(options)
       let command
       try{
-        command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,{...group,reflection}),{renderState:state})
+        command=ctx.createViewportQuadCommand(deferredLightingShaderSource(C,{...group,reflection,cascades:true,sunUbo:!!this.sunUniforms}),{renderState:state})
         const saved=ctx._gl.getParameter(ctx._gl.CURRENT_PROGRAM)
         try{command.shaderProgram._bind()}finally{ctx._gl.useProgram(saved)}
         entry={command,options};this.programs.set(key,entry)
@@ -148,8 +151,7 @@ export default class DeferredLighting143 {
           model_iblFactor:()=>group.factor,model_iblReferenceFrameMatrix:()=>group.reference,
           model_sphericalHarmonicCoefficients:()=>group.sh,model_specularEnvironmentMaps:()=>group.probe,
           model_specularEnvironmentMapsMaximumLOD:()=>group.lod,
-          campus_shadowDepth:()=>shadow?.texture||this.white,campus_eyeToShadow:()=>shadow?.matrix||C.Matrix4.IDENTITY,
-          campus_shadowParams:()=>shadow?.params||new C.Cartesian4(0,0,1,0),
+          ...shadowUniforms(C,this.scene,()=>shadow,()=>this.white),
         }
         command.execute(ctx,state)
         this.stats.draws++
@@ -187,6 +189,7 @@ export default class DeferredLighting143 {
     if(this.white&&!this.white.isDestroyed())this.white.destroy();this.white=null
     this.groups=[];this.groupFrame=undefined;this.outputFrame=undefined
     this.reflections.destroy();this.reflectionFrame=undefined
+    this.sunUniforms?.release();this.sunUniforms=null
   }
   getReflectionTextures(){
     const t=this.reflections.target

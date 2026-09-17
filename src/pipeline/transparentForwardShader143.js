@@ -1,12 +1,13 @@
 import {receiverSource,pcf} from '../shadows/shaderAdapter143.js'
 
-export function forwardShader(C,source,family){
+export function forwardShader(C,source,family,sunUbo=false){
   const fs=source.fragmentShaderSource,defines=new Set(fs.defines||[])
   if(family==='model'){
     if(['HAS_CUSTOM_FRAGMENT_SHADER','HAS_CUSTOM_VERTEX_SHADER','CUSTOM_SHADER_REPLACE_MATERIAL','USE_CLEARCOAT','USE_ANISOTROPY','USE_SPECULAR','USE_CUSTOM_LIGHT_COLOR'].some(d=>defines.has(d)))return null
-    const result=receiverSource(C,fs)
+    const result=receiverSource(C,fs,false,true,sunUbo)
     if(result)result.sources=result.sources.map(s=>s.replace('directLighting * campus_shadowVisibility(position, normal);','directLighting * campus_shadowVisibility(position, normal) * ccr_forwardTerms.x;')
-      .replace('vec3 color = directColor + material.emissive;','vec3 color = directColor + material.emissive * ccr_forwardTerms.z;'))
+      .replace('vec3 color = directColor + material.emissive;','vec3 color = directColor + material.emissive * ccr_forwardTerms.z;')
+      .replaceAll('= czm_lightColorHdr;','= CCR_LIGHT_COLOR_HDR;').replaceAll('normalize(czm_lightDirectionEC)','normalize(CCR_LIGHT_DIRECTION_EC)'))
     return result
   }
   const result=fs.clone()
@@ -16,6 +17,8 @@ export function forwardShader(C,source,family){
     return result
   }
   if(family!=='water'||defines.has('FLAT'))return null
+  result.defines.push('CCR_SHADOW_CASCADES')
+  if(sunUbo)result.defines.push('CCR_SUN_UBO')
   const stages=[C._shadersAllMaterialAppearanceFS,C._shadersEllipsoidSurfaceAppearanceFS].filter(Boolean)
   if(!fs.sources.some(s=>stages.some(stage=>s.includes(stage.trim()))))return null
   result.defines.push('DIFFUSE_IBL','SPECULAR_IBL','CUSTOM_SPHERICAL_HARMONICS','CUSTOM_SPECULAR_IBL')
@@ -35,7 +38,7 @@ vec4 ccr_waterLighting(vec3 toEye,czm_material water,vec3 position) {
   material.specular=vec3(0.02)*clamp(water.specular,0.0,1.0);
   material.roughness=clamp(sqrt(2.0/(water.shininess+2.0)),0.04,1.0);
   material.occlusion=1.0;
-  vec3 direct=czm_lightColorHdr*czm_pbrLighting(toEye,material.normalEC,normalize(czm_lightDirectionEC),material);
+  vec3 direct=CCR_LIGHT_COLOR_HDR*czm_pbrLighting(toEye,material.normalEC,normalize(CCR_LIGHT_DIRECTION_EC),material);
   direct*=campus_shadowVisibility(position,material.normalEC)*ccr_forwardTerms.x;
   vec3 indirect=textureIBL(toEye,material.normalEC,material);
   return vec4(direct+indirect+water.emission*ccr_forwardTerms.z,water.alpha);

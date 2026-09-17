@@ -1,5 +1,7 @@
 import { forwardShader } from './transparentForwardShader143.js'
 import { createFrameBridge } from './FrameBridge143.js'
+import {shadowUniforms} from '../shadows/shadowUniforms143.js'
+import {acquireSunUniforms} from '../buffers/SunUniforms143.js'
 
 // Own only the derived shader and added uniforms. Vertex transforms, material
 // evaluation, alpha/discard, depth, picking and OIT remain with the engine.
@@ -25,6 +27,7 @@ export default class TransparentForward143 {
     if(!value){this.enabled=false;this.detach();this.failed=false;this.error=null;this.reason='Disabled';return}
     if(this.enabled||this.failed)return
     try{
+      this.sunUniforms=acquireSunUniforms(this.C,this.scene)
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
       this.offCommand=this.bridge.onCommand(command=>this.applyTo(command))
       this.offResolve=this.bridge.on('resolve',()=>this.endFrame())
@@ -97,7 +100,7 @@ export default class TransparentForward143 {
     if(this.programs.has(key))return this.programs.get(key)
     let program=null
     try{
-      const fs=forwardShader(this.C,source,family)
+      const fs=forwardShader(this.C,source,family,!!this.sunUniforms)
       if(fs){
         fs.sources.unshift('uniform vec4 ccr_forwardTerms;')
         program=this.C.ShaderProgram.fromCache({context:this.scene.context,vertexShaderSource:source.vertexShaderSource,fragmentShaderSource:fs,attributeLocations:source._attributeLocations})
@@ -118,9 +121,7 @@ export default class TransparentForward143 {
     const C=this.C,original=record.originalUniforms||{}
     const merged={...original,ccr_forwardTerms:()=>this.terms(),
       ccr_forwardActive:()=>!this.scopeReason(),
-      campus_shadowDepth:()=>this.shadow()?.texture||this._whiteTexture(),
-      campus_eyeToShadow:()=>this.shadow()?.matrix||C.Matrix4.IDENTITY,
-      campus_shadowParams:()=>this.shadow()?.params||this._noShadowParams()}
+      ...shadowUniforms(C,this.scene,()=>this.shadow(),()=>this._whiteTexture())}
     // Native IBL evaluation and its per-model probe/reference frame stay intact.
     if(original.model_iblFactor){
       const factor=new C.Cartesian2()
@@ -191,6 +192,7 @@ export default class TransparentForward143 {
     this.proxy=null
     if(this.onLost)this.scene.canvas?.removeEventListener('webglcontextlost',this.onLost)
     this.onLost=null;this.release()
+    this.sunUniforms?.release();this.sunUniforms=null
   }
   fail(error){this.enabled=false;this.failed=true;this.error=error.message||String(error);this.reason=this.error+'; disable before retrying';this.detach()}
   getDiagnostics(){return {enabled:this.enabled,failed:this.failed,error:this.error,valid:!this.scopeReason()&&this.outputFrame===this.scene.frameState.frameNumber,

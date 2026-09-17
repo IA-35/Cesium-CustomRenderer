@@ -1,5 +1,6 @@
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { prefilterShader, downsampleShader, upsampleShader, bloomResolveShader } from './bloomShaders143.js'
+import {installPooledStageCache} from '../pipeline/PooledStageCache143.js'
 
 let nextId = 0
 
@@ -15,6 +16,7 @@ export default class HdrBloom143 {
 
   _createStages() {
     const C = this.C, name = `hdr_bloom_${++nextId}`
+    this.poolRequested=this.getOptions().renderTargetPoolEnabled!==false
     this.levels = this.getOptions().hdrBloomLevels ?? 5
     const make = (suffix, shader, scale, uniforms) => new C.PostProcessStage({
       name: `${name}_${suffix}`, fragmentShader: shader, uniforms, textureScale: scale,
@@ -43,11 +45,12 @@ export default class HdrBloom143 {
     this.collection.bloom.enabled = false
     this.collection.ambientOcclusion.enabled = false
     this.collection.add(this.composite)
+    if(this.getOptions().renderTargetPoolEnabled!==false)this.pooled=installPooledStageCache(C,this.scene,this.collection,stages,'bloom')
   }
 
   setEnabled(value) {
     if (this._dead()) return
-    if (value && this.enabled && this.levels !== (this.getOptions().hdrBloomLevels ?? 5)) this._release()
+    if (value && this.enabled && (this.levels !== (this.getOptions().hdrBloomLevels ?? 5)||this.poolRequested!==(this.getOptions().renderTargetPoolEnabled!==false))) this._release()
     if (!value) {
       this._release(); this.failed = false; this.reason = 'Disabled'
     } else if (!this.enabled && !this.failed && this.supported) {
@@ -76,21 +79,23 @@ export default class HdrBloom143 {
     this.outputFrame = undefined
     const reason = this._scopeReason()
     if (reason || this.getOptions().hdrBloomStrength === 0) {
+      this.pooled?.releaseFrame()
       this.reason = reason || 'Zero strength'; this.stats.bypasses++; return color
     }
     const viewport = this.C.BoundingRectangle.clone(context.uniformState.viewport)
     try {
       this.inputColor = color
+      this.pooled?.begin(color)
       this.collection.update(context, this.scene.frameState.useLogDepth, false)
       this.collection.clear(context)
-      if (!this.collection.ready || !this.composite.ready) { this.reason = 'Not ready'; return color }
+      if (!this.collection.ready || !this.composite.ready) { this.reason = 'Not ready';this.pooled?.releaseFrame(); return color }
       this.collection.execute(context, color, depth, id)
       if (!this.collection.outputTexture) { this.reason = 'No output'; return color }
       this.outputFrame = this.scene.frameState.frameNumber
       this.stats.frames++; this.reason = null
       return this.collection.outputTexture
     } catch (error) { this._fail(error); return color }
-    finally { context.uniformState.viewport = viewport }
+    finally { this.pooled?.end();context.uniformState.viewport = viewport }
   }
 
   getDiagnostics() {
@@ -98,7 +103,8 @@ export default class HdrBloom143 {
     return { enabled: this.enabled, supported: this.supported, failed: this.failed, error: this.error,
       valid: !this._scopeReason() && this.outputFrame !== undefined && this.outputFrame === this.scene.frameState.frameNumber,
       reason: this._scopeReason() || this.reason, levels: this.levels || 0, stats: { ...this.stats },
-      bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0), scope: 'linear HDR bloom before TAA and native tone mapping' }
+      bytes: this.pooled?this.pooled.getDiagnostics().bytes:[...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0),
+      pooled:this.pooled?.getDiagnostics(),scope: 'linear HDR bloom before TAA and native tone mapping' }
   }
 
   _fail(error) { this.error = error.message; this._release(); this.failed = true; this.reason = 'Bloom failed; disable before retrying' }
@@ -107,7 +113,7 @@ export default class HdrBloom143 {
     if (this.detach) this.detach()
     this.detach = undefined
     if (this.collection && !this.collection.isDestroyed()) this.collection.destroy()
-    this.collection = undefined; this.composite = undefined; this.stages = undefined; this.inputColor = undefined
+    this.collection = undefined; this.composite = undefined; this.stages = undefined; this.inputColor = undefined;this.pooled=null
   }
   isDestroyed() { return this.destroyed }
   destroy() { if (!this.destroyed) { this._release(); this.destroyed = true } }

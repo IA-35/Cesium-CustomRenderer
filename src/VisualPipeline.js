@@ -13,6 +13,8 @@ import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import TransparentForward143 from './pipeline/TransparentForward143.js'
+import {peekRenderTargetPool} from './pipeline/RenderTargetPool143.js'
+import OcclusionCulling143 from './visibility/OcclusionCulling143.js'
 import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
 import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
@@ -62,6 +64,7 @@ export default class VisualPipeline {
   }
 
   restore() {
+    this.occlusionCulling?.setEnabled(false)
     if (this.transparentForward) this.transparentForward.setEnabled(false)
     if (this.deferredLighting) this.deferredLighting.setEnabled(false)
     if (this.fxaa) this.fxaa.setEnabled(false)
@@ -102,7 +105,8 @@ export default class VisualPipeline {
     this.write(s.globe, 'enableLighting', true)
     if (o.shadowMode === 'custom') {
       this.write(v.shadowMap, 'enabled', false)
-      if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options)
+      if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options,
+        () => !!this.transparentForward?.enabled && !this.transparentForward.scopeReason())
       this.customShadow.setEnabled(o.shadows)
     } else {
       if (!this.shadowMap) this.shadowMap = createCampusShadowMap(C, v, o)
@@ -164,6 +168,7 @@ export default class VisualPipeline {
     } else if (this.environmentRenderer) this.environmentRenderer.setEnabled(false)
     this.applyGeometry()
     this.applyLighting()
+    this.applyOcclusionCulling()
     this.applyMaterialChannels()
     this.applyScreenSpaceReflections()
     this.applyTransparentReflections()
@@ -197,6 +202,10 @@ export default class VisualPipeline {
         getShadowVisibility: () => this._deferredShadowVisibility(),
         onGeometryAvailability: () => this.applyMaterialChannels(),
         prepareReflections: color => this.screenSpaceReflections?.enabled ? this.screenSpaceReflections.prepareOpaque(this.viewer.scene.context,color) : color,
+        shouldCull: command => {
+          if(!this.occlusionCulling?.shouldCull(command))return false
+          this.occlusionCulling.recordSkip(command);return true
+        },
       })
     }
     if (this.deferredLighting) {
@@ -254,6 +263,7 @@ export default class VisualPipeline {
         },
       })
     }
+    if(requested&&!this.transparentForward?.enabled)this.customShadow?.adapter.restoreTranslucent()
     if (this.transparentForward) this.transparentForward.setEnabled(requested)
   }
 
@@ -266,6 +276,7 @@ export default class VisualPipeline {
   _deferredShadowVisibility() {
     const shadow = this.customShadow
     if (!shadow?.enabled || !shadow.ready || !shadow.target) return null
+    if(shadow.getReceiverData)return shadow.getReceiverData(this.viewer.camera)
     const C = this.Cesium
     return { texture: shadow.target.depth, matrix: shadow.light.receiverMatrix(this.viewer.camera),
       params: new C.Cartesian4(1 / shadow.target.size, shadow.light.texelWorld, shadow.light.depthSpan, 1) }
@@ -294,6 +305,22 @@ export default class VisualPipeline {
   }
 
   getOptions() { return { ...this.options } }
+  applyOcclusionCulling(){
+    if(this.destroyed)return
+    if(this.options.occlusionCullingEnabled&&!this.occlusionCulling)this.occlusionCulling=new OcclusionCulling143(this.Cesium,this.viewer.scene,()=>this.getActiveMaterialChannels(),()=>this.applyMaterialChannels())
+    this.occlusionCulling?.setEnabled(!!this.options.occlusionCullingEnabled&&this.enabled&&!this.suspensions.size)
+  }
+  setOcclusionCulling(settings={}){if(this.destroyed)return this.getOcclusionDiagnostics();this.options=normalizeOptions({occlusionCullingEnabled:settings.enabled},this.options);this.applyOcclusionCulling();this.applyMaterialChannels();return this.getOcclusionDiagnostics()}
+  getOcclusionDiagnostics(){return this.occlusionCulling?.getDiagnostics()||{enabled:false,hidden:0,pending:0,reason:'Not requested'}}
+  getResourcePoolDiagnostics(){return peekRenderTargetPool(this.viewer.scene.context)?.getDiagnostics()||{live:0,targets:0,currentBytes:0,peakBytes:0,allocated:0,reused:0,crossReused:0}}
+  getFrameUniformDiagnostics(){
+    const entries=new Map()
+    const add=(consumer,buffer)=>{if(!buffer||buffer.isDestroyed())return;let entry=entries.get(buffer);if(!entry){entry={...buffer.getDiagnostics(),consumers:[]};entries.set(buffer,entry)}entry.consumers.push(consumer)}
+    for(const [name,pass]of [['ao',this.screenSpaceAO],['ssr',this.screenSpaceReflections],['transparentSsr',this.transparentReflections]])add(name+'.camera',pass?.cameraUniforms?.buffer)
+    for(const [name,pass]of [['shadow',this.customShadow],['deferred',this.deferredLighting],['transparent',this.transparentForward]])add(name+'.sun',pass?.sunUniforms?.buffer)
+    add('environment.activeViewAndSolar',this.environmentRenderer?.frameUniforms)
+    return {buffers:[...entries.values()],bytes:[...entries.values()].reduce((n,e)=>n+e.bytes,0),uploadBytes:[...entries.values()].reduce((n,e)=>n+e.uploadedBytes,0),bufferSubDataCalls:[...entries.values()].reduce((n,e)=>n+e.uploads,0)}
+  }
   getColorGrading() {
     return Object.fromEntries(Object.keys(defaultFilters).map(key => [key, this.options[key]]))
   }
@@ -304,9 +331,10 @@ export default class VisualPipeline {
       this.viewer.scene.orderIndependentTranslucency && this.options.antialiasing !== 'taa' &&
       !this.deferredLighting?.failed && this.deferredLighting?.geometryAvailable !== false
     const depthPyramidEnabled = this.options.depthPyramidEnabled || ((this.options.screenSpaceAoEnabled || this.options.screenSpaceReflectionEnabled) && !inline)
-    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled
+    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled || !!(this.occlusionCulling?.needsDepth&&!inline)
     if (enabled && !this.materialChannels) {
       this.materialChannels = new MaterialChannels143(this.Cesium, this.viewer.scene)
+      this.materialChannels.shouldCull=command=>!!this.occlusionCulling?.shouldCull(command)
     }
     if (this.materialChannels) {
       if (this.materialChannels.setDepthPyramidEnabled) this.materialChannels.setDepthPyramidEnabled(depthPyramidEnabled)
@@ -556,6 +584,7 @@ export default class VisualPipeline {
       resolution: renderResolution(this.viewer), geometry: this.getGeometryDiagnostics(), materials: this.getMaterialDiagnostics(),
       albedo: this.getAlbedoDiagnostics(),
       lighting: this.getLightingDiagnostics(),
+      occlusion: this.getOcclusionDiagnostics(), resourcePool: this.getResourcePoolDiagnostics(), frameUniforms: this.getFrameUniformDiagnostics(),
       taa: this.getTaaDiagnostics(),
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
@@ -698,6 +727,7 @@ export default class VisualPipeline {
       this.viewer.scene.requestRender()
     }
     pipelines.delete(this.viewer)
+    this.occlusionCulling?.destroy()
     // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
     if (this.transparentForward) this.transparentForward.destroy()
     if (this.deferredLighting) this.deferredLighting.destroy()

@@ -1,13 +1,15 @@
 import { registerHdrEffect } from './HdrCoordinator143.js'
+import {withUniformBlocks} from '../buffers/UniformBuffer143.js'
 
 // Cesium 1.143 adapter: execute independent float stages before native tone mapping.
 export default class HdrEnvironmentPass143 {
-  constructor(C, scene, createComposite, allowEmptyFrustum = () => false) {
+  constructor(C, scene, createComposite, allowEmptyFrustum = () => false, prepareFrame=()=>[], releaseFrame=()=>{}) {
     if (!/^1\.143(?:\.0)?$/.test(C.VERSION)) throw new Error('HdrEnvironmentPass143 requires Cesium 1.143')
     this.C = C
     this.scene = scene
     this.createComposite = createComposite
     this.allowEmptyFrustum = allowEmptyFrustum
+    this.prepareFrame=prepareFrame;this.releaseFrame=releaseFrame
     this.collection = undefined
     this.composite = undefined
     this.inputColor = undefined
@@ -108,7 +110,10 @@ export default class HdrEnvironmentPass143 {
       collection.update(context, this.scene.frameState.useLogDepth, false)
       collection.clear(context)
       if (collection.ready && this.composite.ready) {
-        collection.execute(context, color, depth, id)
+        const bindings=this.prepareFrame(context),programs=[]
+        const collect=stage=>{if(typeof stage.length==='number')for(let i=0;i<stage.length;i++)collect(stage.get(i));else if(stage._command)programs.push(stage._command.shaderProgram)}
+        if(bindings.length){collect(this.composite);withUniformBlocks(context._gl,programs,bindings,()=>collection.execute(context,color,depth,id))}
+        else collection.execute(context, color, depth, id)
         if (collection.outputTexture) {
           output = collection.outputTexture
           this._valid = true
@@ -154,6 +159,7 @@ export default class HdrEnvironmentPass143 {
         this.error = this.error || (error instanceof Error ? error.message : String(error))
       }
     }
+    this.releaseFrame()
   }
 
   getDiagnostics() {
