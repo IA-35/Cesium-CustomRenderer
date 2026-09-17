@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "522597ed2a68e69742bdae21009ab87fcc44d5ce",
+  "sourceCommit": "9e247c3039a6e94ec93a8e92028a71f9d50da9df",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b",
@@ -44,6 +44,7 @@
     "src/channels/MaterialTarget143.js": "3027b219d488e02897aa04f3a6c46015adf14fb5daaac6928d41a44039975fcb",
     "src/channels/reflectionShader143.js": "cf53c365a41cb49e41f895e7e045dccd102f248511c0ac5c3eade7376eb441e5",
     "src/channels/ScreenSpaceGeometry143.js": "b7673f4d33aa56010b0b3e5d0b1fdad704e480f81a3d30fe1f4bc0b887fa6b7e",
+    "src/diagnostics/capabilityMatrix143.js": "ad86be7ba5a194c7166d0f3b7fd00e8714f2ed506375d532167401261ebf1110",
     "src/diagnostics/GpuTimer.js": "468357a0924e513d6956286ac97caca1784bbf520545db62a072d92f8c7a244b",
     "src/diagnostics/RenderProfiler143.js": "3bffa7969ce555a2d1f107d98c3da096a32e2302ce3aa7001dd01e98cd5e7e57",
     "src/diagnostics/SampleGuard.js": "22615eb91b42ab0c2ee17a32eb31d043489a441400d0a94cbc95f119ec80258a",
@@ -92,9 +93,9 @@
     "src/stages/toneMapping143.js": "51561c2a6152561e1e83ee91a5fafdde4de5b1419e25085864d5de3d1c8b14c6",
     "src/visibility/OccluderCache143.js": "aee3f80dcd6029d785137f0f109df83a4aeb7a2683fe7715261a049ac8c5881a",
     "src/visibility/OcclusionCulling143.js": "434c8dcf253d41b9cacf8b8f3214fd949c4859df8ca7025769e460c181235bda",
-    "src/VisualPipeline.js": "5aff9cce06b05cc966ad2bf5965ebdfe8670b03a351c7683f0c7b46ad101c2d4"
+    "src/VisualPipeline.js": "c289b113c3d3b41150dc777088f3b4f816077721e809030d642381688702c0d3"
   },
-  "bytes": 449469,
-  "gzipBytes": 148038,
-  "sha256": "e5b98b05f3d218b3d1ba52a6460e949fac61d73eaff451923c88e4f9deb42c82"
+  "bytes": 455501,
+  "gzipBytes": 149816,
+  "sha256": "70570c64fdd02a3f103afd6d43de642724b703e2a2961cc3f4c1276c270b31c4"
 }

@@ -100,3 +100,64 @@ node scripts/check-stage1-baseline.cjs --target fixtures --mode update --configu
 ## 8. B03 完成验收
 
 透明前向修复、延迟环境镜面 SSR 替换、水/粒子、MASK/异步 tile/style/选中轮廓及显式兼容矩阵已通过。当前证据与复现入口见 [B03_COMPLETION.md](B03_COMPLETION.md) 和 [B03_VALIDATION.json](B03_VALIDATION.json)。原 stage1-B03 首轮报告保留为历史，不能代替修复后的验收。
+
+## 9. B04–B06 完成验收
+
+相机跟随级联阴影、共享 FBO/UBO 资源复用、实际对象遮挡剔除及缓存见 [B04_B06_EXECUTION.md](B04_B06_EXECUTION.md) 与 [B05_RESOURCE_LEDGER.md](B05_RESOURCE_LEDGER.md)。**须注意其后有性能回退**：复杂场景实测三级级联与太阳 UBO 导致帧率骤降，默认已回退为 `shadowCascades:1, shadowSize:4096`；三级级联与太阳 UBO 仍可显式启用。
+
+## 10. B07–B12 完成验收
+
+| 批次 | 结论 | 证据 |
+| --- | --- | --- |
+| B07 SSR 材质/水面/积水覆盖 | 完成 | [B07_COMPLETION.md](B07_COMPLETION.md)、[B07_RECONNAISSANCE.md](B07_RECONNAISSANCE.md) |
+| B08 全局地理高度雾与介质遮挡 | 完成主体 | [B08_COMPLETION.md](B08_COMPLETION.md)、[B08_RECONNAISSANCE.md](B08_RECONNAISSANCE.md) |
+| B09 Tonemap 与镜头效果 | 完成主体 | [B09_COMPLETION.md](B09_COMPLETION.md)、[B09_RECONNAISSANCE.md](B09_RECONNAISSANCE.md) |
+| B10 TAA 稳定性收口 | **暂缓（按用户指示）** | 未实现 |
+| B11 生命周期/能力降级/默认策略 | 完成主体 | [B11_COMPLETION.md](B11_COMPLETION.md) |
+| B12 场景矩阵验收与 SDK 候选产物 | 完成主体 | [B12_COMPLETION.md](B12_COMPLETION.md) |
+
+### 固定负载性能（B12）
+
+1920×1080、三条固定镜头轨迹、当地正午。判定使用 **GPU 中位时间**
+（`EXT_disjoint_timer_query_webgl2`），因为实测 headless 下 rAF 被 vsync 锁在
+~60 FPS，三配置 FPS 几乎相同（59.47/59.99/59.96），**无区分力**；rAF 抖动
+达 4.8–77 ms，p95 亦不可用。旧/新阈值与原因见
+[B12_COMPLETION.md](B12_COMPLETION.md)，非静默放宽。
+
+| 配置 | GPU 中位 | 门槛 |
+| --- | --- | --- |
+| 隔离基线 | 1.16 ms | 参考 |
+| CCR 默认 | **7.03 ms** | ≤33.3 ms ✓ |
+| 效果组合 | **12.60 ms** | 增量 11.43 ms ≤ 14.33 ms ✓ |
+
+ESM 与 UMD 在相同配置下**图像逐字节相同**（哈希 `b0b06c3437e824cf`），
+导出为超集关系（UMD 追加 4 个白名单便利导出）。`npm pack --dry-run`
+为 99 文件 / 259.4 kB，私有资产零泄漏。
+
+## 11. 产物与命名边界
+
+当前产物：`build/0.1.0/`（`CCR.min.js` 455501 字节、gzip 149816、sha256
+`70570c64fdd02a3f103afd6d43de642724b703e2a2961cc3f4c1276c270b31c4`、
+manifest、example.html、许可证）。版本 `0.1.0`。
+
+**B13（5000+ 延迟光源）仍暂缓**，因此产物名称与说明**不得**称「原始目标全部完成」。
+本文件与各批次完成报告一律按「阶段一当前范围」表述。
+
+## 12. 阶段一当前范围的公开未完成项
+
+以下按批次汇总，逐条均在各完成报告中有详细说明，**未勾选**对应主计划复选框：
+
+| 批次 | 未完成内容 |
+| --- | --- |
+| B02 | MSAA 延迟几何接管（现为安全回退）；排序透明的不透明延迟接点与 TAA 组合 |
+| B03 | 旧宿主 GPU 夹具迁移 |
+| B04 | 三级级联与太阳 UBO 默认已回退（性能原因），仅可显式启用 |
+| B07 | 「SSR 关/开基础 PBR 色差 ≤0.01/≤2%」未单独测量；粗糙度梯度图像验证；相机旋转/俯仰/近远序列 |
+| B08 | 多视锥透明分段**未接入渲染路径**；透明片元按自身距离读取介质；云雾真正分段 T/S 合成；云层档位未改 12–50 km；全球测试未含山区/云下中上/高空俯视 |
+| B09 | 景深焦带/深度断层测试；光斑图案化外观；完整 HDR 色阶矩阵；未复用 Cesium blur/DoF stage（因二次 gamma 风险，走计划给出的适配出口） |
+| B10 | **整批暂缓**（用户指示） |
+| B11 | context-loss **恢复链路无法验证**（环境不触发 `webglcontextrestored`）；完整 30 分钟压力运行；tile 异步/外部 wrapper 未纳入本批脚本；能力矩阵未在真实受限设备（4/6 槽）上跑过 |
+| B12 | 完整性能参数（30 s/60 s/3 轮）运行；逐条画质验收；场景交互矩阵复验；离线最小消费者 UMD 验证；`effects-combined` 像素基线 |
+| B13 | **整批暂缓**（5000+ 延迟光源） |
+
+**阶段一原始目标完整完成仍需要 B13**；当前范围候选产物**不等于**原始目标全部完成。
