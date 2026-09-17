@@ -60,7 +60,14 @@ export default class OcclusionCulling143 {
     const C=this.C,s=this.scene,commands=[]
     this.frame=s.frameState.frameNumber;this.stats.skippedDraws=0;this.stats.skippedTriangles=0
     if(s.mode!==C.SceneMode.SCENE3D||!(s.camera.frustum instanceof C.PerspectiveFrustum)||s._environmentState.useWebVR||s._environmentState.useInvertClassification||s._globeTranslucencyState?.translucent){this.reset();this.setDemand(false);this.reason='Unsupported view or classification remains visible';return}
-    for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.OPAQUE,C.Pass.CESIUM_3D_TILE])for(let i=0;i<(bin.indices[pass]||0);i++)commands.push(bin.commands[pass][i])
+    // Apply scene.debugCommandFilter here too: it only suppresses drawing
+    // inside Scene.executeCommand, so ignoring it here would let the cache
+    // keep hiding objects that were occluded by a wall that is now filtered
+    // out (the command list and content revision do not change on their own).
+    // Excluding filtered commands makes the cache signature change, which bumps
+    // the revision and invalidates the stale hidden state (review R6).
+    const filter=s.debugCommandFilter
+    for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.OPAQUE,C.Pass.CESIUM_3D_TILE])for(let i=0;i<(bin.indices[pass]||0);i++){const command=bin.commands[pass][i];if(!filter||filter(command))commands.push(command)}
     const snapshot=this.cache.update([...new Set(commands)]),key=this.viewKey()+':'+snapshot.revision
     if(key!==this.key){
       this.reset();this.key=key;this.stats.invalidations++;this.stableFrames=0
@@ -94,7 +101,8 @@ export default class OcclusionCulling143 {
   shouldCull(command){
     const s=this.scene
     return this.enabled&&this.frame===s.frameState.frameNumber&&s.frameState.passes.render&&!s.frameState.passes.pick&&!s.frameState.passes.depth&&
-      [this.C.Pass.OPAQUE,this.C.Pass.CESIUM_3D_TILE].includes(command.pass)&&this.states.get(command.owner)?.hidden===true
+      [this.C.Pass.OPAQUE,this.C.Pass.CESIUM_3D_TILE].includes(command.pass)&&this.states.get(command.owner)?.hidden===true&&
+      (!s.debugCommandFilter||s.debugCommandFilter(command))
   }
   recordSkip(command){this.stats.skippedDraws++;this.stats.skippedTriangles+=(command.count||0)*(command.instanceCount||1)/(command.primitiveType===this.C.PrimitiveType.TRIANGLES?3:1)}
   createCommands(){
