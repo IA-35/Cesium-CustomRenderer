@@ -51,6 +51,12 @@ precision highp float;
 layout(location = 1) out vec4 ccr_primitiveEmissiveFlags;
 layout(location = 2) out float ccr_primitiveDepth;
 layout(location = 3) out float ccr_primitiveCoverage;
+// R8：从 computeWaterColor 内部捕获的**实际波浪法线**（眼空间）。
+// 该法线由 u_oceanNormalMap + czm_frameNumber 动画计算，参与水面漫反射与高光；
+// B07 要求「同一次法线采样驱动照明和反射」。默认指向 +Z（无波浪时的地表法线方向），
+// 只有在 computeWaterColor 真正写出后才替换，避免再采样产生时间差。
+vec3 ccr_globeWaveNormalEC = vec3(0.0, 0.0, 1.0);
+float ccr_globeWaveNormalValid = 0.0;
 float ccr_primitiveRoughness(float shininess) { return ${ROUGHNESS_FROM_SHININESS}; }
 vec3 ccr_primitiveF0(float specular) { return ${F0_FROM_SPECULAR}; }
 vec2 ccr_primitiveOctNormal(vec3 normalEC) {
@@ -283,7 +289,8 @@ void ccr_primitiveOutputs(czm_material material, vec4 nativeColor, float eyeDept
  *   * 影像/水体颜色**完全保留**，写入 opaqueColor 供透明合成使用；
  *   * 只有 water mask > 0.5 的片元成为反射接收端（flags 置 SURFACE|NORMAL_VALID
  *     且反射响应非零）；非水地面 flags 保持 0，既不参与 SSR 也不被金属化；
- *   * 法线使用 GlobeFS 自身计算的地表法线插值，不另造一套。
+ *   * 法线优先使用 computeWaterColor 内部捕获的**波浪法线**（R8），
+ *     与驱动水面漫反射/高光是同一次采样；无反射海洋或无波浪时回退地表法线。
  */
 export function globeWaterSources(C, program, { reflection = false, opaqueColor = false } = {}) {
   const vs = program && program.vertexShaderSource
@@ -323,17 +330,26 @@ export function globeWaterSources(C, program, { reflection = false, opaqueColor 
   // 区间自洽校验：命中的片段必须真的含最终输出与水面掩码 uniform 声明。
   if (!/u_waterMask/.test(source)) return null
   void matched
+  // R8：捕获 computeWaterColor 内部计算出的**实际波浪法线**。
+  // `vec3 normalEC = enuToEye * normalTangentSpace;` 是 computeWaterColor 里唯一
+  // 把切线空间波浪法线转到眼空间的那一行（GlobeFS.js:661），它由 u_oceanNormalMap
+  // 与 czm_frameNumber 动画采样而来，同时驱动水面的漫反射与高光。B07 要求
+  // 「同一次法线采样驱动照明和反射」，所以这里**捕获而非再采样**，避免时间差。
+  // 仅当 SHOW_REFLECTIVE_OCEAN 定义时 computeWaterColor 才存在；未定义时无波浪，
+  // 回退到 v_normalEC 是正确行为（地表法线即水面法线）。
+  const waveCapture = 'ccr_globeWaveNormalEC = normalEC; ccr_globeWaveNormalValid = 1.0;'
+  const waveAnchor = /\bvec3\s+normalEC\s*=\s*enuToEye\s*\*\s*normalTangentSpace\s*;/
+  const captured = waveAnchor.test(source)
+    ? source.replace(waveAnchor, match => `${match} ${waveCapture}`) : source
   // 采样必须照抄 GlobeFS:392-397 —— 同样的 scale/translation 与 y 翻转。
   // 这里重新采样而不是复用 `mask` 变量：`mask` 声明在
   // `#if defined(HAS_WATER_MASK) && (SHOW_REFLECTIVE_OCEAN || APPLY_MATERIAL)`
   // 块内（GlobeFS.js:391-412），在 out_FragColor 处已经超出作用域，
   // 直接引用会编译失败。水掩码纹理是同一张，重新采样结果一致。
   //
-  // 法线同理不能直接用 `normalEC`：它由 `SHOW_REFLECTIVE_OCEAN ||
-  // ENABLE_DAYNIGHT_SHADING || HDR` 保护（GlobeFS.js:339-342），
-  // 对该组合不成立时会未声明。`v_normalEC` 由 GlobeVS 无条件输出
-  // （GlobeVS.js:209），因此以它为准。
-  const patched = source.replace(marker, `{
+  // 法线现在优先用 computeWaterColor 捕获的波浪法线（R8）；该捕获仅在
+  // SHOW_REFLECTIVE_OCEAN + 波浪存在时写入，否则回退到 v_normalEC 地表法线。
+  const patched = captured.replace(marker, `{
     vec4 ccr_globeColor = finalColor;
     vec2 ccr_globeUv = v_textureCoordinates.xy * u_waterMaskTranslationAndScale.zw + u_waterMaskTranslationAndScale.xy;
     ccr_globeUv.y = 1.0 - ccr_globeUv.y;
@@ -348,10 +364,13 @@ export function globeWaterSources(C, program, { reflection = false, opaqueColor 
     // 而整水掩码恰好通过——形成「整水用例绿、逐像素用例红」的假象，
     // 实测就是这样先误导了一轮排查。
     bool ccr_globeIsWater = ccr_globeWater > 0.0;
-    vec3 ccr_globeNormal = dot(v_normalEC, v_normalEC) > 1.0e-12 ? normalize(v_normalEC) : vec3(0.0, 0.0, 1.0);
+    // R8：优先用 computeWaterColor 捕获的波浪法线；未捕获（无反射海洋/无波浪）回退地表法线。
+    vec3 ccr_globeWave = (ccr_globeWaveNormalValid > 0.5 && ccr_globeIsWater)
+      ? normalize(ccr_globeWaveNormalEC)
+      : (dot(v_normalEC, v_normalEC) > 1.0e-12 ? normalize(v_normalEC) : vec3(0.0, 0.0, 1.0));
     // 只有水域成为反射接收端：flags = SURFACE|NORMAL_VALID = 3，非水地面为 0。
     // 非水地面因此既不参与 SSR，也不被金属化，影像颜色原样进入 opaqueColor。
-    out_FragColor = vec4(ccr_primitiveOctNormal(ccr_globeNormal), ccr_globeIsWater ? 0.08 : 1.0, 0.0);
+    out_FragColor = vec4(ccr_primitiveOctNormal(ccr_globeWave), ccr_globeIsWater ? 0.08 : 1.0, 0.0);
     ${opaqueColor ? 'ccr_primitiveOpaqueColor = ccr_globeColor;' : ''}
     ccr_primitiveEmissiveFlags = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 3.0 : 0.0);
     ccr_primitiveDepth = -v_positionEC.z;
@@ -365,7 +384,7 @@ export function globeWaterSources(C, program, { reflection = false, opaqueColor 
     ${reflection ? `ccr_primitiveSpecular = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 1.0 : 0.0);
     ccr_primitiveResponse = vec4(ccr_globeIsWater ? vec3(0.02) : vec3(0.0), ccr_globeIsWater ? 0.08 : 1.0);` : ''}
 }`)
-  if (patched === source) return null
+  if (patched === captured) return null
   const fragmentShaderSource = fs.clone()
   fragmentShaderSource.defines.push('CESIUM_REDIRECTED_COLOR_OUTPUT')
   fragmentShaderSource.sources = fs.sources.map((text, i) => i === index ? patched : text)

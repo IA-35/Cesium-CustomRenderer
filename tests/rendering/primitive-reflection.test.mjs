@@ -642,6 +642,40 @@ test('globe water receiver refuses a program whose matched chunk lacks the water
   assert.equal(result, null)
 })
 
+// R8 回归：捕获 computeWaterColor 内部的实际波浪法线，而不是再用 v_normalEC 地表法线。
+test('globe water receiver captures the wave normal from computeWaterColor (R8)', () => {
+  // 在夹具里加入 computeWaterColor 中「把切线空间波浪法线转到眼空间」的那一行，
+  // 模拟开启 SHOW_REFLECTIVE_OCEAN + SHOW_OCEAN_WAVES 的真实 GlobeFS。
+  // _shadersGlobeFS 必须与传入的 source 一致，globeWaterSources 才能命中模板。
+  const ocean = GLOBE_FS.replace(
+    /out_FragColor =  finalColor;/,
+    `vec3 enuToEye;
+    vec3 normalTangentSpace = vec3(0.1, 0.2, 0.9);
+    vec3 normalEC = enuToEye * normalTangentSpace;
+    out_FragColor =  finalColor;`
+  )
+  const C = Cesium({ _shadersGlobeFS: ocean })
+  const result = globeWaterSources(C, program(C, { sources: [ocean], defines: ['HAS_WATER_MASK'] }), { reflection: true })
+  assert.ok(result)
+  // 捕获必须被注入到 computeWaterColor 的 normalEC 计算之后。
+  assert.ok(hasSource(result, 'ccr_globeWaveNormalEC = normalEC; ccr_globeWaveNormalValid = 1.0;'),
+    'the wave normal must be captured from computeWaterColor')
+  // 标记块必须优先使用捕获的波浪法线，而非无条件用 v_normalEC。
+  assert.ok(hasSource(result, 'ccr_globeWaveNormalValid > 0.5'),
+    'the marker must prefer the captured wave normal')
+  // 全局捕获变量必须声明（在 declarations 里 prepend）。
+  assert.ok(hasSource(result, 'vec3 ccr_globeWaveNormalEC'),
+    'the wave-normal global must be declared')
+  // 无波浪夹具（原 GLOBE_FS）不得注入捕获，且必须回退 v_normalEC。
+  const plainC = Cesium()
+  const plain = globeWaterSources(plainC, program(plainC, { sources: [GLOBE_FS], defines: ['HAS_WATER_MASK'] }), { reflection: true })
+  assert.ok(plain)
+  assert.ok(!hasSource(plain, 'ccr_globeWaveNormalEC = normalEC;'),
+    'no wave-normal capture when SHOW_REFLECTIVE_OCEAN is absent')
+  assert.ok(hasSource(plain, 'normalize(v_normalEC)'),
+    'must fall back to the surface normal when there are no waves')
+})
+
 // 水掩码的取值判据必须与 GlobeFS 一致（非零即水）。这是本轮实测到的真实缺陷：
 // 写成 > 0.5 时，逐像素掩码（Uint8Array 存 0/1，归一化后 0.0039）会被整片判成陆地，
 // 而长度 1 的整水掩码（复用 allWaterTexture，值 255 -> 1.0）恰好通过，
