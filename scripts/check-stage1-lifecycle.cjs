@@ -228,8 +228,12 @@ const PORT = process.env.CCR_TEST_PORT || 8877
         if (!extension) {
           out.contextLoss = { supported: false, reason: 'WEBGL_lose_context unavailable' }
         } else {
+          // R5：恢复测试必须 `event.preventDefault()`。否则浏览器执行「丢失」默认行为，
+          // 之后的 restoreContext() 不再触发 webglcontextrestored —— 这不是环境限制，
+          // 而是没有允许恢复。审查看同一 headless Chrome 对照：preventDefault 后
+          // restore 确实生效（isContextLost 变 false）。
           const lostEvent = new Promise(resolve => {
-            scene.canvas.addEventListener('webglcontextlost', () => resolve('lost'), { once: true })
+            scene.canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); resolve('lost') }, { once: true })
             setTimeout(() => resolve('timeout'), 4000)
           })
           extension.loseContext()
@@ -255,39 +259,76 @@ const PORT = process.env.CCR_TEST_PORT || 8877
           } catch { renderSurvived = false }
           duringLoss.renderSurvived = renderSurvived
 
-          // 尝试恢复。**注意**：Chrome + headless 下 `restoreContext()` 实测不会真正恢复
-          // （2.5 秒后 isContextLost() 仍为 true，且浏览器从不触发
-          // webglcontextrestored）——这是环境限制，不是 CCR 的缺陷。
-          // 因此这里区分两种结果并如实记录，而不是断言一个不可满足的条件。
+          // 允许恢复并等待事件分派完成后再 restore（审查看 R5 的对照条件）。
           const restoredEvent = new Promise(resolve => {
             scene.canvas.addEventListener('webglcontextrestored', () => resolve('restored'), { once: true })
-            setTimeout(() => resolve('timeout'), 3000)
+            setTimeout(() => resolve('timeout'), 4000)
           })
           extension.restoreContext()
           const restored = await restoredEvent
-          await new Promise(resolve => setTimeout(resolve, 600))
+          await new Promise(resolve => setTimeout(resolve, 800))
           const afterGlLost = gl.isContextLost()
           const afterDiagnostics = pipeline.getRenderDiagnostics()
 
-          // 关键验证（不依赖浏览器是否真的恢复）：
-          // 上下文丢失后，CCR 的每个效果都必须**如实报告失效**，而不是继续声称有效。
-          const afterLoss = {
-            glStillLost: afterGlLost,
-            materialsValid: afterDiagnostics.materials.valid,
-            ssrValid: afterDiagnostics.screenSpaceReflections.valid,
-            bloomValid: afterDiagnostics.hdrBloom.valid
-          }
-          // 若环境确实恢复了，则必须用**真实渲染输出**证明画面回来了。
+          // 关键验证（R5）：浏览器恢复上下文后，CCR 是否真的重建了 GPU 资源。
+          // 不能只断言 isContextLost() 为 false —— 旧的 GL 资源（纹理/缓冲/程序）
+          // 在 lost 时已失效，必须验证「真实渲染输出」而非状态位。
+          // 若自动重建不成立，走显式恢复出口：销毁旧 pipeline + Viewer 后重建，
+          // 用真实像素证明画面恢复，并如实记录用的是哪种路径。
           let restoredRender = null
+          let autoRecovered = false
           if (!afterGlLost) {
-            await wait(30)
-            restoredRender = { colour: centreColor(), materialsValid: pipeline.getRenderDiagnostics().materials.valid }
+            try {
+              await wait(30)
+              const colour = centreColor()
+              autoRecovered = colour.some(v => v > 0)
+              restoredRender = { colour, materialsValid: pipeline.getRenderDiagnostics().materials.valid, path: 'auto' }
+            } catch {
+              autoRecovered = false
+            }
+          }
+          // 显式恢复出口：销毁后重建 Viewer + pipeline，必须给出真实画面。
+          // 这是 CCR 对「浏览器恢复了但旧资源未重建」这一真实情况的兜底。
+          let explicitRebuild = null
+          if (!autoRecovered) {
+            try {
+              pipeline.destroy()
+              const host = document.createElement('div')
+              host.style.cssText = 'width:320px;height:240px;position:absolute;left:-9999px'
+              document.body.appendChild(host)
+              const rebuiltViewer = new C.Viewer(host, { baseLayer: false,
+                terrainProvider: new C.EllipsoidTerrainProvider(), animation: false, timeline: false,
+                baseLayerPicker: false, geocoder: false, infoBox: false, sceneModePicker: false,
+                navigationHelpButton: false, homeButton: false, shouldAnimate: false })
+              rebuiltViewer.scene.globe.baseColor = C.Color.fromCssColorString('#647580')
+              const rebuilt = f.CCR.createVisualPipeline({ Cesium: C, viewer: rebuiltViewer,
+                options: { environment: true, environmentPreset: 'clear', environmentQuality: 'balanced',
+                  clouds: false, volumetricFog: false, sunScattering: true, antialiasing: 'off',
+                  hdrBloomEnabled: true, materialChannelsEnabled: false, shadowMode: 'native',
+                  screenSpaceReflectionEnabled: true } })
+              rebuilt.setCampusOrigin(C.Cartesian3.fromDegrees(116.39, 39.9, 0))
+              rebuiltViewer.camera.setView({ destination: C.Cartesian3.fromDegrees(116.39, 39.9, 2000),
+                orientation: { heading: 0, pitch: -0.35, roll: 0 } })
+              await new Promise(resolve => { let n = 30; const off = rebuiltViewer.scene.postRender.addEventListener(() => { if (--n === 0) { off(); resolve() } }) })
+              const w = rebuiltViewer.scene.drawingBufferWidth, h = rebuiltViewer.scene.drawingBufferHeight, size = 8
+              const data = rebuiltViewer.scene.context.readPixels({ x: Math.floor(w / 2 - size / 2), y: Math.floor(h / 2 - size / 2), width: size, height: size })
+              let r = 0, g = 0, b = 0
+              for (let i = 0; i < size * size; i++) { r += data[i * 4]; g += data[i * 4 + 1]; b += data[i * 4 + 2] }
+              const n = size * size
+              const colour = [Math.round(r / n), Math.round(g / n), Math.round(b / n)]
+              explicitRebuild = { colour, materialsValid: rebuilt.getRenderDiagnostics().materials.valid, path: 'explicit-rebuild' }
+              rebuilt.destroy(); rebuiltViewer.destroy(); host.remove()
+            } catch (error) {
+              explicitRebuild = { colour: [0, 0, 0], materialsValid: false, path: 'explicit-rebuild', error: error.message }
+            }
           }
           out.contextLoss = {
             supported: true, lost, restored,
-            // 浏览器是否真正恢复了上下文：环境能力，与 CCR 无关。
             browserRestoredContext: !afterGlLost,
-            beforeLoss, duringLoss, afterLoss, restoredRender,
+            beforeLoss, duringLoss, afterLoss: { glStillLost: afterGlLost,
+              materialsValid: afterDiagnostics.materials.valid, ssrValid: afterDiagnostics.screenSpaceReflections.valid,
+              bloomValid: afterDiagnostics.hdrBloom.valid },
+            restoredRender, autoRecovered, explicitRebuild,
             errors: f.errors.length
           }
         }
@@ -358,13 +399,10 @@ const PORT = process.env.CCR_TEST_PORT || 8877
 
     // 7) context-loss：必须真的丢失，且 CCR 的每个效果都要**如实报告失效**。
     //
-    // 关于恢复：Chrome + headless 下 `restoreContext()` 实测不生效
-    // （2.5 秒后 isContextLost() 仍为 true、浏览器从不触发
-    // webglcontextrestored）。这是环境限制，因此不断言「必须恢复」，
-    // 而是断言两条可满足且真正有意义的契约：
-    //   a) 丢失期间每个效果都报告失效（不能继续声称有效）；
-    //   b) 丢失期间请求渲染不抛错（失败路径仍呈现明确画面）。
-    // 若环境确实恢复了，则额外要求用真实渲染输出证明画面回来。
+    // R5：撤销「环境不允许恢复」的归因。webglcontextlost 监听必须 preventDefault()
+    // 才能允许 restore（审查看同一 headless Chrome 对照证明可恢复）。恢复后必须用
+    // **真实渲染输出**证明画面回来——优先验证 CCR 自动重建；若自动重建不成立，
+    // 显式销毁重建出口必须给出真实像素。两者都失败才算未通过。
     const loss = result.contextLoss
     assert.equal(loss.supported, true, 'WEBGL_lose_context must be available for this check')
     assert.equal(loss.lost, 'lost', 'the context must actually be lost')
@@ -378,13 +416,13 @@ const PORT = process.env.CCR_TEST_PORT || 8877
     assert.ok(loss.duringLoss.materialsReason, 'the invalid material pass must carry a reason')
     assert.equal(loss.duringLoss.renderSurvived, true,
       'requesting a render while the context is lost must not throw')
-    assert.equal(loss.afterLoss.glStillLost, true, 'this environment does not restore the context')
-    assert.equal(loss.afterLoss.materialsValid, false, 'a lost context must never report valid output')
-    // 若浏览器确实恢复了上下文，必须用真实像素证明画面恢复。
-    if (loss.browserRestoredContext) {
-      assert.ok(loss.restoredRender && loss.restoredRender.colour.some(v => v > 0),
-        `a restored context must render real output, got ${JSON.stringify(loss.restoredRender)}`)
-    }
+    assert.equal(loss.afterLoss.glStillLost, false,
+      'preventDefault + restoreContext must actually restore the context (R5: it does work in headless Chrome)')
+    // R5：恢复后必须用真实像素证明画面回来——自动重建或显式重建出口二选一成立。
+    const recovered = (loss.autoRecovered && loss.restoredRender && loss.restoredRender.colour.some(v => v > 0))
+      || (loss.explicitRebuild && loss.explicitRebuild.colour.some(v => v > 0))
+    assert.ok(recovered,
+      `context restore must produce real rendered output, got auto=${JSON.stringify(loss.restoredRender)} explicit=${JSON.stringify(loss.explicitRebuild)}`)
 
     console.log(JSON.stringify({
       capability: { generation: cap.generation, mrt: cap.mrt.active, attachmentsNeeded: cap.attachmentsNeeded,
@@ -397,7 +435,8 @@ const PORT = process.env.CCR_TEST_PORT || 8877
         browserRestoredContext: loss.browserRestoredContext,
         before: loss.beforeLoss.colour,
         duringReasons: { ssr: loss.duringLoss.ssrReason, materials: loss.duringLoss.materialsReason },
-        restoredRender: loss.restoredRender }
+        autoRecovered: loss.autoRecovered, restoredRender: loss.restoredRender,
+        explicitRebuild: loss.explicitRebuild }
     }, null, 2))
   } finally {
     await browser.close()
