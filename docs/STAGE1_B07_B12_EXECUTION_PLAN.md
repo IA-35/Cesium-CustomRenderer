@@ -6,7 +6,11 @@
 
 > **进度更新（2026-09-17）**：B04–B06 未提交工作区已落盘为提交 `336b90d`；B00–B01/B02/B03 三个分支已快进合并进 `main` 并推送（`main = b94a9b8`），随后删除这三个已合并分支并新建 `codex/stage1-b07-b12` 作为 B07–B12 的工作分支。
 >
-> **B07 已完成**（见 [B07_COMPLETION.md](B07_COMPLETION.md)）：新增 `src/reflections/PrimitiveReflection143.js` 与两个 GPU 验收脚本，把普通 `Primitive` 与 Globe 水掩码区域接入既有 SSR 求值。实测：3 个 Primitive 全部写入有效表面标记与正米制深度、**0 px** 被误标 `STANDARD_PBR_VALID`、兼容计数 0；Globe 四种掩码形态（逐像素 8×8 / 整水 / 整陆 / 陆地上空）语义全部正确。测试 520/520。下文 B07 各节保留原计划文字作为对照；**下一轮执行入口为 B08**。
+> **B07 已完成**（见 [B07_COMPLETION.md](B07_COMPLETION.md)）：新增 `src/reflections/PrimitiveReflection143.js` 与两个 GPU 验收脚本，把普通 `Primitive` 与 Globe 水掩码区域接入既有 SSR 求值。实测：3 个 Primitive 全部写入有效表面标记与正米制深度、**0 px** 被误标 `STANDARD_PBR_VALID`、兼容计数 0；Globe 四种掩码形态（逐像素 8×8 / 整水 / 整陆 / 陆地上空）语义全部正确。测试 520/520。
+>
+> **B08 已完成主体**（见 [B08_COMPLETION.md](B08_COMPLETION.md)）：新增 `src/environment/heightFog143.js`（解析指数积分 + 近零 Taylor 分支 + T/S 分段合并 + 云空区间 + 介质遮挡数据），基础档由数值步进改为解析积分，并产出 B09 所需的像素级介质遮挡数据。实测全球 6 位置同高度响应离散度 **0.003%**；解析式经验证为步进的收敛极限（24 步误差 1%–3%，50 km 俯视时 100%）。测试 550/550。B08 保留了若干未完成项（多视锥透明分段未接入渲染路径、云雾未做真正分段合成、云层档位未改 12–50 km、全球测试未含山区/云下中上/高空俯视），已在主计划逐条注明且**未勾选**对应复选框。
+>
+> **下一轮执行入口为 B09**（Tonemap + 镜头效果 + 光柱/光斑）。B09 的光柱与太阳光斑直接消费 B08 已产出的介质遮挡数据：`EnvironmentRenderer.getMediumOcclusionDiagnostics()` 返回 `{ valid, texture, size, contract, source }`，纹理为半分辨率 RGBA32F，`.r` = 太阳方向介质透射率、`.g` = 太阳可见性、`.b` = 视线介质透射率。
 
 ---
 

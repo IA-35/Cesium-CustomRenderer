@@ -20,6 +20,9 @@ export default class HdrEnvironmentPass143 {
     this._destroyed = false
     this._valid = false
     this._detachHdr = undefined
+    // B08：介质遮挡数据的独立 collection。它复用同一批 uniforms，
+    // 但**不参与颜色合成**——其输出是供 B09 读取的中间数据。
+    this.occlusionCollection = undefined
   }
 
   _sceneDestroyed() {
@@ -114,6 +117,11 @@ export default class HdrEnvironmentPass143 {
         const collect=stage=>{if(typeof stage.length==='number')for(let i=0;i<stage.length;i++)collect(stage.get(i));else if(stage._command)programs.push(stage._command.shaderProgram)}
         if(bindings.length){collect(this.composite);withUniformBlocks(context._gl,programs,bindings,()=>collection.execute(context,color,depth,id))}
         else collection.execute(context, color, depth, id)
+        // B08：在同一次 HDR 执行里产出介质遮挡数据。
+        // 必须在这里而不是另起一次 registerHdrEffect：该 stage 依赖本 pass 的
+        // 相机/深度 uniform 状态与半分辨率 viewport，脱离这个上下文读取
+        // sceneDistance 会拿到错误的深度。
+        this._executeOcclusion(context, color, depth, id)
         if (collection.outputTexture) {
           output = collection.outputTexture
           this._valid = true
@@ -134,8 +142,42 @@ export default class HdrEnvironmentPass143 {
     return output
   }
 
-  _fail(error) {
-    this.error = error instanceof Error ? error.message : String(error)
+  /**
+   * B08：执行介质遮挡/透射率 stage。
+   *
+   * 独立 collection 的理由：这个 stage 的**输出是数据而不是颜色**。
+   * 若把它并入 composite，遮挡率会被当作场景颜色画到屏幕上。
+   *
+   * 失败不影响主呈像：捕获错误并记录，主链照常输出（遮挡数据是可选消费者输入）。
+   */
+  _executeOcclusion(context, color, depth, id) {
+    const stage = this._occlusionStage
+    if (!stage) return
+    try {
+      if (!this.occlusionCollection) {
+        const collection = new this.C.PostProcessStageCollection()
+        collection.fxaa.enabled = false
+        collection.ambientOcclusion.enabled = false
+        collection.bloom.enabled = false
+        collection.add(stage)
+        this.occlusionCollection = collection
+      }
+      const collection = this.occlusionCollection
+      collection.update(context, this.scene.frameState.useLogDepth, false)
+      collection.clear(context)
+      if (!collection.ready || !stage.ready) { this.occlusionReason = 'occlusion stage not ready'; return }
+      const bindings = this.prepareFrame(context), programs = []
+      if (stage._command) programs.push(stage._command.shaderProgram)
+      if (bindings.length) withUniformBlocks(context._gl, programs, bindings, () => collection.execute(context, color, depth, id))
+      else collection.execute(context, color, depth, id)
+      this.occlusionReason = null
+    } catch (error) {
+      // 遮挡数据失败不应拖垮环境呈像；记录下来供诊断。
+      this.occlusionReason = error instanceof Error ? error.message : String(error)
+    }
+  }
+
+  _fail(error) {    this.error = error instanceof Error ? error.message : String(error)
     this.stats.failures++
     this._release()
     this.reason = 'environment failure'
@@ -147,6 +189,18 @@ export default class HdrEnvironmentPass143 {
     const detachHdr = this._detachHdr
     this._detachHdr = undefined
     if (detachHdr) detachHdr()
+    // B08：先释放独立的遮挡 collection，再释放主 collection。
+    const occlusionCollection = this.occlusionCollection
+    this.occlusionCollection = undefined
+    this._occlusionStage = undefined
+    this.occlusionReason = undefined
+    if (occlusionCollection && !occlusionCollection.isDestroyed()) {
+      try {
+        occlusionCollection.destroy()
+      } catch (error) {
+        this.error = this.error || (error instanceof Error ? error.message : String(error))
+      }
+    }
     const collection = this.collection
     this.collection = undefined
     this.composite = undefined

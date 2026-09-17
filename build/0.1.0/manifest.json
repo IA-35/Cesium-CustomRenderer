@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "336b90d449b5b1d2fb5c1fc0e5dff89247a47253",
+  "sourceCommit": "8b4462ca81da149e0a94014cf0d25018315d6b19",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "b91b86e51f4943cd2c68e21f9ad71cb01425a6bfe658ed7144dcc0e044532b8b",
@@ -49,11 +49,12 @@
     "src/diagnostics/SampleGuard.js": "22615eb91b42ab0c2ee17a32eb31d043489a441400d0a94cbc95f119ec80258a",
     "src/environment/cloudShell143.js": "17b894fba941beae66a9ac5cb64daf49229c33fa251f1458194fbb13647f9e42",
     "src/environment/EnvironmentLighting143.js": "d983b26cfa4be5da6ec3a8327ac643d749db576e7e9946cf05a10fb17f615583",
-    "src/environment/EnvironmentRenderer.js": "0d9142a5cbe1c638016ab6a02b35f42f2a570a1d0aebe7517bf1d03a88d3fff0",
-    "src/environment/environmentStages.js": "379e157cd4ab485cf39a27ba4331b37d674844ddfe2008eddde77db134d502cc",
+    "src/environment/EnvironmentRenderer.js": "d084af57669e8cf9c00deba7372a0f2fcdbef9d45acf5c48875a6b7650cc756a",
+    "src/environment/environmentStages.js": "302039ff90e05323d182bf9622048012126c9c1fca264ceb0f192615e15ed09b",
     "src/environment/environmentState.js": "2d1fb2265be9c965e802b868b5e4e9b11bdd8fce70a39f11324d7de16b174001",
     "src/environment/HdrCoordinator143.js": "aa468f2c414bf34c3ea734103e9ace990dd944421970a1bc6624d38293816eb4",
-    "src/environment/HdrEnvironmentPass143.js": "7cbda81e67f420a3036d0c62e02b0295e93d5fed47cfc87b515ca096bd53393f",
+    "src/environment/HdrEnvironmentPass143.js": "7c7b15db0a33ce69acefe39dc57c7e8a3116cc264eb1c31c057a4872085f26dc",
+    "src/environment/heightFog143.js": "b46f397bdb3fc8218f603f1291e683ecfef54b31545f06965218193a11da67e1",
     "src/environment/noiseAtlas.js": "7cf64fcaebb3dbb9a1b89f540d30e75bb6b9b0f2f0eff985f80674674a8df5b8",
     "src/index.js": "6c03de6319170437717d6337465f300b7b9c8e0c0634661089f020c8d5202452",
     "src/lighting/DeferredGeometry143.js": "312b4e541f6b310d7d852a0a2345f9467d8830f41d6695930b0693f92589e795",
@@ -90,7 +91,7 @@
     "src/visibility/OcclusionCulling143.js": "434c8dcf253d41b9cacf8b8f3214fd949c4859df8ca7025769e460c181235bda",
     "src/VisualPipeline.js": "dceaf483e2d975c9e3dbd8419ff004e208079f4e18302afd5fc594a08097a0d9"
   },
-  "bytes": 415916,
-  "gzipBytes": 136718,
-  "sha256": "8bc0ca51902c20d414685b9cbfa5211000717cdd002ac669fb140e4f9a1ecf7d"
+  "bytes": 424777,
+  "gzipBytes": 140688,
+  "sha256": "0aaa499b76d6bd563a7d5298eee8137a2e99e97911c8ccf99af6aa4240cfe91f"
 }

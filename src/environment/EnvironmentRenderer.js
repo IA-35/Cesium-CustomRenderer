@@ -37,6 +37,13 @@ export default class EnvironmentRenderer {
         skyRadiance: () => new C.Cartesian3(...this.state.skyRadiance),
         fogParams: () => new C.Cartesian4(this.state.fogDensity, this.state.fogScaleHeight, this.state.fogNoise, 5),
         fogBaseHeight: () => this.state.fogBaseHeight,
+        // B08：局部参考原点的椭球高度。着色器用 (局部 z - 本值) 得到椭球高度。
+        //
+        // 当前实现里 `setOrigin` 把原点强制放在椭球面（高度 0），因此本值通常为 0，
+        // 此时局部 z 就是椭球高度。仍然显式传它的理由是：原点在相机远离时会被
+        // **重建为相机位置**（见 update()），把这个契约写进接口后，
+        // 即使将来改为保留原点真实高程，高度语义也不会静默改变。
+        localGroundHeight: () => this.originHeight || 0,
         cloudParams: () => new C.Cartesian4(this.state.cloudCoverage, this.state.cloudBase, this.state.cloudTop, this.state.cloudExtinction),
         windOffset: () => new C.Cartesian2(...this.state.windOffset),
         cloudModel: () => this.state.cloudModel === 'stratus' ? 1 : 0,
@@ -62,6 +69,8 @@ export default class EnvironmentRenderer {
         this.frameUniforms=new UniformBuffer143(this.scene.context._gl,192);this.frameData=new Float32Array(48);this.frameInputs=uniforms
       }
       this.stages = createEnvironmentStages(C, uniforms, this.state.environmentQuality, this.state.cloudGeometry,!!this.frameUniforms)
+      // B08：把介质遮挡 stage 交给 HDR pass，在它的执行上下文里产出数据。
+      this.hdr._occlusionStage = this.stages.occlusionStage
       return this.stages.composite
     }, () => this.state.cloudGeometry === 'shell',context=>{
       if(!this.frameUniforms)return []
@@ -114,6 +123,13 @@ export default class EnvironmentRenderer {
     this.origin = C.Cartesian3.fromRadians(coordinate.longitude, coordinate.latitude, 0)
     this.frame = C.Transforms.eastNorthUpToFixedFrame(this.origin)
     this.inverseFrame = C.Matrix4.inverseTransformation(this.frame, new C.Matrix4())
+    // B08：记录局部参考原点的椭球高度，供着色器把局部切平面高度换算成椭球高度。
+    //
+    // 关键：`this.origin` 被强制放在椭球面（高度 0），所以正常情况下它是 0；
+    // 但 `update()` 在相机远离原点时会用**相机位置**重建原点，此时局部 z=0
+    // 对应的椭球高度就是相机高度。若不把它传给着色器，同一个雾参数会随
+    // 「原点恰好是哪一个」而给出不同的密度——这正是「同一高度语义不一致」的根因。
+    this.originHeight = C.Cartographic.fromCartesian(this.origin).height
     this.update()
   }
 
@@ -194,7 +210,39 @@ export default class EnvironmentRenderer {
       withinRegion: this.withinRegion, volumeRadius: 100000,
       cloudGeometry: this.state.cloudGeometry, cloudScope: this.state.cloudGeometry === 'shell' ? 'ellipsoid-normalized shell; single-frustum depth' : 'local ENU',
       cloudModel: this.state.cloudModel, cloudCoverage: this.state.cloudCoverage, fogDensity: this.state.fogDensity,
-      windOffset: this.state.windOffset.slice(), effectSize: texture && !texture.isDestroyed() ? [texture.width, texture.height] : null }
+      windOffset: this.state.windOffset.slice(), effectSize: texture && !texture.isDestroyed() ? [texture.width, texture.height] : null,
+      // B08：介质遮挡数据的可用性契约。B09 消费前必须查这个字段，
+      // 而不是假定纹理一定存在（未启用环境/未创建 stage 时它不存在）。
+      mediumOcclusion: this.getMediumOcclusionDiagnostics() }
+  }
+
+  /**
+   * B08 介质遮挡/透射率数据（供 B09 光柱与太阳光斑消费）。
+   *
+   * 契约：`valid` 为真时才可读取 `texture`。数据为半分辨率 RGBA32F：
+   *   r = 太阳方向介质透射率，g = 太阳可见性（阴影），b = 视线介质透射率。
+   *
+   * 该数据由高度雾解析积分产出，来源是像素级材质深度/Hi-Z（B02），
+   * **不依赖 B06 的对象级可见性**（主计划明确要求）。
+   */
+  getMediumOcclusionDiagnostics() {
+    const stage = this.stages && this.stages.occlusionStage
+    if (!stage || stage.isDestroyed()) {
+      return { valid: false, texture: null, reason: this.enabled ? 'Occlusion stage not created' : 'Environment disabled',
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+    }
+    if (this.hdr && this.hdr.occlusionReason) {
+      return { valid: false, texture: null, reason: this.hdr.occlusionReason,
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+    }
+    const texture = stage.ready && stage.outputTexture
+    if (!texture || texture.isDestroyed()) {
+      return { valid: false, texture: null, reason: 'Occlusion stage not ready',
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+    }
+    return { valid: true, texture, size: [texture.width, texture.height],
+      contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance',
+      source: 'analytic height fog from B02 material depth' }
   }
 
   destroy() {
