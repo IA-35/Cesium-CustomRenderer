@@ -559,7 +559,26 @@ test('globe water receiver keeps imagery and only marks water as a reflection re
   assert.ok(hasSource(result, 'ccr_primitiveOpaqueColor = ccr_globeColor;'))
   // 只有水域成为接收端；非水地面 flags 为 0，既不参与 SSR 也不被金属化。
   assert.ok(hasSource(result, 'ccr_primitiveEmissiveFlags = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 3.0 : 0.0);'))
-  assert.ok(hasSource(result, 'ccr_primitiveSpecular = vec4(ccr_globeIsWater ? vec3(0.02) : vec3(0.0), ccr_globeIsWater ? 1.0 : 0.0);'))
+  // `reflectionSpecular.rgb` 契约是「已包含在主颜色中的环境镜面辐亮度」。
+  // Globe 海洋着色只有太阳高光（czm_getSpecular），没有可分离的环境镜面 IBL，
+  // 因此 rgb 必须为 0；alpha 只作接收端有效标记。
+  assert.ok(hasSource(result, 'ccr_primitiveSpecular = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 1.0 : 0.0);'),
+    'the globe receiver must not fabricate an environment specular term')
+  // response 仍带 F0 与 roughness（乘捕获辐亮度、选预算）。
+  assert.ok(hasSource(result, 'ccr_primitiveResponse = vec4(ccr_globeIsWater ? vec3(0.02) : vec3(0.0), ccr_globeIsWater ? 0.08 : 1.0);'))
+})
+
+// 审查 R3 的回归测试：receivers 不得伪造环境镜面项。
+test('primitive receivers do not fabricate an environment specular term', () => {
+  const C = Cesium()
+  const result = primitiveReflectionSources(C, program(C), { reflection: true })
+  assert.ok(result)
+  assert.ok(hasSource(result, 'ccr_primitiveSpecular = vec4(0.0, 0.0, 0.0, 1.0);'),
+    'the primitive receiver must write zero specular rgb and a valid-receiver alpha')
+  assert.ok(!hasSource(result, 'ccr_primitiveSpecular = vec4(ccr_primitiveF0(material.specular), 1.0);'),
+    'the old form that put F0 into the subtraction term must be gone')
+  // response 仍带 F0（乘捕获辐亮度）与 roughness（选预算）。
+  assert.ok(hasSource(result, 'ccr_primitiveResponse = vec4(ccr_primitiveF0(material.specular), ccr_primitiveRoughness(material.shininess));'))
 })
 
 test('globe water receiver does not reference block-scoped or conditionally declared names', () => {

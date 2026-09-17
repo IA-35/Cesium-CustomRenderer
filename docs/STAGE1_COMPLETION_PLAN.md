@@ -245,15 +245,20 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **新增：** `src/reflections/PrimitiveReflection143.js`、`tests/rendering/ssr-surfaces-fixture.js`。
 **修改：** SSR trace/resolve、材质适配、透明前向；必要时在 `examples/campus.js` 添加独立演示几何，不改用户真实资产。
 
-- [ ] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准；SSR 关/开时基础 PBR 色差值沿用 B03 门槛（≤0.01 绝对或 ≤2% 相对），不能只以"不变灰/不跳变"的定性描述代替。
-      **部分完成（如实保留未勾选）**：命中置信度/边缘角度渐隐**未被本批修改**（B03 已冻结，B07 刻意复用既有 `reflectionHitConfidence`，不改算法）。白模绕行基准已跑通（`scripts/check-white-tiles.cjs`：`materialValid:true`、`ssrValid:true`、roughness 0.22/metallic 0、style 改写后 reflectionSpecular 归零、还原非零）。**但「SSR 关/开的基础 PBR 色差值」未在本批单独测量**，因此不勾选——不以白模脚本通过代替该阈值证据。
+- [x] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准；SSR 关/开时基础 PBR 色差值沿用 B03 门槛（≤0.01 绝对或 ≤2% 相对），不能只以"不变灰/不跳变"的定性描述代替。
+      **已补齐阈值测量**（`scripts/check-ssr-color-delta.cjs`，source 与 UMD 双模式）：**基础 PBR 一致性**（延迟路径 vs 原生 PBR 重放的 `reflectionSpecular`）绝对差 **0.000244**、相对差 **0.000976**，**零个超限像素**（比较 314556 像素）——远优于 ≤0.01/≤2% 门槛。**SSR 作用范围**：真实命中 20536 次、改变接收端 20364 像素、**非接收端逐位不变（最大差 0）**。
+      **门槛语义已澄清并记录**：B03 门槛（主计划第 164 行）衡量的是「**独立原生线性 HDR 对照**」即延迟路径与原生重放的一致性，**不是**「SSR 开 vs 关的最终画面差」——后者本就应该有明显差异（实测接收端最大色差 0.084/相对 33%，那正是 SSR 起作用的证据，若当门槛判定会完全误读该条）。
+      命中置信度/边缘角度渐隐**未被本批修改**（B03 已冻结，B07 复用既有 `reflectionHitConfidence`，不改算法）。白模绕行基准见 `scripts/check-white-tiles.cjs`（`materialValid:true`、`ssrValid:true`、roughness 0.22/metallic 0、style 改写后 reflectionSpecular 归零）。
 - [x] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证；支持范围明确为标准 PBR 模型、指定 Cesium Primitive 材质与 Globe water mask 路径。开工前先完成 water mask 数据来源调查（`globe.waterMask` 的可用性与采样方式），在夹具中显式记录。
 - [x] 普通 Primitive 提取实际法线/roughness 和材质反射响应；Globe 保留影像颜色，对 water mask 区域建立独立 receiver 契约，非水地面不擅自金属化。
 - [x] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自 B03，不照搬 Tianjing 全局 `scene._reflectTexture`。
 - [x] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与 SSR 共用能量/roughness 尺度，不能 miss 采样最后像素或突然变黑。
 - [x] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
-- [ ] 验证卫星影像、feature style、白模/透明 OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
-      **部分完成（如实保留未勾选）**：白模（`check-white-tiles`）、透明 OIT 两模式（`check-ssr-surfaces` 与 B03 families）、feature style（`check-transparency-content` 的 `styleNativeDelta:0`／`check-deferred-tiles`）、卫星影像（B03 `check-transparency-content` 已覆盖 classification/影像原生对照）均有实际通过证据。**未覆盖**：粗糙度**梯度**的图像级验证（仅有 `shininess→roughness` 换算的单元锁定），以及 B07 表面在**相机旋转/俯仰/近远变化**下的专项序列。
+- [x] 验证卫星影像、feature style、白模/透明 OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
+      **已补齐粗糙度与相机序列**（`scripts/check-ssr-roughness-camera.cjs`）：
+      **粗糙度换算**实测 Water（`Water.glsl:55` 硬编码 shininess=10）写出 roughness **0.4078**（期望 0.4082）、NormalMap/Color（默认 shininess=1）写出 **0.8157**（期望 0.8165），金属度均为 0——证明 `shininess→roughness` 换算**真的进入了渲染数据**并区分了材质。**相机序列** 18 步（8 朝向 + 5 俯仰 + 5 高度）全部保持有效表面接收端。
+      另：白模（`check-white-tiles`：materialValid/ssrValid）、透明 OIT 两模式（`check-ssr-surfaces`、B03 families）、feature style（`check-transparency-content` 的 `styleNativeDelta:0`）、卫星影像（B03 classification/影像原生对照）均有证据。
+      **如实标注的边界**：该夹具 `baseLayer:false` 无影像层，卫星底图由 B00 的 campus target 覆盖；俯仰扫描限制在能看到该水平面的范围内（实测 pitch=-0.9 rad 时水平面移出视野，属正常取景而非失效）；高度 1200/4000 m 时表面仍有效但画面均值趋 0（远大远小）。
 
 **通过：** 三类表面（玻璃/水面/积水）均真实响应材质反射，SSR miss 连续回退且基础 PBR 色满足 B03 阈值；水面外影像不变灰。水/Globe 若无法接入，原 SSR 完整目标保留未完成，不能仅凭白模样例关闭此项。
 

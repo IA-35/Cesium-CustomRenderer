@@ -113,7 +113,28 @@ export default class LensEffectPipeline143 {
       const permission = canEnableCurve(o.toneMappingCurve, { canDisableNative })
       if (!permission.enabled) throw new Error(permission.reason)
       if (!collection._tonemapping) throw new Error('Native tonemapping stage is not available to disable')
-      this.ownedTonemapper = { collection, beforeEnabled: collection._tonemapping.enabled }
+      // ⚠️ 只在创建时置一次 `enabled = false` **不够**。
+      // Cesium 1.143 的 `PostProcessStageCollection.update` 每帧都会执行
+      // `tonemapping.enabled = useHdr`（PostProcessStageCollection.js:611），
+      // 下一帧就把我们的关闭覆盖回去。实测：连续 10 帧原生 `enabled` 全为 true，
+      // 同时自定义 `tone` stage 也在执行 —— 即**映射两次**（重复曝光与显示编码），
+      // 而诊断仍错误地报告 `exactlyOnce: true`。
+      //
+      // 正确做法：包裹 `collection.update`，在每次原生 update 之后重新关闭原生
+      // tonemapping，从而在整个生命周期内持续持有「唯一映射权」。
+      // 用包装而不是改 Cesium 内部字段，卸载时还原为原函数。
+      this.ownedTonemapper = {
+        collection,
+        beforeEnabled: collection._tonemapping.enabled,
+        beforeUpdate: collection.update
+      }
+      const owner = this
+      collection.update = function (...args) {
+        const result = owner.ownedTonemapper?.beforeUpdate.apply(this, args)
+        // 原生 update 刚把 enabled 设成 useHdr，这里立即夺回。
+        if (owner.ownedTonemapper && this._tonemapping) this._tonemapping.enabled = false
+        return result
+      }
       collection._tonemapping.enabled = false
       create('tone', unrealFilmicShader, {
         sourceSize: sizeOf,
@@ -201,19 +222,63 @@ export default class LensEffectPipeline143 {
     return !this.scopeReason() && resolveToneMapping(this.getOptions().toneMappingCurve)?.applyStage === true
   }
 
-  /** 太阳屏幕位置；不可得时返回屏幕外位置，使光柱/光斑自动退出。 */
+  /**
+   * 太阳屏幕位置（归一化 uv）；不可得或不在视锥内时返回屏幕外，使光柱/光斑自动退出。
+   *
+   * ⚠️ 实现要点（均为实测踩坑后确定）：
+   *
+   * 1. 太阳世界位置**不能**从 `scene.sun.positionWC` 取。Cesium 1.143 的 `Sun`
+   *    是屏幕空间绘制的虚拟天体，**没有 `positionWC` 属性**；它自己就用
+   *    `context.uniformState.sunPositionWC`（`Source/Scene/Sun.js:249`）。
+   *    此前读取 `scene.sun.positionWC` 恒为 undefined，`_sunScreen()` 永远走
+   *    屏幕外退出 —— 生产管线里光柱与光斑**从未生效**，而诊断仍报 valid。
+   *    把该现象归因为「夹具关闭了太阳」是错误归因。
+   *
+   * 2. 不能对太阳方向做椭球求交再投影：`sunPositionWC` 是一个**极远的世界点**
+   *    （实测模长约 1.55e11，即 Cesium 把太阳放在极远处而非椭球面上），
+   *    求交得到椭球面上的点可能在相机背后，`worldToWindowCoordinates` 会给出
+   *    巨大或错误坐标（实测 y = -349）。
+   *
+   * 正确做法：按**无穷远光源**处理——取方向后以 w=0 送入 view-projection。
+   * 用 `sunPositionWC` 的**方向**（归一化）作为齐次 w=0 向量，这样得到的屏幕位置
+   * 与距离无关，且位于相机后方时 z ≥ 0 可被正确剔除。
+   * 判定「太阳是否在相机前方」用相机视线方向与太阳方向的点积，
+   * 不依赖投影矩阵在远平面处的数值行为。
+   */
   _sunScreen() {
     const C = this.C, scene = this.scene
     if (!this.sunScreen) this.sunScreen = new C.Cartesian2(-1, -1)
     const outside = () => { this.sunScreen.x = -1; this.sunScreen.y = -1; return this.sunScreen }
     try {
-      const position = scene.sun && scene.sun.positionWC
-      if (!position) return outside()
-      const window = C.SceneTransforms.worldToWindowCoordinates(scene, position)
-      if (!window) return outside()
-      const w = scene.drawingBufferWidth || 1, h = scene.drawingBufferHeight || 1
-      this.sunScreen.x = window.x / w
-      this.sunScreen.y = window.y / h
+      const uniformState = scene.context && scene.context.uniformState
+      const sunPositionWC = uniformState && uniformState.sunPositionWC
+      if (!sunPositionWC) return outside()
+      const camera = scene.camera
+      if (!camera) return outside()
+      // sunPositionWC 是极远点（模长 ~1.5e11），取方向即可（无穷远光源语义）。
+      const direction = C.Cartesian3.normalize(sunPositionWC, new C.Cartesian3())
+      const cameraDirection = camera.directionWC || camera.direction
+      if (!cameraDirection) return outside()
+      // 太阳在相机后方则不可见：用视线方向点积判定，比投影数值更稳健。
+      if (C.Cartesian3.dot(direction, cameraDirection) <= 0.0) return outside()
+      // w = 0 的齐次投影：方向 → NDC，与距离无关。
+      const view = camera.viewMatrix
+      const projection = camera.frustum.projectionMatrix
+      if (!view || !projection) return outside()
+      const viewDir = C.Matrix4.multiplyByPointAsVector(view, direction, new C.Cartesian3())
+      const clip = C.Matrix4.multiplyByVector(projection,
+        new C.Cartesian4(viewDir.x, viewDir.y, viewDir.z, 0), new C.Cartesian4())
+      if (!(clip.w > 0)) return outside()
+      const ndcX = clip.x / clip.w
+      const ndcY = clip.y / clip.w
+      if (!Number.isFinite(ndcX) || !Number.isFinite(ndcY)) return outside()
+      // NDC -> uv（y 翻转，与纹理坐标系一致）。
+      const u = ndcX * 0.5 + 0.5
+      const v = 0.5 - ndcY * 0.5
+      // 超出画面即视为不可见：不 clamp，让 shader 的屏外判定退出。
+      if (u < 0 || u > 1 || v < 0 || v > 1) return outside()
+      this.sunScreen.x = u
+      this.sunScreen.y = v
     } catch { return outside() }
     return this.sunScreen
   }
@@ -308,11 +373,13 @@ export default class LensEffectPipeline143 {
     this.outputFrame = undefined
     if (this.detach) this.detach()
     this.detach = undefined
-    // 还原原生 tonemap 的所有权（无论是被禁用还是换了曲线）。
+    // 还原原生 tonemap 的所有权（无论是被禁用、换了曲线，还是包裹了 update）。
     if (this.ownedTonemapper) {
-      const { collection, before, beforeEnabled } = this.ownedTonemapper
+      const { collection, before, beforeEnabled, beforeUpdate } = this.ownedTonemapper
       try {
         if (collection && !(collection.isDestroyed && collection.isDestroyed())) {
+          // 先解除 update 包裹，避免还原后仍被每帧改写。
+          if (beforeUpdate && collection.update !== beforeUpdate) collection.update = beforeUpdate
           if (before !== undefined) collection.tonemapper = before
           if (collection._tonemapping && beforeEnabled !== undefined) collection._tonemapping.enabled = beforeEnabled
         }

@@ -173,12 +173,23 @@ export function primitiveReflectionSources(C, program, { reflection = false, opa
   // flags 只含低 10 位：SURFACE(1) | NORMAL_VALID(2) | EMISSIVE_VALID(8)。
   // 刻意不含 STANDARD_PBR_VALID(512)，见文件头纪律 1。
   const flags = 1 | 2 | 8
-  // 反射响应：rgb = F0，a = roughness。
+  // 反射响应：rgb = F0（用于乘 SSR 捕获的辐亮度），a = roughness。
   // 刻意**不**在此处新造一条粗糙度衰减曲线：traceReflection 已经用
   // response.a 选取半径与预算，reflectionHitConfidence 也已经按 roughness
   // 做 smoothstep 衰减，粗糙度因此沿既有置信度机制生效。
+  //
+  // ⚠️ `reflectionSpecular.rgb` 的契约是**已经包含在主颜色里的环境镜面辐亮度**
+  // （消费端 ssrShaders143.js:217 执行
+  // `original + confidence * (radiance * response - nativeSpecular)`）。
+  // 普通 Primitive 走 `czm_phong`，**根本没有环境镜面项**（Phong 只有太阳高光），
+  // 因此这里必须写 **rgb = vec3(0.0)**：表示「没有可从原色中扣除的镜面量」。
+  // 若把 F0 写进 rgb（曾经如此），SSR 命中时会无依据地从基础色里扣掉一个
+  // 并不存在的常量（例如 response=0.02、radiance=0、confidence=1 时白扣 0.02），
+  // 造成暗色命中偏暗——这与本文件「不伪造已有环境反射」的声明直接冲突。
+  // alpha 仍写 1.0：它是**接收端有效标记**（reflectionReceiver 要求
+  // `u_specular.a > 0.5`），与扣除量是两件事。
   const reflectionWrites = reflection ? `
-    ccr_primitiveSpecular = vec4(ccr_primitiveF0(material.specular), 1.0);
+    ccr_primitiveSpecular = vec4(0.0, 0.0, 0.0, 1.0);
     ccr_primitiveResponse = vec4(ccr_primitiveF0(material.specular), ccr_primitiveRoughness(material.shininess));` : ''
   // 原生 Phong 结果保持不丢弃：opaqueColor 开启时写入对应附件，
   // 供 B03 透明合成等消费者当作「不透明背景色」。
@@ -345,7 +356,13 @@ export function globeWaterSources(C, program, { reflection = false, opaqueColor 
     ccr_primitiveEmissiveFlags = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 3.0 : 0.0);
     ccr_primitiveDepth = -v_positionEC.z;
     ccr_primitiveCoverage = 0.0;
-    ${reflection ? `ccr_primitiveSpecular = vec4(ccr_globeIsWater ? vec3(0.02) : vec3(0.0), ccr_globeIsWater ? 1.0 : 0.0);
+    // 与 Primitive 路径同一契约：rgb 必须是**已包含在主颜色中的环境镜面辐亮度**。
+    // GlobeFS 的海洋着色（computeWaterColor）把镜面加成直接加进 color，
+    // 但那是**太阳高光**（czm_getSpecular）而非环境镜面 IBL，无法从主颜色里
+    // 分离出一个可替换的环境镜面项。因此这里写 rgb = 0（没有可扣除项），
+    // 只把 alpha 作为**接收端有效标记**（reflectionReceiver 要求 a > 0.5）。
+    // 曾经把常量 0.02 写进 rgb，会让 SSR 命中时无依据地扣除 0.02。
+    ${reflection ? `ccr_primitiveSpecular = vec4(0.0, 0.0, 0.0, ccr_globeIsWater ? 1.0 : 0.0);
     ccr_primitiveResponse = vec4(ccr_globeIsWater ? vec3(0.02) : vec3(0.0), ccr_globeIsWater ? 0.08 : 1.0);` : ''}
 }`)
   if (patched === source) return null
