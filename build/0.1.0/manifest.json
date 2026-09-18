@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "fa106b54d548e2ee2ac1153ba22db0934fa74ae7",
+  "sourceCommit": "d70e86c88b3a5a639556a1f7f45362df7d1d227e",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "cf289e2122e43903cb9a4859cee8e3e1e69edbce819a39746e666e63f6fd8c64",
@@ -26,7 +26,7 @@
     "src/antialiasing/smaaShaders.js": "77e40ffcbbc0c1fd901ceef1e1aab76cfd2d73fa7a41c1432b0f8c29bf0e05fc",
     "src/antialiasing/SpatialAaPass143.js": "068f9114647cccd2e8a3b86fe669152fc97e2e559667c95b3a8d48838b3ae709",
     "src/antialiasing/TaaJitter143.js": "cdb4e657095f24ce61d3490b52ca9fe08cb6e0fbef0ce4873d0539ca54307b27",
-    "src/antialiasing/TaaOverlay143.js": "574774a25072e2a2899f8dc512132b09f3033be4cb2478ea5e14d946e2d4d005",
+    "src/antialiasing/TaaOverlay143.js": "76720410a9c2a431718356b5fdd92d90c045b788dd2de34279fdf14ae82d9134",
     "src/antialiasing/TaaPass143.js": "0d13bbb037184f5f1181059001aaf08a970bcb6396704908ff8fb61ad380c1da",
     "src/antialiasing/taaShaders143.js": "37e2a4788632609efbcb800b0473ac36b8ae090cf2df23b5a0e5ff38509703a6",
     "src/ao/aoShaders143.js": "76cf0592f59bc4aa665f7ea32bb145c64d66892fd521e951c2ced4e61fde22ba",
@@ -96,7 +96,7 @@
     "src/shadows/ShadowTarget.js": "9cbd9c6a159dd4ee36d1fb33a216582fe06c3f1df5fabcde8f0230d14b2c769d",
     "src/shadows/shadowUniforms143.js": "399b183555fec7b93ec8e069a4dfaa56d957ca0f55440c028578e96d2b5e2d74",
     "src/stages/colorGrading.js": "ba6f438223dfd3ca31690840d61c1b97153073ec12ebbbd4d5f65291d80c468b",
-    "src/stages/LensEffectPipeline143.js": "d11e68ad3e8e5a14b91f7e992b5a031f037393b08a959dfbdd9f15235c6483ff",
+    "src/stages/LensEffectPipeline143.js": "2cfd5f31774081c09554cf65e12a05d820fcc0524f34cc4963b15e0ee2d429a8",
     "src/stages/lensEffects143.js": "1bbafd37d087088076a82c58874d9d9623082af89bbc91e34b07a71fa3145af5",
     "src/stages/toneMapping143.js": "51561c2a6152561e1e83ee91a5fafdde4de5b1419e25085864d5de3d1c8b14c6",
     "src/tileset/TilesetOptimizer143.js": "3ce361a3e1e1eb7615df1ae12aa24fcd4fcb8dbf220a71f8b44234ec7c3e96a8",
@@ -129,7 +129,7 @@
     "vendor/cesium-ez-tree/src/workers/createEzTreeInstanceAttributes.js": "8d70973ebdb73e5f0f956a97e6b4cd169e593d7380bcf4f10106c8aca4b437ff",
     "vendor/cesium-ez-tree/src/workers/createEzTreeVegetationInstances.js": "bd9ad5b04011d70f8251013a79dd14c4326fba54371ccf8b1413a107062fe194"
   },
-  "bytes": 567211,
-  "gzipBytes": 183607,
-  "sha256": "25c8ad5e80cdb49b2b80d4b4305a3c9adc39638970333893a7f765c0bfc3fde7"
+  "bytes": 567454,
+  "gzipBytes": 183666,
+  "sha256": "974dd46c86a8546bd2dea645be88d41452ee575c724acf376bbadcb10a1d5de5"
 }

@@ -22,8 +22,11 @@ const root=path.resolve(__dirname,'../docs/verification/pipeline-review-fixed'),
   const f=fixture,C=Cesium,s=f.viewer.scene,{startStage1Scene}=await import('/tests/rendering/stage1-scene.js'),{waitFrames}=await import('/tests/rendering/stage1-baseline-fixture.js')
   await startStage1Scene(f);const p=f.pipeline;p.setOptions({environment:true,lightShaftEnabled:true,screenSpaceAoEnabled:false,hdrBloomEnabled:false});await waitFrames(s,60,f.errors)
   const e=p.environmentRenderer,initial=e.getMediumOcclusionDiagnostics(),texture=initial.texture,before={frame:s.frameState.frameNumber,mediumValid:initial.valid,hdrValid:e.hdr.getDiagnostics().valid}
+  const perspective=s.camera.frustum
   s.camera.frustum=new C.OrthographicFrustum({width:300,aspectRatio:640/360,near:.1,far:1000000});await waitFrames(s,10,f.errors)
-  const medium=e.getMediumOcclusionDiagnostics();return {before,after:{frame:s.frameState.frameNumber,mediumValid:medium.valid,sameTexture:texture===medium.texture,hdr:e.hdr.getDiagnostics(),lensValid:p.lensEffects.getDiagnostics().valid},renderErrors:f.errors}
+  const medium=e.getMediumOcclusionDiagnostics(),after={frame:s.frameState.frameNumber,mediumValid:medium.valid,sameTexture:texture===medium.texture,hdr:e.hdr.getDiagnostics(),lensValid:p.lensEffects.getDiagnostics().valid}
+  s.camera.frustum=perspective;await waitFrames(s,12,f.errors)
+  return {before,after,restored:e.getMediumOcclusionDiagnostics().valid,renderErrors:f.errors}
  })
  await run('deferredDiagnostics',async()=>{
   const f=fixture,s=f.viewer.scene,{startStage1Scene}=await import('/tests/rendering/stage1-scene.js'),{waitFrames}=await import('/tests/rendering/stage1-baseline-fixture.js')
@@ -50,13 +53,15 @@ const root=path.resolve(__dirname,'../docs/verification/pipeline-review-fixed'),
  await run('globeLessViewer',async()=>{
   const {viewer,CCR}=fixture;viewer.destroy();const host=document.createElement('div');document.body.append(host)
   const v=new Cesium.Viewer(host,{globe:false,baseLayer:false,baseLayerPicker:false,animation:false,timeline:false});let error=null
-  let pipeline;try{pipeline=CCR.createVisualPipeline({Cesium,viewer:v});await new Promise(resolve=>{let count=12;const off=v.scene.postRender.addEventListener(()=>{if(--count===0){off();resolve()}})});}catch(e){error=e.message}pipeline?.destroy();v.destroy();return {error}
+  const renderErrors=[];v.scene.renderError.addEventListener((scene,e)=>renderErrors.push(e.message))
+  const {waitFrames}=await import('/tests/rendering/stage1-baseline-fixture.js')
+  let pipeline;try{pipeline=CCR.createVisualPipeline({Cesium,viewer:v});await waitFrames(v.scene,12,renderErrors);}catch(e){error=e.message}pipeline?.destroy();v.destroy();return {error,renderErrors}
  })
 for(const [name,value]of Object.entries(report)){
  assert.ok(!value.error,name+': '+value.error);assert.deepEqual(value.errors,[]);assert.deepEqual(value.result.renderErrors||[],[])
  const r=value.result
  if(name==='toneDepthFallback'){assert.equal(r.before.custom,10);assert.equal(r.after.custom,10);assert.equal(r.after.native,0);assert.equal(r.after.hdr,true)}
- if(name==='staleMedium'){assert.equal(r.before.mediumValid,true);assert.equal(r.after.mediumValid,false)}
+ if(name==='staleMedium'){assert.equal(r.before.mediumValid,true);assert.equal(r.after.mediumValid,false);assert.equal(r.restored,true)}
  if(name==='deferredDiagnostics'){assert.equal(r.actual.activeMode,'deferred');assert.equal(r.policy.effectiveMode,'deferred');assert.equal(r.policy.active,true)}
  if(name==='taaBillboardScope'){assert.ok(r.before.particles>0);assert.equal(r.before.classifiedAsUi,false);assert.ok(Math.abs(r.before.lumaSum-r.particleAllowedIntoHdrChain.lumaSum)<r.before.lumaSum*.02)}
  if(name==='globeLessViewer')assert.equal(r.error,null)

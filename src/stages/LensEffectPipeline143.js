@@ -131,7 +131,7 @@ export default class LensEffectPipeline143 {
       const collection = scene.postProcessStages
       const wanted = C.Tonemapper[tone.enumName]
       if (collection && wanted && collection.tonemapper !== wanted) {
-        this.ownedTonemapper = { collection, before: collection.tonemapper }
+        this.ownedTonemapper = { collection, before: collection.tonemapper, applied: wanted }
         collection.tonemapper = wanted
       }
     }
@@ -310,7 +310,10 @@ export default class LensEffectPipeline143 {
           current = stage.outputTexture; ran++
           // Native update prepared a usable fallback this frame. Suppress it only
           // once the custom curve actually produced this frame's mapped color.
-          if (key === 'tone') this.scene.postProcessStages._tonemapping.enabled = false
+          if (key === 'tone') {
+            this.scene.postProcessStages._tonemapping.enabled = false
+            if (this.ownedTonemapper) this.ownedTonemapper.appliedEnabled = false
+          }
         }
       }
       if (!ran) { this.reason = 'No stage ready'; this.stats.bypasses++; return color }
@@ -372,12 +375,12 @@ export default class LensEffectPipeline143 {
     this.detach = undefined
     // Restore native tone state without changing any update wrappers.
     if (this.ownedTonemapper) {
-      const { collection, before, beforeEnabled } = this.ownedTonemapper
+      const { collection, before, beforeEnabled, applied, appliedEnabled } = this.ownedTonemapper
       this.ownedTonemapper.active = false
       try {
         if (collection && !(collection.isDestroyed && collection.isDestroyed())) {
-          if (before !== undefined) collection.tonemapper = before
-          if (collection._tonemapping && beforeEnabled !== undefined) collection._tonemapping.enabled = beforeEnabled
+          if (before !== undefined && collection.tonemapper === applied) collection.tonemapper = before
+          if (appliedEnabled !== undefined && collection._tonemapping?.enabled === appliedEnabled) collection._tonemapping.enabled = beforeEnabled
         }
       } catch { /* 还原失败不应阻断销毁流程 */ }
       this.ownedTonemapper = undefined

@@ -84,5 +84,5 @@ export default class TaaOverlay143 {
   }
   releaseTarget(){this.framebuffer?.destroy();this.texture?.destroy();this.framebuffer=this.texture=this.depth=undefined}
   getDiagnostics(){return {active:this.active,skipped:this.skipped,drawn:this.drawn,bytes:this.texture?.sizeInBytes||0}}
-  destroy(){this.active=false;if(this.scene.context.draw===this.hook)this.scene.context.draw=this.previous;this.releaseTarget();this.copy?.shaderProgram.destroy();this.copy=undefined}
+  destroy(){this.active=false;if(this.scene.context.draw===this.hook)this.scene.context.draw=this.previous;this.releaseTarget();this.copy?.shaderProgram.destroy();this.copy=undefined;this.particles?.clear();this.particles=undefined}
 }

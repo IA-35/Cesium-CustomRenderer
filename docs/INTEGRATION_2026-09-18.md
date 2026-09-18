@@ -31,6 +31,22 @@
 
 ## 合并与二审
 
-修复提交、逐分支合并记录、冲突处理和二审结果将在完成后补入本节。所有已存在的当前开发成果随修复一起保留；本地资产、编辑器状态和原始验证文件仍按既有忽略规则留在工作区。
+修复提交为 `753b045`。切换 main 前，在独立干净检出目录执行 691 项测试全部通过（无私有校园资产、无跳过），生成后的逐源码哈希与提交的 manifest 一致。
+
+| 开发分支 | 合并结果 |
+| --- | --- |
+| codex/stage1-b04-b06 | 已包含于起始 main，执行合并返回 Already up to date |
+| codex/stage1-b07-b12 | `fa106b5`，包含 18 个既有提交与本轮修复/当前开发成果 |
+| codex/stage1-hbao-bloom-clouds | `d70e86c`，保留独有 3 个历史提交的真实 merge ancestry |
+
+旧分支产生 40 处冲突。逐项对照证明：其中 25 处 incoming blob 在历史整合提交 `c28bc66` 已逐字存在；其他 15 处是随后 B00/B01 校验、runtime-config、示例/文档和产物的演进。保留主线的后续修复，构建包从解决后的源码重建。旧分支最终对 main 文件树只带来重建 manifest 的提交来源变化，没有回退当前渲染代码。逐文件判定见同名 JSON。无未解决冲突，所有本地开发分支均为 main 的祖先；所有分支保留，没有推送远程。
+
+**合并后才执行正式二审。** 二审额外发现并修复镜头效果释放时的属性所有权问题：只有 native tonemapper/启用状态仍等于本模块最后写入的值才还原；没有执行自定义 tone 时不覆盖 native fallback。新增失败→通过回归。TAA 销毁时也清除新增粒子分类集合的强引用。
+
+最终 main 工作树验证：`npm test` **692/692，0 失败、0 跳过**；SDK 构建通过；ESM/UMD 均通过 R1/R2/R3/R4/R7 浏览器门禁（包括介质恢复为透视后的重新有效、无 Globe 渲染错误捕获）；基础数值/场景/UMD 检查通过；帧桥七种情况通过；20 轮启停及 context-loss 显式重建通过；gzip 与 JS 一致、sourceHashes 无差异。
+
+**二审结论：本轮已报告缺陷与分支整合通过，没有遗留的合并冲突或本轮阻塞项。** 不把它扩大为阶段一原始目标全部完成：B13 仍暂停，完整 TAA/MSAA/排序透明延迟组合、多视锥透明介质和任意设备 60fps 不在已完成声明内。原始审查报告保留为历史证据。
+
+所有已存在的当前开发成果随修复一起保留；本地资产、编辑器状态和原始验证文件仍按既有忽略规则留在工作区。
 
 复现入口：`npm test`、`npm run build`、`scripts/check-pipeline-review-fixes.cjs`（`CCR_TEST_PORT`、`CCR_TEST_MODE=esm|umd`、`CESIUM_PLAYWRIGHT`）。本轮原始日志保存在 `docs/verification/integration-2026-09-18/`；修复 GPU 结果在 `docs/verification/pipeline-review-fixed/`。

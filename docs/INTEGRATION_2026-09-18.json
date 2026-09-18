@@ -1,0 +1,835 @@
+{
+  "scope": "cesium customRenderer only",
+  "fixCommit": "753b045",
+  "mergeCommits": [
+    "fa106b5",
+    "d70e86c"
+  ],
+  "branches": "codex/stage1-b04-b06           b94a9b88372a7c513da66c455611c32cd89fd8f1 feat(rendering): complete B03 transparent forward and deferred SSR\n  codex/stage1-b07-b12           753b0457c89384d90b4ed573a96344c34752cdec fix(rendering): close pipeline review and consolidate stage-one work\n  codex/stage1-hbao-bloom-clouds 31f54b19f7711a6b21f45ad758224d2b1baf9212 test: wait for imagery before baseline capture\n* main                           d70e86c88b3a5a639556a1f7f45362df7d1d227e [ahead 24] merge: reconcile historical HBAO Bloom and cloud branch",
+  "conflicts": [
+    {
+      "file": "build/0.1.0/CCR.min.js",
+      "incoming": "833af7acb2be7f783c444a3a4069c140985fba7f",
+      "alreadyInConsolidation": false,
+      "resolution": "retain current, regenerate from resolved sources"
+    },
+    {
+      "file": "build/0.1.0/CCR.min.js.gz",
+      "incoming": "b0aaf498ee2511500cc72b4aba5dcad92a777ab1",
+      "alreadyInConsolidation": false,
+      "resolution": "retain current, regenerate from resolved sources"
+    },
+    {
+      "file": "build/0.1.0/README.md",
+      "incoming": "dc6df88850cace3d3384f828521d8ef4985c9ce1",
+      "alreadyInConsolidation": true,
+      "resolution": "retain current, regenerate from resolved sources"
+    },
+    {
+      "file": "build/0.1.0/THIRD_PARTY_LICENSES.txt",
+      "incoming": "fd4d0ff31c04740e3774c2626d9166800f954f05",
+      "alreadyInConsolidation": true,
+      "resolution": "retain current, regenerate from resolved sources"
+    },
+    {
+      "file": "build/0.1.0/manifest.json",
+      "incoming": "b3801bb6e87df60d7a667ea827d07521d02c310d",
+      "alreadyInConsolidation": false,
+      "resolution": "retain current, regenerate from resolved sources"
+    },
+    {
+      "file": "docs/API.md",
+      "incoming": "fc7963b7a0c4f410b64a174022e84e982b460912",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "docs/INSTANCED_VEGETATION_DESIGN.md",
+      "incoming": "365798a0e5e5f73472d49d524c9d924ba1b5c226",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "docs/STAGE1_COMPLETION_PLAN.md",
+      "incoming": "5fd79300a3dae73eae3ec3f9936d766953eb3a11",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "examples/campus.html",
+      "incoming": "7d7bf37a169c07b16f6efab34580928e2b57dd74",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "examples/campus.js",
+      "incoming": "884b6f57a66237ae4223a8bcfa2dcb2cb0c5440b",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "examples/white-city.html",
+      "incoming": "e106828282d85a0f0becce92ca90b802fff92823",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "examples/white-city.js",
+      "incoming": "f0f296b5032e4bfde16c106b6a343d1f7cf6fb33",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "scripts/baseline-server.cjs",
+      "incoming": "793090e0bdbaa328a3de5f92a7f1a26e7ae7cdd7",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "scripts/build-rendering-sdk.cjs",
+      "incoming": "8a7b7ce772b069faf40bbcd55fdd945989a23759",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "scripts/check-camera-shadows.cjs",
+      "incoming": "247d9f7d805195acd465e8c9731cff8f30b094cc",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "scripts/check-campus-aa-lifecycle.cjs",
+      "incoming": "7e7c68f0e1d6f79a2c6a14b4e68ad83cc5dcb4e4",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "scripts/check-campus-aa.cjs",
+      "incoming": "2e2e90015dc3688640632435479a49b83eb0d33b",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "scripts/check-stage1-baseline.cjs",
+      "incoming": "873882070c275117519116cdc4c931a943479bee",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "scripts/check-stage1.cjs",
+      "incoming": "018f38adc9bfe92f74c739eb7aa46ce4912f9c09",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "scripts/rendering-sdk-README.md",
+      "incoming": "dc6df88850cace3d3384f828521d8ef4985c9ce1",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/VisualPipeline.js",
+      "incoming": "712cec53c07d451ced3f0a8da867864a66c555fa",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/antialiasing/README.md",
+      "incoming": "fa94d67139c9429e0462dd92f73d3132bfe3b5ef",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/ao/ScreenSpaceAo143.js",
+      "incoming": "6e040004b77b82dd9a757b069ac2ca94ad272fe7",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/bloom/HdrBloom143.js",
+      "incoming": "86ecd6d6a20b52e129c7f5abe5e530f92bbd7df4",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/diagnostics/RenderProfiler143.js",
+      "incoming": "66c3abef55b723605a97a0e5e778617dda0351fc",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/environment/EnvironmentRenderer.js",
+      "incoming": "e81c0b73883d67dd8fb80a7826f3dc4484b34769",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/environment/HdrEnvironmentPass143.js",
+      "incoming": "061125b7ac1e64289231fabbad6f2fcc73edf06c",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/environment/cloudShell143.js",
+      "incoming": "07a572e0419a0041cbbb76d99753d8fa1120ba2f",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/environment/environmentStages.js",
+      "incoming": "c193166b6ce35042afa0d738e9232a77a47eaff2",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/presets.js",
+      "incoming": "42570ab5cf53351b5acd82aa53a60f496a5092ea",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/reflections/ssrShaders143.js",
+      "incoming": "6dbe61093d63370d9de5bd6faa588a91b31011a6",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/shadows/DirectionalShadowPass.js",
+      "incoming": "e67920cb77b039eeff0d9f1fa65befbea7972bcd",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/shadows/LightFrustum.js",
+      "incoming": "2ef5b55ab856285b2d622d5df4cdd2d91086b32e",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/shadows/README.md",
+      "incoming": "b38fe5c314a034bc70bfc31a8dc2c9324efdff10",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/shadows/ShadowReceiver143.js",
+      "incoming": "7721fa1781687f749d59f2913b1991975b3d3ff5",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "src/shadows/shaderAdapter143.js",
+      "incoming": "d4db1a703c9f6a5d52f97a5d433e3d8fc7346264",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "tests/rendering/ssr-numeric-fixture.js",
+      "incoming": "c15345d18f7b64fc515e1582c1a9acfabce2c056",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    },
+    {
+      "file": "tests/rendering/stage1-baseline-fixture.js",
+      "incoming": "2304d67342cc5e92070b72d972770cfec5b6e81e",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "tests/rendering/stage1-baseline.json",
+      "incoming": "b3c1a2c3597dc4717d4d81d983994a9e9547a360",
+      "alreadyInConsolidation": false,
+      "resolution": "retain B00/B01 corrected baseline, runtime-config and documentation descendants; early evidence remains in merge-parent history"
+    },
+    {
+      "file": "tests/rendering/stage1-scene.js",
+      "incoming": "a4bb326c4234692be427355ba00a86c2cd17f884",
+      "alreadyInConsolidation": true,
+      "resolution": "incoming content already present verbatim at c28bc66; retain subsequent main evolution"
+    }
+  ],
+  "verification": {
+    "node": {
+      "total": 692,
+      "passed": 692,
+      "failed": 0,
+      "skipped": 0
+    },
+    "cleanCheckoutBeforeMerge": {
+      "total": 691,
+      "passed": 691,
+      "sourceHashMismatches": 0
+    },
+    "esm": {
+      "toneDepthFallback": {
+        "result": {
+          "before": {
+            "native": 0,
+            "custom": 10,
+            "depth": true
+          },
+          "after": {
+            "mode": 2,
+            "hdr": true,
+            "native": 0,
+            "custom": 10,
+            "nativeEnabled": false,
+            "reason": null,
+            "depth": false
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "staleMedium": {
+        "result": {
+          "before": {
+            "frame": 64,
+            "mediumValid": true,
+            "hdrValid": true
+          },
+          "after": {
+            "frame": 74,
+            "mediumValid": false,
+            "sameTexture": false,
+            "hdr": {
+              "enabled": true,
+              "supported": true,
+              "valid": false,
+              "reason": "requires perspective camera",
+              "error": null,
+              "frustumCount": 2,
+              "stats": {
+                "executions": 60,
+                "bypasses": 10,
+                "failures": 0
+              }
+            },
+            "lensValid": true
+          },
+          "restored": true,
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "deferredDiagnostics": {
+        "result": {
+          "actual": {
+            "enabled": true,
+            "attached": true,
+            "failed": false,
+            "error": null,
+            "reason": null,
+            "valid": true,
+            "activeMode": "deferred",
+            "terms": {
+              "direct": true,
+              "indirect": true,
+              "emissive": true,
+              "shadow": true,
+              "ao": true
+            },
+            "debugMode": 0,
+            "stats": {
+              "frames": 58,
+              "draws": 232,
+              "lastAoValid": false,
+              "lastShadowValid": false,
+              "materialDraws": 4,
+              "nativeSupportedColorDraws": 0,
+              "compatibilityDraws": 21,
+              "coverageDraws": 0
+            },
+            "groupCount": 4,
+            "colorAttachmentCount": 4,
+            "materialLayout": "compact-v1",
+            "resources": {
+              "lightingFramebuffers": 1,
+              "lightingPrograms": 2,
+              "materialPrograms": 7,
+              "reflectionBytes": 0
+            }
+          },
+          "policy": {
+            "requested": true,
+            "active": true,
+            "effectiveMode": "deferred",
+            "coverage": {
+              "opaqueLoop": true,
+              "transparentLoop": true,
+              "ssr": false,
+              "msaa": true
+            },
+            "candidates": false,
+            "candidateReason": "Incomplete default coverage (ssr)",
+            "reason": null
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "taaBillboardScope": {
+        "result": {
+          "before": {
+            "particles": 100,
+            "commands": 2,
+            "classifiedAsUi": false,
+            "overlay": {
+              "active": true,
+              "skipped": 0,
+              "drawn": 0,
+              "bytes": 0
+            },
+            "lumaSum": 323610
+          },
+          "particleAllowedIntoHdrChain": {
+            "lumaSum": 325449,
+            "overlay": {
+              "active": true,
+              "skipped": 0,
+              "drawn": 0,
+              "bytes": 0
+            }
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "globeLessViewer": {
+        "result": {
+          "error": null,
+          "renderErrors": []
+        },
+        "errors": []
+      }
+    },
+    "umd": {
+      "toneDepthFallback": {
+        "result": {
+          "before": {
+            "native": 0,
+            "custom": 10,
+            "depth": true
+          },
+          "after": {
+            "mode": 2,
+            "hdr": true,
+            "native": 0,
+            "custom": 10,
+            "nativeEnabled": false,
+            "reason": null,
+            "depth": false
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "staleMedium": {
+        "result": {
+          "before": {
+            "frame": 69,
+            "mediumValid": true,
+            "hdrValid": true
+          },
+          "after": {
+            "frame": 79,
+            "mediumValid": false,
+            "sameTexture": false,
+            "hdr": {
+              "enabled": true,
+              "supported": true,
+              "valid": false,
+              "reason": "requires perspective camera",
+              "error": null,
+              "frustumCount": 2,
+              "stats": {
+                "executions": 60,
+                "bypasses": 10,
+                "failures": 0
+              }
+            },
+            "lensValid": true
+          },
+          "restored": true,
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "deferredDiagnostics": {
+        "result": {
+          "actual": {
+            "enabled": true,
+            "attached": true,
+            "failed": false,
+            "error": null,
+            "reason": null,
+            "valid": true,
+            "activeMode": "deferred",
+            "terms": {
+              "direct": true,
+              "indirect": true,
+              "emissive": true,
+              "shadow": true,
+              "ao": true
+            },
+            "debugMode": 0,
+            "stats": {
+              "frames": 58,
+              "draws": 232,
+              "lastAoValid": false,
+              "lastShadowValid": false,
+              "materialDraws": 4,
+              "nativeSupportedColorDraws": 0,
+              "compatibilityDraws": 21,
+              "coverageDraws": 0
+            },
+            "groupCount": 4,
+            "colorAttachmentCount": 4,
+            "materialLayout": "compact-v1",
+            "resources": {
+              "lightingFramebuffers": 1,
+              "lightingPrograms": 2,
+              "materialPrograms": 7,
+              "reflectionBytes": 0
+            }
+          },
+          "policy": {
+            "requested": true,
+            "active": true,
+            "effectiveMode": "deferred",
+            "coverage": {
+              "opaqueLoop": true,
+              "transparentLoop": true,
+              "ssr": false,
+              "msaa": true
+            },
+            "candidates": false,
+            "candidateReason": "Incomplete default coverage (ssr)",
+            "reason": null
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "taaBillboardScope": {
+        "result": {
+          "before": {
+            "particles": 100,
+            "commands": 2,
+            "classifiedAsUi": false,
+            "overlay": {
+              "active": true,
+              "skipped": 0,
+              "drawn": 0,
+              "bytes": 0
+            },
+            "lumaSum": 321489
+          },
+          "particleAllowedIntoHdrChain": {
+            "lumaSum": 323094,
+            "overlay": {
+              "active": true,
+              "skipped": 0,
+              "drawn": 0,
+              "bytes": 0
+            }
+          },
+          "renderErrors": []
+        },
+        "errors": []
+      },
+      "globeLessViewer": {
+        "result": {
+          "error": null,
+          "renderErrors": []
+        },
+        "errors": []
+      }
+    },
+    "stage1": {
+      "checks": {
+        "ssao": 17,
+        "hbao": 17,
+        "bloom": 8,
+        "shell": 1,
+        "noise": 1,
+        "scene": 29,
+        "umd": 29
+      },
+      "noise": {
+        "checks": {
+          "shellNoiseMatchesTrilinearReference": true
+        },
+        "samples": 12288,
+        "maximumError": 0.0000012723948157322695
+      },
+      "resize": [
+        {
+          "size": [
+            801,
+            603
+          ],
+          "rebuilt": true,
+          "ssao": true,
+          "hbao": true,
+          "bloom": true,
+          "clouds": true,
+          "ssr": true,
+          "smaa": true,
+          "errors": []
+        },
+        {
+          "size": [
+            1280,
+            720
+          ],
+          "rebuilt": true,
+          "ssao": true,
+          "hbao": true,
+          "bloom": true,
+          "clouds": true,
+          "ssr": true,
+          "smaa": true,
+          "errors": []
+        }
+      ],
+      "gpu": {
+        "frame": {
+          "samples": 11,
+          "p50": 4.227072,
+          "p95": 5.687296
+        },
+        "materials": {
+          "samples": 11,
+          "p50": 0.546816,
+          "p95": 0.65536
+        },
+        "hiz": {
+          "samples": 11,
+          "p50": 0.125952,
+          "p95": 0.149504
+        },
+        "ssr": {
+          "samples": 11,
+          "p50": 0.446464,
+          "p95": 0.592896
+        },
+        "ao": {
+          "samples": 11,
+          "p50": 0.913408,
+          "p95": 1.181696
+        },
+        "bloom": {
+          "samples": 11,
+          "p50": 0.428032,
+          "p95": 0.544768
+        },
+        "environment": {
+          "samples": 11,
+          "p50": 0.161792,
+          "p95": 0.210944
+        },
+        "smaa": {
+          "samples": 11,
+          "p50": 0.120832,
+          "p95": 0.1536
+        }
+      },
+      "errors": [],
+      "httpErrors": []
+    },
+    "bridge": {
+      "modes": [
+        {
+          "id": "mrt",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "msaa4",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 4,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "multipass",
+          "useOIT": true,
+          "mrt": false,
+          "multipass": true,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "multifrustum",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 10,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "sorted",
+          "useOIT": false,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "no-glass",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "umd",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        }
+      ],
+      "errors": []
+    },
+    "lifecycle": {
+      "capability": {
+        "generation": 41,
+        "mrt": true,
+        "attachmentsNeeded": 4,
+        "deviceSlots": {
+          "maxDrawBuffers": 8,
+          "maxColorAttachments": 8
+        },
+        "oit": true,
+        "msaa": true,
+        "deferredMode": "enhanced"
+      },
+      "lifecycle": {
+        "rounds": 20,
+        "firstHalfPeak": 2046080,
+        "secondHalfPeak": 2046080
+      },
+      "nestedSuspension": {
+        "activeBefore": true,
+        "suspendedFlag": true,
+        "ssrActiveWhileSuspended": false,
+        "stillSuspendedAfterOneRelease": true,
+        "resumedActive": true,
+        "resumedSuspended": false,
+        "duplicateSuspendIsIdempotent": true,
+        "singleResumeClearsIt": true
+      },
+      "resize": [
+        {
+          "size": [
+            320,
+            240
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            213,
+            160
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            400,
+            300
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            320,
+            240
+          ],
+          "materials": true,
+          "ssr": true
+        }
+      ],
+      "contextLoss": {
+        "lost": "lost",
+        "restored": "restored",
+        "browserRestoredContext": true,
+        "before": [
+          169,
+          185,
+          193
+        ],
+        "duringReasons": {
+          "ssr": "Suspended",
+          "materials": "Suspended"
+        },
+        "autoRecovered": false,
+        "restoredRender": null,
+        "explicitRebuild": {
+          "colour": [
+            169,
+            185,
+            193
+          ],
+          "materialsValid": true,
+          "path": "explicit-rebuild",
+          "picked": "recovery-building"
+        }
+      }
+    },
+    "bundle": {
+      "sha256": "974dd46c86a8546bd2dea645be88d41452ee575c724acf376bbadcb10a1d5de5",
+      "bytes": 567454,
+      "gzipBytes": 183666,
+      "sourceHashMismatches": [],
+      "gzipEqual": true
+    }
+  },
+  "review": {
+    "status": "passed for reported defects and branch integration",
+    "additionalFix": "Do not restore foreign native tonemapper or untouched fallback state; release particle classification references",
+    "remainingProductBoundaries": [
+      "B13 remains paused",
+      "Full deferred TAA/MSAA/sorted composition not implemented",
+      "Full multi-frustum transparent media not implemented",
+      "Context restoration requires explicit Viewer rebuild",
+      "No arbitrary-device 60fps guarantee"
+    ]
+  }
+}

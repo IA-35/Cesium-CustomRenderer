@@ -39,6 +39,16 @@ test('sun NDC projects into bottom-left texture coordinates',()=>{
   f.scene.context.uniformState.sunPositionWC.z=1
   assert.deepEqual(f.lens._sunScreen(),new C.Cartesian2(-1,-1))
 })
+
+test('release does not overwrite a foreign tonemapper or an untouched native fallback',()=>{
+ const f=fixture();f.collection.tonemapper=C.Tonemapper.ACES
+ f.lens.getOptions=()=>({toneMappingCurve:'filmic'});f.lens.setEnabled(true)
+ f.collection.tonemapper=C.Tonemapper.REINHARD;f.lens.destroy()
+ assert.equal(f.collection.tonemapper,C.Tonemapper.REINHARD)
+ const g=fixture();g.collection._tonemapping.enabled=false;g.lens.setEnabled(true)
+ g.collection._tonemapping.enabled=true;g.lens.destroy()
+ assert.equal(g.collection._tonemapping.enabled,true)
+})
 test('public lens setter updates dependencies and cannot enable effects while suspended',()=>{
   const p=Object.create(VisualPipeline.prototype),demands=[],active=[]
   Object.assign(p,{options:normalizeOptions(),enabled:true,destroyed:false,suspensions:new Set(),
