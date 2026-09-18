@@ -13,7 +13,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "e09bbc277f91240507ad694cf96a79d8fd820633",
+  "sourceCommit": "fa106b54d548e2ee2ac1153ba22db0934fa74ae7",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "cf289e2122e43903cb9a4859cee8e3e1e69edbce819a39746e666e63f6fd8c64",
