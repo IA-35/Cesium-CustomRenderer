@@ -3,6 +3,13 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import HdrEnvironmentPass143 from '../../src/environment/HdrEnvironmentPass143.js'
 
+test('disabled medium consumers allocate no occlusion collection',()=>{
+  const f=fixture();f.pass._occlusionStage={enabled:false}
+  f.pass._executeOcclusion(f.context,{},null,null)
+  assert.equal(f.pass.occlusionCollection,undefined)
+  assert.match(f.pass.occlusionReason,/No medium consumer/)
+})
+
 const Cesium = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
 
 test('orthographic views bypass perspective-only volume rays', () => {

@@ -59,19 +59,25 @@ export default class FrustumJitterBridge143 {
     }
     if (!entry || frustum === request.frustum || !(frustum instanceof this.C.PerspectiveFrustum)) return
     const resolution = { width: this.scene.drawingBufferWidth, height: this.scene.drawingBufferHeight }
-    const offsets = nearPlaneOffsets(frustum, request.pixel, resolution)
+    const view = this.scene._view, id = view?.sceneFramebuffer?.idFramebuffer
+    const stableId = !!id && view.passState?.framebuffer === id
+    const offsets = nearPlaneOffsets(frustum, stableId ? {x: 0, y: 0} : request.pixel, resolution)
     if (!offsets) { this.stats.skipped++; return }
     const baseX = request.baseX || 0, baseY = request.baseY || 0
     offsets.xOffset += baseX * frustum.near / request.frustum.near
     offsets.yOffset += baseY * frustum.near / request.frustum.near
     for (const key of ['xOffset', 'yOffset']) { frustum[key] = offsets[key]; entry['applied_' + key] = offsets[key] }
     entry.frame = this.scene.frameState?.frameNumber || 0
+    this.lastDrawingFrustum = frustum
     this.stats.published++; this.stats.renormalized++
     const matrix = frustum.projectionMatrix
     this.drawn = { near: frustum.near, ...offsets, pixelX: -matrix[8] * resolution.width / 2, pixelY: -matrix[9] * resolution.height / 2 }
     if (this.touched.size > 64) for (const [value, record] of this.touched) {
       if (entry.frame - record.frame > 1) { this._restore(value, record); this.touched.delete(value) }
     }
+  }
+  restoreColorProjection() {
+    if (this.lastDrawingFrustum && this.request()) this.scene.context.uniformState.updateFrustum(this.lastDrawingFrustum)
   }
   detach() {
     if (this.token) this.token.active = false
@@ -80,7 +86,7 @@ export default class FrustumJitterBridge143 {
       else delete entry.owner[entry.key]
     }
     if (!this._sceneGone()) for (const [frustum, entry] of this.touched) this._restore(frustum, entry)
-    this.touched.clear(); this.restores = undefined; this.source = undefined; this.attached = false; this.drawn = null; this.reason = 'Detached'
+    this.touched.clear(); this.restores = undefined; this.source = undefined; this.lastDrawingFrustum = undefined; this.attached = false; this.drawn = null; this.reason = 'Detached'
   }
   getDiagnostics() {
     return { attached: this.attached, reason: this.reason, stats: { ...this.stats }, drawn: this.drawn && { ...this.drawn }, touched: this.touched.size }

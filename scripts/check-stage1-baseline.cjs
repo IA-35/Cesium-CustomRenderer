@@ -49,7 +49,7 @@ function assetManifest(){
      '/examples/campus.html'+(target==='campus-geometry'?'?imagery=none':'')
    await page.goto('http://127.0.0.1:'+port+route)
    await page.waitForFunction(target==='fixtures'?()=>!!window.fixture:
-     ()=>window.campus?.tiles.length===3&&window.campus.contextTiles.length===1,null,{timeout:90000})
+     ()=>window.campus?.tiles.length===window.campus?.expectedTiles&&window.campus.contextTiles.length===1,null,{timeout:120000})
    const run=await page.evaluate(async ({target,configuration})=>{
     const m=await import('/tests/rendering/stage1-baseline-fixture.js')
     const host=target==='fixtures'?globalThis.fixture:globalThis.campus,scene=host.viewer.scene

@@ -1,7 +1,16 @@
 node_modules/
+vendor/cesium-ez-tree/runtime.js
 build/
 evidence/
 *.log
 .DS_Store
 Thumbs.db
 docs/verification/
+
+# 私有本地内容，按 B04_B06_EXECUTION.md 规定不纳入提交：
+# 真实校园/城市资产（约 362 MB）、编辑器与外部工具状态。
+assets/
+!vendor/cesium-ez-tree/assets/
+!vendor/cesium-ez-tree/assets/**
+.vscode/
+.workbuddy/

@@ -11,16 +11,23 @@ import ScreenSpaceGeometry143 from './channels/ScreenSpaceGeometry143.js'
 import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
+import LensEffectPipeline143 from './stages/LensEffectPipeline143.js'
+import { LENS_EFFECT_DEFAULTS } from './stages/lensEffects143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import TransparentForward143 from './pipeline/TransparentForward143.js'
+import {peekRenderTargetPool} from './pipeline/RenderTargetPool143.js'
+import OcclusionCulling143 from './visibility/OcclusionCulling143.js'
 import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
 import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
 import PerformanceGovernor143 from './performance/PerformanceGovernor143.js'
 import { selectMsaaSamples, renderResolution, readMsaaAttachments, resolveMsaaPolicy } from './antialiasing/settings143.js'
+import { capabilityDiagnostics } from './diagnostics/capabilityMatrix143.js'
+import SelectedIdPass143 from './selection/SelectedIdPass143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
+const contextLossOwner = Symbol('context loss requires Viewer rebuild')
 export const getVisualPipeline = viewer => pipelines.get(viewer)
 
 export default class VisualPipeline {
@@ -41,7 +48,18 @@ export default class VisualPipeline {
     this.color.enabled = false
     stages.add(this.color)
     pipelines.set(viewer, this)
+    this.contextCanvas = viewer.scene.canvas
+    this.onContextLost = event => {
+      event.preventDefault()
+      this.contextRecoveryRequired = true
+      // Cesium 1.143 does not rebuild its native GPU handles after restoration.
+      // Stop submitting into that retired context; the host must rebuild Viewer.
+      viewer.useDefaultRenderLoop = false
+      this.suspend(contextLossOwner)
+    }
+    this.contextCanvas?.addEventListener('webglcontextlost', this.onContextLost)
     try {
+      if (viewer.scene.context?.webgl2) this.selectedIdPass = new SelectedIdPass143(Cesium, viewer.scene, () => this.enabled && !this.suspensions.size && this.options.antialiasing !== 'taa')
       this.releaseOitCompatibility = installOitCompatibility143(Cesium, viewer.scene)
       this.setEnabled(true)
     } catch (error) {
@@ -62,6 +80,8 @@ export default class VisualPipeline {
   }
 
   restore() {
+    this.lensEffects?.setEnabled(false)
+    this.occlusionCulling?.setEnabled(false)
     if (this.transparentForward) this.transparentForward.setEnabled(false)
     if (this.deferredLighting) this.deferredLighting.setEnabled(false)
     if (this.fxaa) this.fxaa.setEnabled(false)
@@ -99,10 +119,11 @@ export default class VisualPipeline {
     if (!this.environmentRenderer || !this.environmentRenderer.enabled) {
       this.write(s, 'light', this.light || (this.light = new C.SunLight({ intensity: 1.5 })))
     }
-    this.write(s.globe, 'enableLighting', true)
+    if (s.globe) this.write(s.globe, 'enableLighting', true)
     if (o.shadowMode === 'custom') {
       this.write(v.shadowMap, 'enabled', false)
-      if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options)
+      if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options,
+        () => !!this.transparentForward?.enabled && !this.transparentForward.scopeReason())
       this.customShadow.setEnabled(o.shadows)
     } else {
       if (!this.shadowMap) this.shadowMap = createCampusShadowMap(C, v, o)
@@ -164,11 +185,13 @@ export default class VisualPipeline {
     } else if (this.environmentRenderer) this.environmentRenderer.setEnabled(false)
     this.applyGeometry()
     this.applyLighting()
+    this.applyOcclusionCulling()
     this.applyMaterialChannels()
     this.applyScreenSpaceReflections()
     this.applyTransparentReflections()
     this.applyScreenSpaceAO()
     this.applyHdrBloom()
+    this.applyLensEffects()
     s.requestRender()
   }
 
@@ -197,6 +220,10 @@ export default class VisualPipeline {
         getShadowVisibility: () => this._deferredShadowVisibility(),
         onGeometryAvailability: () => this.applyMaterialChannels(),
         prepareReflections: color => this.screenSpaceReflections?.enabled ? this.screenSpaceReflections.prepareOpaque(this.viewer.scene.context,color) : color,
+        shouldCull: command => {
+          if(!this.occlusionCulling?.shouldCull(command))return false
+          this.occlusionCulling.recordSkip(command);return true
+        },
       })
     }
     if (this.deferredLighting) {
@@ -254,6 +281,7 @@ export default class VisualPipeline {
         },
       })
     }
+    if(requested&&!this.transparentForward?.enabled)this.customShadow?.adapter.restoreTranslucent()
     if (this.transparentForward) this.transparentForward.setEnabled(requested)
   }
 
@@ -266,6 +294,7 @@ export default class VisualPipeline {
   _deferredShadowVisibility() {
     const shadow = this.customShadow
     if (!shadow?.enabled || !shadow.ready || !shadow.target) return null
+    if(shadow.getReceiverData)return shadow.getReceiverData(this.viewer.camera)
     const C = this.Cesium
     return { texture: shadow.target.depth, matrix: shadow.light.receiverMatrix(this.viewer.camera),
       params: new C.Cartesian4(1 / shadow.target.size, shadow.light.texelWorld, shadow.light.depthSpan, 1) }
@@ -294,6 +323,22 @@ export default class VisualPipeline {
   }
 
   getOptions() { return { ...this.options } }
+  applyOcclusionCulling(){
+    if(this.destroyed)return
+    if(this.options.occlusionCullingEnabled&&!this.occlusionCulling)this.occlusionCulling=new OcclusionCulling143(this.Cesium,this.viewer.scene,()=>this.getActiveMaterialChannels(),()=>this.applyMaterialChannels())
+    this.occlusionCulling?.setEnabled(!!this.options.occlusionCullingEnabled&&this.enabled&&!this.suspensions.size)
+  }
+  setOcclusionCulling(settings={}){if(this.destroyed)return this.getOcclusionDiagnostics();this.options=normalizeOptions({occlusionCullingEnabled:settings.enabled},this.options);this.applyOcclusionCulling();this.applyMaterialChannels();return this.getOcclusionDiagnostics()}
+  getOcclusionDiagnostics(){return this.occlusionCulling?.getDiagnostics()||{enabled:false,hidden:0,pending:0,reason:'Not requested'}}
+  getResourcePoolDiagnostics(){return peekRenderTargetPool(this.viewer.scene.context)?.getDiagnostics()||{live:0,targets:0,currentBytes:0,peakBytes:0,allocated:0,reused:0,crossReused:0}}
+  getFrameUniformDiagnostics(){
+    const entries=new Map()
+    const add=(consumer,buffer)=>{if(!buffer||buffer.isDestroyed())return;let entry=entries.get(buffer);if(!entry){entry={...buffer.getDiagnostics(),consumers:[]};entries.set(buffer,entry)}entry.consumers.push(consumer)}
+    for(const [name,pass]of [['ao',this.screenSpaceAO],['ssr',this.screenSpaceReflections],['transparentSsr',this.transparentReflections]])add(name+'.camera',pass?.cameraUniforms?.buffer)
+    for(const [name,pass]of [['shadow',this.customShadow],['deferred',this.deferredLighting],['transparent',this.transparentForward]])add(name+'.sun',pass?.sunUniforms?.buffer)
+    add('environment.activeViewAndSolar',this.environmentRenderer?.frameUniforms)
+    return {buffers:[...entries.values()],bytes:[...entries.values()].reduce((n,e)=>n+e.bytes,0),uploadBytes:[...entries.values()].reduce((n,e)=>n+e.uploadedBytes,0),bufferSubDataCalls:[...entries.values()].reduce((n,e)=>n+e.uploads,0)}
+  }
   getColorGrading() {
     return Object.fromEntries(Object.keys(defaultFilters).map(key => [key, this.options[key]]))
   }
@@ -304,9 +349,13 @@ export default class VisualPipeline {
       this.viewer.scene.orderIndependentTranslucency && this.options.antialiasing !== 'taa' &&
       !this.deferredLighting?.failed && this.deferredLighting?.geometryAvailable !== false
     const depthPyramidEnabled = this.options.depthPyramidEnabled || ((this.options.screenSpaceAoEnabled || this.options.screenSpaceReflectionEnabled) && !inline)
-    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled
+    // B09 景深单独开启时也需要米制视深度（R4）：材质通道的依赖推导此前漏掉了它，
+    // 导致 eyeDepth 未生产而 depthOfField shader 只能读 defaultTexture（颜色而非深度）。
+    const depthOfFieldNeedsDepth = this.options.depthOfFieldEnabled && !this.options.tiltShiftEnabled && !this.options.blurEnabled
+    const enabled = this.options.materialChannelsEnabled || this.options.albedoEnabled || depthPyramidEnabled || depthOfFieldNeedsDepth || !!(this.occlusionCulling?.needsDepth&&!inline)
     if (enabled && !this.materialChannels) {
       this.materialChannels = new MaterialChannels143(this.Cesium, this.viewer.scene)
+      this.materialChannels.shouldCull=command=>!!this.occlusionCulling?.shouldCull(command)
     }
     if (this.materialChannels) {
       if (this.materialChannels.setDepthPyramidEnabled) this.materialChannels.setDepthPyramidEnabled(depthPyramidEnabled)
@@ -342,6 +391,64 @@ export default class VisualPipeline {
     const active = !this.destroyed && this.enabled && !this.suspensions.size && requested.enabled
     return { ...(this.hdrBloom ? this.hdrBloom.getDiagnostics() : { enabled: false, valid: false, reason: 'Not requested' }),
       ...(!active ? { enabled: false, valid: false, reason: this.destroyed ? 'Destroyed' : requested.enabled ? 'Pipeline inactive' : 'Not requested' } : {}), requested }
+  }
+
+  /**
+   * B09: tone mapping curve selection and lens effects.
+   *
+   * Only creates the manager when something is actually requested, so the default
+   * configuration adds no stage and therefore no cost.
+   */
+  lensEffectsRequested() {
+    const o = this.options
+    return o.toneMappingCurve !== 'aces' || o.tiltShiftEnabled || o.blurEnabled ||
+      o.depthOfFieldEnabled || o.chromaticAberrationEnabled || o.sunFlareEnabled || o.lightShaftEnabled
+  }
+  applyLensEffects() {
+    if (this.destroyed || !this.enabled || this.suspensions.size) {
+      if (this.lensEffects) this.lensEffects.setEnabled(false)
+      return
+    }
+    const requested = this.lensEffectsRequested()
+    if (requested && !this.lensEffects) {
+      this.lensEffects = new LensEffectPipeline143(this.Cesium, this.viewer.scene, () => this.options,
+        () => this.environmentRenderer?.getMediumOcclusionDiagnostics?.() || null,
+        () => this.getActiveMaterialChannels())
+    }
+    if (this.lensEffects) this.lensEffects.setEnabled(requested)
+  }
+  setLensEffects(settings = {}) {
+    if (!this.destroyed) {
+      const input = settings || {}
+      // 只把白名单/布尔/数值键交给 normalizeOptions；其余键被忽略而不是静默写入。
+      const patch = {}
+      for (const key of ['toneMappingCurve', 'tiltShiftEnabled', 'tiltShiftFocus', 'tiltShiftWidth',
+        'tiltShiftRadius', 'tiltShiftStrength', 'blurEnabled', 'blurRadius', 'blurStrength',
+        'depthOfFieldEnabled', 'depthOfFieldFocus', 'depthOfFieldRange', 'depthOfFieldRadius',
+        'depthOfFieldStrength', 'chromaticAberrationEnabled', 'chromaticAberrationStrength',
+        'sunFlareEnabled', 'sunFlareStrength', 'lightShaftEnabled', 'lightShaftStrength', 'lightShaftSamples']) {
+        if (input[key] !== undefined) patch[key] = input[key]
+      }
+      this.options = normalizeOptions(patch, this.options)
+      this.applyMaterialChannels()
+      this.lensEffects?.setEnabled(false)
+      this.applyLensEffects()
+    }
+    return this.lensEffects?.getDiagnostics?.() || { enabled: false, valid: false, reason: 'Not requested' }
+  }
+  getLensEffectsDiagnostics() {
+    const o = this.options
+    const requested = this.lensEffectsRequested()
+    const active = !this.destroyed && this.enabled && !this.suspensions.size && requested
+    const base = this.lensEffects
+      ? this.lensEffects.getDiagnostics()
+      : { enabled: false, valid: false, reason: 'Not requested', activeStages: [] }
+    return { ...base,
+      ...(!active ? { enabled: false, valid: false,
+        reason: this.destroyed ? 'Destroyed' : requested ? 'Pipeline inactive' : 'Not requested' } : {}),
+      requested: { toneMappingCurve: o.toneMappingCurve, tiltShift: o.tiltShiftEnabled, blur: o.blurEnabled,
+        depthOfField: o.depthOfFieldEnabled, chromaticAberration: o.chromaticAberrationEnabled,
+        sunFlare: o.sunFlareEnabled, lightShaft: o.lightShaftEnabled } }
   }
   applyScreenSpaceAO(updateNativeAO = false) {
     if (this.destroyed || !this.enabled || this.suspensions.size) return
@@ -545,9 +652,88 @@ export default class VisualPipeline {
     const actual = this.screenSpaceReflections ? this.screenSpaceReflections.getDiagnostics() : { enabled: false, valid: false }
     return { ...actual, ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
   }
+  /**
+   * B11: capability matrix probed from the live scene.
+   *
+   * Every field is read from the real context/scene rather than assumed, so the
+   * matrix answers "why is this not active" with a measured reason. `generation`
+   * is the frame number, which lets a caller detect a stale report.
+   */
+  probeCapabilities() {
+    // 极简测试夹具可能既没有 Cesium 命名空间也没有完整 scene；能力探测只用于诊断，
+    // 绝不能因为夹具不完整而抛错并拖垮整条 getRenderDiagnostics 链。
+    const C = this.Cesium || {}
+    const s = this.viewer && this.viewer.scene
+    const context = s && s.context
+    const gl = context && context._gl
+    const limits = gl && typeof gl.getParameter === 'function'
+      ? { maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), maxColorAttachments: gl.getParameter(gl.MAX_COLOR_ATTACHMENTS) }
+      : {}
+    // 材质布局按当前实际请求的附件数计算（与 MaterialTarget143 同一规则）。
+    const reflection = !!(this.options.screenSpaceReflectionEnabled)
+    const opaqueColor = reflection && !!this.options.screenSpaceReflectionTransparent
+    const albedo = !!this.options.albedoEnabled
+    const attachmentsNeeded = 4 + (reflection ? 2 : 0) + (opaqueColor ? 1 : 0) + (albedo ? 1 : 0)
+    const oit = s && s._view && s._view.oit
+    const environment = (s && s._environmentState) || {}
+    const frusta = s && s._view && s._view.frustumCommandsList
+    // frameState 在极简测试夹具里可能不存在；能力探测用于诊断，绝不能因此抛错
+    // 而拖垮整条诊断链。
+    const frameState = s && s.frameState
+    return {
+      generation: frameState && Number.isFinite(frameState.frameNumber) ? frameState.frameNumber : 0,
+      lighting: this.deferredLighting?.getDiagnostics() || {activeMode:'enhanced',valid:false,reason:'Deferred lighting not active'},
+      attachmentsNeeded,
+      ...limits,
+      floatingPointTexture: !!(context && context.floatingPointTexture),
+      colorBufferFloat: !!(context && context.colorBufferFloat),
+      halfFloatingPointTexture: !!(context && context.halfFloatingPointTexture),
+      colorBufferHalfFloat: !!(context && context.colorBufferHalfFloat),
+      useOIT: !!environment.useOIT,
+      hasMrt: !!oit,
+      hasMultipass: !!(oit && oit._translucentMultipass),
+      accumulationTexture: !!(oit && oit._accumulationTexture),
+      revealageTexture: !!(oit && oit._revealageTexture),
+      requestedSamples: this.msaa ? this.msaa.requested : (s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1),
+      selectedSamples: s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1,
+      deferredGeometryActive: !!(this.deferredLighting && this.deferredLighting.enabled === true &&
+        this.deferredLighting.failed !== true),
+      mode: s ? s.mode : undefined,
+      scene3D: C.SceneMode ? C.SceneMode.SCENE3D : undefined,
+      perspectiveCamera: !!(s && s.camera && s.camera.frustum && C.PerspectiveFrustum &&
+        s.camera.frustum instanceof C.PerspectiveFrustum),
+      frustumCount: frusta ? frusta.length : 0
+    }
+  }  /**
+   * B11: coverage flags for the deferred-default gate.
+   *
+   * These are measured from the live modules rather than hard-coded, so the gate
+   * cannot silently pass: each flag is true only when the corresponding path has
+   * actually reported valid output.
+   */
+  probeCoverage() {
+    const materials = this.getActiveMaterialChannels()
+    const opaqueLoop = !!materials && materials.getTextures() !== null
+    const transparentForward = this.transparentForward
+    return {
+      opaqueLoop,
+      // 透明闭环：B03 的透明前向处于启用状态且未失败。
+      transparentLoop: !!(transparentForward && transparentForward.enabled === true && transparentForward.failed !== true),
+      ssr: !!(this.screenSpaceReflections && this.screenSpaceReflections.getDiagnostics().valid),
+      msaa: this.msaa ? this.msaa.selected <= 1 || this.msaa.combined === true : true
+    }
+  }
+  getCapabilityDiagnostics() {
+    const probe = this.destroyed ? { generation: 0 } : this.probeCapabilities()
+    const coverage = this.destroyed ? {} : this.probeCoverage()
+    return capabilityDiagnostics(probe, this.options, coverage)
+  }
   getRenderDiagnostics() {
     const fxaa = this.viewer.scene.postProcessStages.fxaa.enabled
-    return { enabled: this.enabled, suspended: this.suspensions.size > 0, colorGrading: this.getColorGrading(),
+    return { enabled: this.enabled, suspended: this.suspensions.size > 0,
+      recovery: { required: !!this.contextRecoveryRequired,
+        reason: this.contextRecoveryRequired ? 'Context lost; rebuild Viewer and pipeline, then reload scene assets' : null },
+      colorGrading: this.getColorGrading(),
       antiAliasing: { ...this.getAntiAliasing(), quality: this.options.spatialAaQuality, msaa: this.msaa, configuredMsaaSamples: this.viewer.scene.msaaSamples,
         allocatedAttachments: readMsaaAttachments(this.viewer.scene),
         postProcess: this.taa && this.taa.enabled && this.taa.getDiagnostics().valid ? { effective: 'taa' }
@@ -555,10 +741,14 @@ export default class VisualPipeline {
           : this.fxaa && this.fxaa.enabled ? this.fxaa.getDiagnostics() : { effective: fxaa ? 'fxaa' : 'off' } },
       resolution: renderResolution(this.viewer), geometry: this.getGeometryDiagnostics(), materials: this.getMaterialDiagnostics(),
       albedo: this.getAlbedoDiagnostics(),
+      selectionId: this.selectedIdPass?.getDiagnostics() || { active: false, reason: 'WebGL2 unavailable' },
       lighting: this.getLightingDiagnostics(),
+      occlusion: this.getOcclusionDiagnostics(), resourcePool: this.getResourcePoolDiagnostics(), frameUniforms: this.getFrameUniformDiagnostics(),
       taa: this.getTaaDiagnostics(),
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
+      lensEffects: this.getLensEffectsDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
+      capability: this.getCapabilityDiagnostics(),
       performance: this.getPerformanceDiagnostics() }
   }
   getTransparentReflectionDiagnostics() {
@@ -655,6 +845,9 @@ export default class VisualPipeline {
   setOptions(options) {
     if (this.destroyed) return this.getOptions()
     const next = normalizeOptions(options, this.options)
+    if (['toneMappingCurve', ...Object.keys(LENS_EFFECT_DEFAULTS)].some(key => next[key] !== this.options[key])) {
+      this.lensEffects?.setEnabled(false)
+    }
     if (next.shadowMode !== this.options.shadowMode || next.environment !== this.options.environment ||
         next.antialiasing !== this.options.antialiasing) this.restore()
     if (this.shadowMap && next.shadowCascades !== this.options.shadowCascades) {
@@ -683,12 +876,14 @@ export default class VisualPipeline {
   }
 
   resume(owner = 'default') {
+    if (owner === contextLossOwner) return
     if (this.destroyed || !this.suspensions.delete(owner)) return
     this.apply()
   }
 
   destroy() {
     if (this.destroyed) return
+    this.contextCanvas?.removeEventListener('webglcontextlost', this.onContextLost)
     // Drop the governor first: it must stop listening before the scene is torn down.
     if (this.governor) { this.governor.detach(); this.governor = null }
     if (!this.viewer.isDestroyed()) {
@@ -698,6 +893,8 @@ export default class VisualPipeline {
       this.viewer.scene.requestRender()
     }
     pipelines.delete(this.viewer)
+    this.selectedIdPass?.destroy()
+    this.occlusionCulling?.destroy()
     // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
     if (this.transparentForward) this.transparentForward.destroy()
     if (this.deferredLighting) this.deferredLighting.destroy()
@@ -705,6 +902,10 @@ export default class VisualPipeline {
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()
     if (this.screenSpaceAO) this.screenSpaceAO.destroy()
     if (this.hdrBloom) this.hdrBloom.destroy()
+    // B09: destroy the lens-effect manager before the environment renderer, because
+    // the manager reads the environment's medium-occlusion texture and restores the
+    // native tonemapper it may have disabled.
+    if (this.lensEffects) this.lensEffects.destroy()
     if (this.materialChannels) this.materialChannels.destroy()
     if (this.geometry) this.geometry.destroy()
     if (this.taa) this.taa.destroy()

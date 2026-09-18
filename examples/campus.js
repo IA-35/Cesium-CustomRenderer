@@ -5,27 +5,56 @@ import CampusAssetCompatibility from './compat/CampusAssetCompatibility.js'
 // HTML 只保留场景容器（#scene）与一个只读输出区（#status / #aaExplanation / #aaActual），
 // 所有可调控件改由右上角的 lil-gui 面板生成，不再用 querySelector 逐个手写 DOM 事件。
 //
-// 资产来源与拆分前一致：3D Tiles 全部读本工程自带的静态目录，
-// 不依赖 127.0.0.1:8083 或远端瓦片服务；镜头、控件语义与采样逻辑保持不变。
+// 校园 3D Tiles 与业务系统保持一致，默认通过本机业务前端的 /Dongda 代理加载。
+// 周边白模继续使用本工程的本地副本；镜头、控件语义与采样逻辑保持不变。
 import '../build/0.1.0/CCR.min.js'
 import SampleGuard from '/src/diagnostics/SampleGuard.js'
 import GUI from '/node_modules/lil-gui/dist/lil-gui.esm.js'
 import Stats from './js/stats.module.js'
 
-const { createVisualPipeline, colorGradingControls, colorGradingPresets } = globalThis.CCR
+const { createVisualPipeline, createFixedTreeCollection, createGrassCollection, colorGradingControls, colorGradingPresets } = globalThis.CCR
 
 const status = document.querySelector('#status')
 const aaExplanation = document.querySelector('#aaExplanation')
 const aaActual = document.querySelector('#aaActual')
 const errors = []
 const query = new URLSearchParams(location.search)
+// 固定点位树木默认启用；?trees=none 关闭，?trees=<url> 可替换清单。
+const treeParam = query.get('trees')
+const treeEnabled = !['0', 'none'].includes(treeParam)
+const treeManifestUrl = treeParam && !['0', 'none', '1'].includes(treeParam)
+  ? treeParam
+  : '/assets/vegetation/manifest.json'
+// 面内程序化草地默认启用；?grass=none 关闭，?grass=<url> 可替换面数据。
+// 默认约 450 簇/公顷，固定 ENU 高度 3 米；不执行逐点场景贴地。
+const grassParam = query.get('grass')
+const grassEnabled = !['0', 'none'].includes(grassParam)
+const grassPolygonsUrl = grassParam && !['0', 'none', '1'].includes(grassParam)
+  ? grassParam
+  : '/assets/grass/polygons.json'
 // 沈阳影像服务：本机实测可达；换成 ?imagery=none 可关闭，换成 ?imagery=<模板> 可替换。
 const DEFAULT_IMAGERY = window.CCR_EXAMPLE_CONFIG?.imageryUrl || null
 const imageryParam = query.get('imagery')
 const previewImageryUrl = imageryParam === 'none' ? null : (imageryParam || DEFAULT_IMAGERY)
-// 本地静态资产根目录，相对于 dev-server 的项目根。
+// 业务系统的南湖模型清单。默认直接复用本机 9528 开发服务的 /Dongda 代理。
 const CAMPUS_ASSETS = '/assets/campus-assets'
-const base = query.get('assets') || CAMPUS_ASSETS
+const DEFAULT_BUSINESS_ASSETS = 'http://localhost:8083/Dongda'
+const base = query.get('assets') || DEFAULT_BUSINESS_ASSETS
+const BUSINESS_TILESETS = [
+  { name: 'SM_NH_Terr', url: 'SM_NH_Terr/tileset.json', height: 2 },
+  // { name: 'SM_NH_Shu', url: 'SM_NH_Shu/tileset.json', height: 2 },
+  { name: 'SM_NH_Building', url: 'SM_NH_Building/tileset.json', height: 2 },
+  { name: 'SM_NH_YFL', url: 'SM_NH_YFL/SW/tileset.json', height: 2 },
+  { name: 'SM_NH_ZHL', url: 'SM_NH_ZHL/SW/tileset.json', height: 2 },
+  { name: 'SM_NH_SYL1', url: 'SM_NH_SYL1/SW/tileset.json', height: 2 },
+  { name: 'SM_NH_SYL2', url: 'SM_NH_SYL2/SW/tileset.json', height: 2 },
+  { name: 'SM_NH_XSST1', url: 'SM_NH_XSST1/tileset.json', height: 2 },
+  { name: 'SM_NH_XSST2', url: 'SM_NH_XSST2/tileset.json', height: 2 },
+  { name: 'SM_NH_XSCST', url: 'SM_NH_XSCST/tileset.json', height: 2 },
+  { name: 'SM_NH_ZXST', url: 'SM_NH_ZXST/tileset.json', height: 2 },
+  { name: 'SM_NH_DDFW', url: 'SM_NH_DDFW/tileset.json', height: 2 },
+  { name: 'SM_NH_TSG', url: 'SM_NH_TSG/SW/tileset.json', height: 2 }
+]
 const contextParam = query.get('contextTiles')
 const previewWhiteModelUrl = contextParam === 'none' ? null
   : (contextParam || `${CAMPUS_ASSETS}/Dongda2.5bm_3dtiles/tileset.json`)
@@ -50,7 +79,9 @@ const pipeline = createVisualPipeline({ Cesium, viewer,
   options: ['custom', 'native'].includes(requestedShadow) ? { shadowMode: requestedShadow } : {} })
 const tiles = []
 const contextTiles = []
-window.campus = { viewer, pipeline, tiles, contextTiles, errors, base }
+let trees = null
+let grass = null
+window.campus = { viewer, pipeline, tiles, contextTiles, errors, base, trees, grass, treeReady: null, grassReady: null, expectedTiles: BUSINESS_TILESETS.length }
 // Legacy asset fixes belong to this example, not to the renderer.
 const assetCompatibility = new CampusAssetCompatibility(Cesium, viewer.scene)
 const updateAssetCompatibility = () => assetCompatibility.setEnabled(
@@ -79,6 +110,8 @@ const ui = {
   ao: { enabled: false, radius: 3, strength: 1 },
   ssr: { enabled: false, transparent: false, distance: 150, strength: 1 },
   governor: false,
+  trees: { visible: true, source: query.get('treeSource') === 'glb' ? 'GLB（比较）' : 'ez-tree 程序化松树', state: treeEnabled ? '等待加载' : '未启用', instances: 0, batches: 0, lods: '0 / 0 / 0 / 0' },
+  grass: { visible: true, state: grassEnabled ? '等待加载' : '未启用', polygons: 0, area: 0, instances: 0, draws: 0 },
   environment: { on: false, high: false, playing: false }
 }
 const aaNotes = {
@@ -147,8 +180,9 @@ shadowFolder.close()
 
 // 相机按钮在瓦片到位前点不动，注册时先留一个提示分支，避免面板在加载完成后跳动。
 const look = (pitch, range) => {
-  if (!tiles[1]) { dump('模型尚未加载完成，相机按钮暂不可用。'); return }
-  viewer.camera.lookAt(tiles[1].boundingSphere.center, new Cesium.HeadingPitchRange(0, pitch, range))
+  const target = tiles.find(tile => tile.name === 'SM_NH_Building')
+  if (!target) { dump('模型尚未加载完成，相机按钮暂不可用。'); return }
+  viewer.camera.lookAt(target.boundingSphere.center, new Cesium.HeadingPitchRange(0, pitch, range))
 }
 // 也挂到 window.campus 上：scripts/ 里的浏览器核查脚本直接调用它，不必去点 GUI 按钮。
 window.campus.look = look
@@ -270,6 +304,91 @@ performanceFolder.add(ui, 'governor').name('调速器（目标 30fps）').listen
 })
 performanceFolder.close()
 
+const syncTreeUI = () => {
+  if (!trees) return
+  const diagnostics = trees.getDiagnostics()
+  ui.trees.visible = diagnostics.visible
+  ui.trees.state = diagnostics.state
+  ui.trees.instances = diagnostics.instances
+  ui.trees.batches = diagnostics.batches
+  ui.trees.lods = diagnostics.source === 'procedural' ? '轻量程序化几何' : diagnostics.lodBatches.join(' / ')
+}
+async function loadTrees() {
+  if (trees) return trees.readyPromise
+  ui.trees.state = 'loading'
+  const oldTrees = tiles.find(tile => tile.name === 'SM_NH_Shu')
+  trees = createFixedTreeCollection({
+    Cesium, viewer, manifestUrl: treeManifestUrl || '/assets/vegetation/manifest.json',
+    source: query.get('treeSource') === 'glb' ? 'glb' : 'procedural',
+    clampToGround: true, heightOffset: 0.1, objectsToExclude: oldTrees ? [oldTrees] : []
+  })
+  window.campus.trees = trees
+  try {
+    await trees.readyPromise
+    syncTreeUI()
+    return trees
+  } catch (error) {
+    trees.destroy(); trees = null; window.campus.trees = null
+    ui.trees.state = 'error'
+    throw error
+  }
+}
+window.campus.loadTrees = loadTrees
+const treeFolder = gui.addFolder('固定点位树木')
+treeFolder.add(ui.trees, 'source').name('树种来源').disable()
+action(treeFolder, '加载树木', () => {
+  window.campus.treeReady = loadTrees().then(() => dump(trees.getDiagnostics())).catch(error => dump(`树木加载失败：${error.message}`))
+})
+treeFolder.add(ui.trees, 'visible').name('显示').listen().onChange(value => { trees?.setVisible(value); syncTreeUI() })
+treeFolder.add(ui.trees, 'state').name('状态').listen().disable()
+treeFolder.add(ui.trees, 'instances').name('实例').listen().disable()
+treeFolder.add(ui.trees, 'batches').name('批次').listen().disable()
+treeFolder.add(ui.trees, 'lods').name('几何细节').listen().disable()
+action(treeFolder, '读取诊断', () => dump(trees ? trees.getDiagnostics() : '固定树木尚未加载'))
+treeFolder.close()
+
+const syncGrassUI = () => {
+  if (!grass) return
+  const diagnostics = grass.getDiagnostics()
+  ui.grass.visible = diagnostics.visible
+  ui.grass.state = diagnostics.state
+  ui.grass.polygons = diagnostics.polygons
+  ui.grass.area = diagnostics.areaHectares
+  ui.grass.instances = diagnostics.instances
+  ui.grass.draws = diagnostics.submittedDraws
+}
+async function loadGrass() {
+  if (grass) return grass.readyPromise
+  ui.grass.state = 'loading'
+  grass = createGrassCollection({
+    Cesium, viewer, polygonsUrl: grassPolygonsUrl,
+    height: 3, scale: 0.5
+  })
+  window.campus.grass = grass
+  try {
+    await grass.readyPromise
+    syncGrassUI()
+    return grass
+  } catch (error) {
+    grass.destroy(); grass = null; window.campus.grass = null
+    ui.grass.state = 'error'
+    throw error
+  }
+}
+window.campus.loadGrass = loadGrass
+const grassFolder = gui.addFolder('面内程序化草地')
+grassFolder.add(ui.grass, 'visible').name('显示').listen().onChange(value => { grass?.setVisible(value); syncGrassUI() })
+action(grassFolder, '加载草地', () => {
+  window.campus.grassReady = loadGrass().then(() => dump(grass.getDiagnostics())).catch(error => dump(`草地加载失败：${error.message}`))
+})
+grassFolder.add(ui.grass, 'state').name('状态').listen().disable()
+grassFolder.add(ui.grass, 'polygons').name('面数').listen().disable()
+grassFolder.add(ui.grass, 'area').name('面积(公顷)').listen().disable()
+grassFolder.add(ui.grass, 'instances').name('实例').listen().disable()
+grassFolder.add(ui.grass, 'draws').name('提交批次').listen().disable()
+action(grassFolder, '读取诊断', () => dump(grass ? grass.getDiagnostics() : '草地尚未加载'))
+grassFolder.close()
+
 const diagnosticsFolder = gui.addFolder('诊断与采样')
 action(diagnosticsFolder, '采样 60 秒', () => measure())
 action(diagnosticsFolder, '读取实际状态', () => { syncUI(); dump(pipeline.getRenderDiagnostics()) })
@@ -318,6 +437,7 @@ const setControlsEnabled = enabled => {
 let aaDisplayFrame = 0
 viewer.scene.postRender.addEventListener(() => {
   if (++aaDisplayFrame % 60 || window.campus.measuring) return
+  syncTreeUI()
   const d = pipeline.getRenderDiagnostics().antiAliasing
   const actual = d.allocatedAttachments && d.allocatedAttachments.scene
   aaActual.textContent = `后处理：${d.postProcess.effective === 'off' ? '关闭' : d.postProcess.effective.toUpperCase()} · MSAA ${actual && actual.colorRenderbufferSamples || 1}× · ${viewer.canvas.width}×${viewer.canvas.height}`
@@ -325,20 +445,49 @@ viewer.scene.postRender.addEventListener(() => {
 
 try {
   if (previewWhiteModelUrl) {
-    Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 128 })
+    Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 32 })
       .then(whiteModel => { viewer.scene.primitives.add(whiteModel); contextTiles.push(whiteModel) })
       .catch(error => { errors.push(`周边白模加载失败：${error.message}`); status.textContent = errors.at(-1) })
   }
-  for (const name of ['SM_NH_Terr', 'SM_NH_Building', 'SM_NH_Shu']) {
-    const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${name}/tileset.json`, {
-      maximumScreenSpaceError: 16, shadows: Cesium.ShadowMode.ENABLED
+  for (const asset of BUSINESS_TILESETS) {
+    const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${asset.url}`, {
+      maximumScreenSpaceError: 32, shadows: Cesium.ShadowMode.ENABLED
     })
+    const cartographic = Cesium.Cartographic.fromCartesian(tile.boundingSphere.center)
+    const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0)
+    const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, asset.height)
+    tile.modelMatrix = Cesium.Matrix4.fromTranslation(
+      Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3())
+    )
+    tile.name = asset.name
     viewer.scene.primitives.add(tile)
     tiles.push(tile)
   }
-  pipeline.setCampusOrigin(tiles[1].boundingSphere.center)
+  const campusBuildings = tiles.find(tile => tile.name === 'SM_NH_Building')
+  pipeline.setCampusOrigin(campusBuildings.boundingSphere.center)
   look(-0.65, 1800)
-  status.textContent = '原生/增强使用同一时间、相机与资产；瓦片来自本地 assets/campus-assets。这不是完整业务页面。'
+  status.textContent = `已加载业务南湖模型 ${tiles.length}/${BUSINESS_TILESETS.length}；原生/增强使用同一时间、相机与资产。`
+  if (treeEnabled) {
+    window.campus.treeReady = loadTrees()
+    try {
+      await window.campus.treeReady
+      status.textContent += ` 已加载固定树木 ${trees.getDiagnostics().instances} 株。`
+    } catch (error) {
+      errors.push(`固定树木加载失败：${error.message}`)
+      status.textContent = errors.at(-1)
+    }
+  }
+  if (grassEnabled) {
+    window.campus.grassReady = loadGrass()
+    try {
+      await window.campus.grassReady
+      const diagnostics = grass.getDiagnostics()
+      status.textContent += ` 已生成面内草地 ${diagnostics.instances} 簇 / ${diagnostics.polygons} 个面（${diagnostics.areaHectares} 公顷）。`
+    } catch (error) {
+      errors.push(`草地加载失败：${error.message}`)
+      status.textContent = errors.at(-1)
+    }
+  }
 } catch (error) { errors.push(error.message); status.textContent = `模型加载失败：${error.message}` }
 
 async function measure() {
@@ -347,7 +496,7 @@ async function measure() {
     status.textContent = '请将测试窗口置于前台后再开始采样，后台节流数据不能用于性能验收。'
     return
   }
-  if (!tiles.length || !tiles.every(tile => tile.tilesLoaded)) {
+  if (tiles.length !== BUSINESS_TILESETS.length || !tiles.every(tile => tile.tilesLoaded)) {
     status.textContent = '请等当前视角瓦片加载完成后再采样。'
     return
   }
@@ -455,4 +604,4 @@ async function measure() {
   status.textContent = JSON.stringify(result, null, 2)
 }
 
-window.addEventListener('pagehide', () => { pipeline.destroy(); viewer.destroy() }, { once: true })
+window.addEventListener('pagehide', () => { grass?.destroy(); trees?.destroy(); pipeline.destroy(); viewer.destroy() }, { once: true })

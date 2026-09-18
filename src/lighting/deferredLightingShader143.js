@@ -2,11 +2,11 @@ import { pcf } from '../shadows/shaderAdapter143.js'
 export const DEFERRED_DEBUG_MODES = Object.freeze({ OFF:0, DIRECT:1, INDIRECT:2, EMISSIVE:3, SHADOW:4, AO:5, MATERIAL:6, ALBEDO:7 })
 
 // The material inputs are already linear; eyeDepth is metres, never window depth.
-export function deferredLightingShaderSource(C, { diffuse=false, specular=false, reflection=false } = {}) {
+export function deferredLightingShaderSource(C, { diffuse=false, specular=false, reflection=false, cascades=false, sunUbo=false } = {}) {
   const ibl=reflection?C._shadersImageBasedLightingStageFS.replace('vec3 specularContribution = radiance * FssEss * model_iblFactor.y;',
     'vec3 specularContribution = radiance * FssEss * model_iblFactor.y; ccr_specular=specularContribution; ccr_response=FssEss*model_iblFactor.y;'):C._shadersImageBasedLightingStageFS
   return new C.ShaderSource({
-    defines: [...(diffuse?['DIFFUSE_IBL','CUSTOM_SPHERICAL_HARMONICS']:[]),
+    defines: [...(sunUbo?['CCR_SUN_UBO']:[]),...(cascades?['CCR_SHADOW_CASCADES']:[]),...(diffuse?['DIFFUSE_IBL','CUSTOM_SPHERICAL_HARMONICS']:[]),
       ...(specular?['SPECULAR_IBL','CUSTOM_SPECULAR_IBL']:[])],
     sources: [`
 precision highp float;
@@ -48,7 +48,7 @@ void main() {
   material.emissive=e.rgb;
   float shadow=u_terms.w>0.5?campus_shadowVisibility(positionEC,normalEC):1.0;
   float ao=mix(1.0,texture(u_aoVisibility,v_textureCoordinates).r,u_aoStrength);
-  vec3 direct=czm_lightColorHdr*czm_pbrLighting(viewDirection,normalEC,normalize(czm_lightDirectionEC),material)*shadow;
+  vec3 direct=CCR_LIGHT_COLOR_HDR*czm_pbrLighting(viewDirection,normalEC,normalize(CCR_LIGHT_DIRECTION_EC),material)*shadow;
   vec3 indirect=vec3(0.0);
 #if defined(DIFFUSE_IBL) || defined(SPECULAR_IBL)
   indirect=textureIBL(viewDirection,normalEC,material)*ao;

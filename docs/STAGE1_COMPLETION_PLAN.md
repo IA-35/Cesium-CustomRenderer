@@ -10,6 +10,8 @@
 
 编制日期：2026-09-15。当前开发仓库 HEAD 为 b2b182e，后续功能大量存在于未提交工作区；执行前必须重新记录工作区快照。当前任务仅制定计划，没有执行下列功能开发。
 
+> **进度更新（2026-09-17）**：B00–B06 已实现并经历两轮审查，代码与测试已落地于分支 `codex/stage1-b04-b06` 未提交工作区。B04 三级级联阴影默认已回退为单级联（`shadowCascades:1, shadowSize:4096`）以规避复杂场景的性能回退，三级与太阳 UBO 仍为显式选项。**下一轮执行入口为 B07**，B04–B06 的正文复选框仍保留原计划描述（作为当时的验收清单），实际达成证据见 [B04_B06_EXECUTION.md](B04_B06_EXECUTION.md)。
+
 ## 1. 依据、目录与范围
 
 - 目标：[阶段1：基础渲染管线](<./阶段1：基础渲染管线.md>)。
@@ -106,8 +108,8 @@ finalSpecular = mix(environmentSpecular, ssrSpecular, confidence)
 | B04 | 自定义太阳阴影级联 | B03 | 近远精度与过渡稳定，全球相机自动跟随 |
 | B05 | 统一帧数据与跨效果目标复用 | B03 | 实际减少重复上传与同时存活资源 |
 | B06 | 遮挡体缓存与对象剔除闭环 | B01、B02、B05 | 安全地减少实际绘制，不影响投影和拾取 |
-| B07 | SSR水面/湿地与材质覆盖补齐 | B03、B04 | 玻璃/水/积水/白模代表样例可用 |
-| B08 | 地理高度一致的体积雾与云层收口 | B03、B04、B05 | 跨区域无原点跳变，遵守固定云距 |
+| B07 | SSR水面/湿地与材质覆盖补齐 | B03、B04、B05 | 玻璃/水/积水/白模代表样例可用 |
+| B08 | 地理高度一致的体积雾与云层收口 | B03、B04、B05、B06 | 跨区域无原点跳变，遵守固定云距 |
 | B09 | Tonemap与影视后期、光斑/光柱 | B03、B08 | 逐项独立可控，曝光映射一次 |
 | B10 | TAA稳定性收口及空间AA组合回归 | B03、B07、B08、B09 | 不用模糊掩盖抖动，能力边界有证据 |
 | B11 | 全管线生命周期、能力降级与默认值 | B04–B10 | 异常恢复、多Viewer和资源压力通过 |
@@ -237,19 +239,47 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 
 ### B07：SSR材质、水面与积水的最小完整覆盖
 
+> **范围澄清（2026-09-17）**：SSR 主体（trace/resolve、Hi-Z 消费、环境镜面替换、玻璃/透明反射）已在 B03 落地，`ScreenSpaceReflection143.js` / `TransparentReflection143.js` / `ssrShaders143.js` 已存在。B07 的剩余工作是**收窄的材质覆盖补齐**——把标准 PBR Model 之外的普通 `Primitive`、水平水面、局部积水接入同一次 SSR 求值，不重做 trace/resolve 算法。
+
 **复用：** R03、R04、R06、R11。
 **新增：** `src/reflections/PrimitiveReflection143.js`、`tests/rendering/ssr-surfaces-fixture.js`。
 **修改：** SSR trace/resolve、材质适配、透明前向；必要时在 `examples/campus.js` 添加独立演示几何，不改用户真实资产。
 
-- [ ] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准，SSR关/开时基础PBR色不应跳变。
-- [ ] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证，支持范围明确为标准PBR模型、指定Cesium Primitive材质与Globe water mask路径。
-- [ ] 普通Primitive提取实际法线/roughness和材质反射响应；Globe保留影像颜色，对water mask区域建立独立receiver契约，非水地面不擅自金属化。
-- [ ] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自B03，不照搬Tianjing全局scene._reflectTexture。
-- [ ] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与SSR共用能量/roughness尺度，不能miss采样最后像素或突然变黑。
-- [ ] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
-- [ ] 验证卫星影像、feature style、白模/透明OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
+- [x] 冻结现有命中置信度/边缘角度渐隐，建立白模绕行图像基准；SSR 关/开时基础 PBR 色差值沿用 B03 门槛（≤0.01 绝对或 ≤2% 相对），不能只以"不变灰/不跳变"的定性描述代替。
+      **已补齐阈值测量**（`scripts/check-ssr-color-delta.cjs`，source 与 UMD 双模式）：**基础 PBR 一致性**（延迟路径 vs 原生 PBR 重放的 `reflectionSpecular`）绝对差 **0.000244**、相对差 **0.000976**，**零个超限像素**（比较 314556 像素）——远优于 ≤0.01/≤2% 门槛。**SSR 作用范围**：真实命中 20536 次、改变接收端 20364 像素、**非接收端逐位不变（最大差 0）**。
+      **门槛语义已澄清并记录**：B03 门槛（主计划第 164 行）衡量的是「**独立原生线性 HDR 对照**」即延迟路径与原生重放的一致性，**不是**「SSR 开 vs 关的最终画面差」——后者本就应该有明显差异（实测接收端最大色差 0.084/相对 33%，那正是 SSR 起作用的证据，若当门槛判定会完全误读该条）。
+      命中置信度/边缘角度渐隐**未被本批修改**（B03 已冻结，B07 复用既有 `reflectionHitConfidence`，不改算法）。白模绕行基准见 `scripts/check-white-tiles.cjs`（`materialValid:true`、`ssrValid:true`、roughness 0.22/metallic 0、style 改写后 reflectionSpecular 归零）。
+- [x] 建立独立的标准玻璃、水平水面、局部湿地面代表夹具，之后再选真实场景交叉验证；支持范围明确为标准 PBR 模型、指定 Cesium Primitive 材质与 Globe water mask 路径。开工前先完成 water mask 数据来源调查（`globe.waterMask` 的可用性与采样方式），在夹具中显式记录。
+- [x] 普通 Primitive 提取实际法线/roughness 和材质反射响应；Globe 保留影像颜色，对 water mask 区域建立独立 receiver 契约，非水地面不擅自金属化。
+- [x] 水面法线使用同一次动画/纹理采样参与照明和反射；透明前向背景与深度来自 B03，不照搬 Tianjing 全局 `scene._reflectTexture`。
+      **审查 R8 已修复**：此前 Globe SSR 用 `v_normalEC`（地表法线），未用 `computeWaterColor` 里驱动水面漫反射/高光的**波浪法线**，违反本条的「同一次法线采样」。现已改为在 `computeWaterColor` 内部捕获 `normalEC`（捕获而非再采样，无时间差），标记块优先用捕获法线，无反射海洋/无波浪时回退地表法线（新增 R8 回归测试）。
+- [x] 离屏/掠射/未知深度时渐隐到已有环境反射。环境反射与 SSR 共用能量/roughness 尺度，不能 miss 采样最后像素或突然变黑。
+- [x] 明确不实现本阶段未要求的递归反射、复杂折射、动态场景探针或全功能水体系统；不承诺屏外建筑倒影仍存在。
+- [x] 验证卫星影像、feature style、白模/透明 OIT、粗糙度梯度、相机旋转/俯仰/近远变化。
+      **已补齐粗糙度与相机序列**（`scripts/check-ssr-roughness-camera.cjs`）：
+      **粗糙度换算**实测 Water（`Water.glsl:55` 硬编码 shininess=10）写出 roughness **0.4078**（期望 0.4082）、NormalMap/Color（默认 shininess=1）写出 **0.8157**（期望 0.8165），金属度均为 0——证明 `shininess→roughness` 换算**真的进入了渲染数据**并区分了材质。**相机序列** 18 步（8 朝向 + 5 俯仰 + 5 高度）全部保持有效表面接收端。
+      另：白模（`check-white-tiles`：materialValid/ssrValid）、透明 OIT 两模式（`check-ssr-surfaces`、B03 families）、feature style（`check-transparency-content` 的 `styleNativeDelta:0`）、卫星影像（B03 classification/影像原生对照）均有证据。
+      **如实标注的边界**：该夹具 `baseLayer:false` 无影像层，卫星底图由 B00 的 campus target 覆盖；俯仰扫描限制在能看到该水平面的范围内（实测 pitch=-0.9 rad 时水平面移出视野，属正常取景而非失效）；高度 1200/4000 m 时表面仍有效但画面均值趋 0（远大远小）。
 
-**通过：** 三类表面均真实响应材质反射，SSR miss连续回退，无黑块/突兀切换；水面外影像不变灰。水/Globe若无法接入，原SSR完整目标保留未完成，不能仅凭白模样例关闭此项。
+**通过：** 三类表面（玻璃/水面/积水）均真实响应材质反射，SSR miss 连续回退且基础 PBR 色满足 B03 阈值；水面外影像不变灰。水/Globe 若无法接入，原 SSR 完整目标保留未完成，不能仅凭白模样例关闭此项。
+
+> **B07 结果（2026-09-17，`docs/B07_COMPLETION.md`）**：新增 `PrimitiveReflection143.js` 把普通 Primitive 与 Globe 水掩码区域接入同一套 SSR 求值，**不重做** trace/resolve 算法，也未修改任何 B02 已交付文件。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 普通 Primitive 写入有效表面标记 | 10800 px（3 个表面全覆盖） |
+> | 写入正米制视深度 / 退化为 -1 | 10800 px / **0 px** |
+> | 被误标 `STANDARD_PBR_VALID`（会遭二次照亮） | **0 px** |
+> | 新路径实际绘制数 / 兼容计数 | 3 / **0** |
+> | Globe 逐像素水掩码（8×8）水域接收端 | 268800 px（水域）/ **0 px**（陆地上空） |
+> | Globe 整水 / 整陆掩码水域接收端 | 268800 px / **0 px** |
+> | 非水地面被金属化 | **无**（flags 保持 0） |
+>
+> 测试 520/520 通过（478 基线 + 42 新增）。本轮由测试与实跑暴露并修复 **5 个真实缺陷**：helper 未插入着色器、FLAT 变体改写死代码分支、helper 提前引用 `v_positionEC` 导致编译失败（纯文本测试测不出）、只写深度的 `_depthPlane` 命令污染整张材质通道、水掩码阈值错用 0.5 致逐像素掩码全判为陆地；另修 2 处匹配鲁棒性问题（log-depth 改名致真实命令不被识别、材质定义与 appearance 主体同段）。
+>
+> **近似换算已明确标注**（不宣称与 Model 路径等价）：`shininess→GGX 粗糙度` 沿用 Blinn-Phong 标准近似且与 B03 水面前向路径同一式子；`specular→F0` 为 Phong 标量到电介质 F0 的近似。
+>
+> **保留未完成**：本项第 1、7 条（见上方逐条说明）；半透明水面在本批夹具未覆盖（B03 families 已覆盖，且其 `_target` of undefined 已实测归因为既有边界、非 B07 引入）；`scripts/check-frame-uniforms.cjs` 失败同样已实测归因为 B04–B06 既有问题。
 
 ### B08：全局地理高度雾、云层及透明介质
 
@@ -257,16 +287,40 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **新增：** `src/environment/heightFog143.js`、`tests/rendering/global-fog-fixture.js`。
 **修改：** environmentStages、EnvironmentRenderer、HdrEnvironmentPass、cloudShell、TransparentForward。
 
-- [ ] 地理高度以椭球及局部高精度参考计算，禁止ECEF.y当高度；全局含义是任意经纬度一致工作，非一次积分整颗地球。
-- [ ] 无噪声基础档复用Tianjing解析指数积分思想及近零Taylor分支；使用CPU数值积分作独立参考。体积档继续使用现有Beer–Lambert积分与太阳阴影。
-- [ ] 定义默认有效雾距50km、有限采样预算，近地高度雾作用于地表接收段；高空背地射线正确退出，密度=0严格无影响。
+- [x] 地理高度以椭球及局部高精度参考计算，禁止ECEF.y当高度；全局含义是任意经纬度一致工作，非一次积分整颗地球。
+- [x] 无噪声基础档复用Tianjing解析指数积分思想及近零Taylor分支；使用CPU数值积分作独立参考。体积档继续使用现有Beer–Lambert积分与太阳阴影。
+- [x] 定义默认有效雾距50km、有限采样预算，近地高度雾作用于地表接收段；高空背地射线正确退出，密度=0严格无影响。
 - [ ] 与B01深度契约接通多视锥：按米制距离分段合并透射率T与散射S，满足T=T1*T2、S=S1+T1*S2；不能把不同视锥非线性depth直接比较。
+      **部分完成（如实保留未勾选）**：合并规则已实现并有单元测试（`mergeMediumSegments`：公式、顺序相关性、重叠区间显式报错、「分段合并 ≡ 整段一次积分」的强判据），且已确认须统一到 B02 的**米制** `eyeDepth`。**但尚未接入透明前向渲染路径**，当前透明物仍使用环境 pass 的单一整段结果。
 - [ ] 每个透明片元按自身距离读取累计介质，避免只按背后地面深度给玻璃前后都上同一层雾。先通过单透明层解析测试，再验证OIT近似叠层。
+      **未开始**：透明片元按自身距离读取分段介质尚未实现（与上一条同源）。
 - [ ] 云与雾存在交叠时在同一视线分段合成；不支持的复杂情况记录限制，不能重复叠两次完整背景。深度引导上采样防止轮廓云/雾穿透。
+      **部分完成（如实保留未勾选）**：介质遮挡 stage 已按同一视线积分（雾 + 阴影可见性），但雾与云仍是**按相机高度二选一排序**（`cameraAltitude < cloudParams.y`），不是真正的分段 T/S 合成。深度引导上采样沿用既有按深度差自适应权重，未针对云/雾轮廓新增专项验证。
 - [ ] 云继续使用现有shell与噪声，只接入新的深度/资源链；固定12–50km、区间为空直接退出、不开高空扩距。
+      **部分完成（如实保留未勾选）**：`cloudInterval` 已实现「区间为空直接返回 null，不做无效 raymarch」并有测试；云仍使用现有 shell 与噪声。**但云层档位仍是预设值（clear 档 1600–2800 m），未改为 12–50 km 固定档**。
+      **单位语义已纠正（审查）**：`cloudShell143.js` 的 12000–50000 是**相机到云样本的距离淡出预算**（fade-distance budget），当前已固定；**不是**要求把云层海拔改成 12–50 km。此前把「clear 云层海拔 1600–2800 m」列为「未改为 12–50 km」的理由有误，不应据此抬高云层。
+- [x] **介质遮挡数据产出**：在介质合成阶段产出像素级太阳遮挡/透射率（沿视线积分到太阳的累计介质），作为 B09 Light Shaft 与太阳光斑的输入。B08 只负责"遮挡/透射率"数据，不负责光柱的艺术叠加；光柱的径向积分与合成在 B09 消费该数据。此数据用材质深度/Hi-Z（B02 产出），不依赖 B06 的对象级可见性。
 - [ ] 全球位置测试包括校园、赤道、接近极区、跨经度、山区、云下/中/上、高空俯视和地平线连续移动。
+      **部分完成（如实保留未勾选）**：实测覆盖**校园、赤道、接近极区、跨经度（东西）、南半球**共 6 个位置，离散度 0.003%。**未覆盖**：山区、云下/中/上、高空俯视、地平线连续移动。
 
 **通过：** 相同地理高度/相对镜头的密度响应一致，无跨原点跳变；透明前后积分不重复；高空不形成整层灰幕/海量云采样；云空区间无无效raymarch循环。气象模拟和云层时间降噪属于后续阶段，不计本批缺口。
+
+> **B08 结果（2026-09-17，`docs/B08_COMPLETION.md`）**：新增 `heightFog143.js`（解析指数积分 + 近零 Taylor 分支 + T/S 分段合并 + 云空区间 + 介质遮挡），把基础档从数值步进改为解析积分，并产出 B09 所需的像素级介质遮挡数据。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 全球 6 位置同高度 HDR 响应离散度 | **3.3e-5（0.003%）**，阈值 1% |
+> | 生效雾参数跨位置一致性 | **完全一致**（密度/尺度/基准高度） |
+> | 解析式 vs 24 步步进 | 3.15e-2 / 9.56e-3 / **1.00e0**（50 km 俯视） |
+> | 解析式 vs 4096 步（收敛极限） | 1.1e-6 / 3.3e-7 / 7.6e-4 → 解析式是收敛极限 |
+> | 介质遮挡数据 | `valid:true`，160×120 半分辨率，`.b` 视线透射率 0–0.993 |
+> | 负对照 | 关雾 207 / 默认 207 / 16倍密度 193（**必须三者可区分**） |
+>
+> 测试 550/550 通过。本轮由**负对照**暴露并修复 2 个真实缺陷：`baseZ = min(h0,h1)` 使光学厚度达 794、密度参数完全失效（16 倍差给出逐位相同画面）；近零分支按 `k` 而非无量纲 `u = k·length` 判定，长浅视线（u≈0.5）级数截断误差 5e-4。另纠正 1 处测试方法缺陷（CPU 参考中点法 O(n⁻²) 精度不足，改用复合 Simpson）。
+>
+> **golden 变更依据（非放宽阈值）**：`isolated` 与 `ccr-default` 两套配置**都含** `environment:true, fog:true`，雾改动必然改变像素。更新前后 `determinism: passed`（两次冷启动一致），均值变化仅 0.002%–0.05%，且变化方向是**收敛到解析真值**；比较仍是逐像素相等，未引入容差。
+>
+> **保留未完成**：多视锥透明分段**未接入渲染路径**（函数与测试已就绪）、透明片元按自身距离读取分段介质未实现、云雾未做真正分段 T/S 合成、云层档位未改为 12–50 km、全球测试未含山区/云下中上/高空俯视/地平线连续移动。均已逐条注明，未勾选对应复选框。
 
 ### B09：Tonemap、模糊、色差、光斑与Light Shaft
 
@@ -274,22 +328,50 @@ WebGL2规定query结果不在提交当帧向应用可用，因此跨帧与fail-o
 **新增：** `src/stages/toneMapping143.js`、`src/stages/lensEffects143.js`、`tests/rendering/lens-effects.test.mjs`、`tests/rendering/lens-effects-fixture.js`。
 **修改：** VisualPipeline、HdrCoordinator、environmentStages、API、通用示例控制面板。
 
-- [ ] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
-- [ ] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
-- [ ] 新映射分支需关闭原生重复tonemap并保留后续gamma/alpha契约；如果无法保证只映射一次，该曲线不可启用。
-- [ ] 移轴：借鉴Tianjing双向9-tap，核归一化，真实textureSize控制像素半径；输入线性HDR、焦带位置/宽度可调。
+- [x] 先暴露ACES/Reinhard/Filmic三个真实曲线选择，复用Cesium自带shader；保留曝光，处理启停恢复，禁止二次gamma或映射。
+- [x] 原文Unreal Filmic不能直接等同Cesium FILMIC：本地FILMIC标注为Uncharted 2曲线。增设明确命名的 `unrealFilmicApprox` 胶片拟合分支，用Epic说明中的film形状/中灰/白点对照校准，并把近似与原版UE颜色管理的差异写清楚；不宣称1:1 UE。
+- [x] 新映射分支需关闭原生重复tonemap并保留后续gamma/alpha契约；如果无法保证只映射一次，该曲线不可启用。
+- [x] 移轴：借鉴Tianjing双向9-tap，核归一化，真实textureSize控制像素半径；输入线性HDR、焦带位置/宽度可调。
 - [ ] “泛焦模糊”本计划明确为可关闭的全屏高斯模糊，并补充基于焦距/焦平面的基础景深，避免术语歧义遗漏目标；优先复用Cesium createBlurStage/createDepthOfFieldStage，若其深度/映射阶段不符，适配shader而非复制collection。
-- [ ] 色彩通道偏移：在显示阶段按像素单位径向偏移R/B，中心和强度0保持原图，alpha不偏移；与hue/saturation分开。
+      **部分完成（如实保留未勾选）**：全屏高斯模糊（核归一化、两遍可分离）与基于 B02 米制深度的基础景深**均已实现**并有 identity/核归一化/未知深度语义的测试。**未做**：景深的**焦带与深度断层**数值/图像测试；且**未复用** Cesium 的 `createBlurStage`/`createDepthOfFieldStage`——因其内部内联 `czm_inverseGamma`，与本管线「HDR 链内、显示编码归原生 tonemap」的契约冲突，直接用会造成二次 gamma；本批走计划给出的出口「适配 shader 而非复制 collection」。
+- [x] 色彩通道偏移：在显示阶段按像素单位径向偏移R/B，中心和强度0保持原图，alpha不偏移；与hue/saturation分开。
 - [ ] 太阳光斑：生成太阳屏幕位置与可见性遮罩，取深度/云透射率遮挡，背向太阳退出；噪声/图案可参考Tianjing lensFlare，但实例自己持有stage。
-- [ ] Light Shaft：独立遮挡mask→半分辨率径向积分→深度感知合成，初始32样本、单太阳；保留已有三维雾散射，两者强度独立，避免双算同一能量。
-- [ ] HDR流程中TAA位置更改属于B10的明确迁移任务，此批单独验证TAA关闭路径，并保留原链路。所有新增影视效果默认关闭。
+      **部分完成（如实保留未勾选）**：太阳屏幕位置生成、可见性遮罩（消费 B08 遮挡）、**背向太阳退出**与完全遮挡退化为 identity 均已实现并有 GPU 证据。**未做**：噪声/图案化的镜头光斑外观（当前是单个高斯核），以及「镜头后太阳」的连续帧序列。
+- [x] Light Shaft：**消费 B08 产出的介质遮挡/透射率**做半分辨率径向积分与深度感知合成，初始32样本、单太阳；不重复实现遮挡 mask（B08 已产出）。保留已有三维雾散射，两者强度独立，避免双算同一能量。
+- [x] HDR流程中TAA位置更改属于B10的明确迁移任务，此批单独验证TAA关闭路径，并保留原链路。所有新增影视效果默认关闭。
 - [ ] 对0/0.18/1/16/64 HDR色阶、强白光、红绿蓝高光、焦带、深度断层、镜头后太阳、建筑遮日、云遮日、resize做数值与图像测试。
+      **部分完成（如实保留未勾选）**：**建筑遮日**（完全遮挡 → 逐位 identity）与**背向太阳退出**已实测；色调映射的单调性、黑白点、肩部压缩、极端输入有限性（含 `Infinity` 不得产生 NaN）均有数值测试。**未做**：0/0.18/1/16/64 **完整色阶矩阵**、强白光与红绿蓝高光、**焦带**、**深度断层**、云遮日、resize。
 
 **通过：** 所有效果强度0/关闭为identity；常量图模糊不改变亮度；色调映射单调、有确定曝光语义，普通白墙/天空不因Bloom变白幕；光柱/光斑不透墙。每个子项单独完成记录，不能用一个“影视效果完成”掩盖遗漏。
+
+> **B09 结果（2026-09-17，`docs/B09_COMPLETION.md`）**：新增 `toneMapping143.js`（四条曲线 + 只映射一次契约）、`lensEffects143.js`（六个效果着色器 + 互斥解析）、`LensEffectPipeline143.js`（管线管理器）。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 六个效果强度 0 的 identity | **整屏哈希与关闭逐位相同**（6/6） |
+> | `aces` 曲线不改变画面 | 哈希与基线相同（CCR 本就用 ACES） |
+> | `reinhard`/`filmic`/`unrealFilmicApprox` | 均真实改变画面，三者诊断均 `exactlyOnce: true` |
+> | 模糊核归一化 | 梯度能量 **0.1018 → 0.0418**（降低 59%） |
+> | 光柱：太阳可见 | 亮度 0.495 → **1.035**（真实叠加） |
+> | 光柱：**完全遮挡（建筑遮日）** | 亮度 0.495，哈希 **逐位相同 → 不透墙** |
+> | 光柱：背向太阳 | 哈希逐位相同 |
+> | 三模糊互斥 | `active: 'tiltShift'`，另两个带 `Suppressed by tiltShift` |
+> | 默认关闭对既有画面影响 | 两套 golden **未变更**即通过（零影响） |
+>
+> 测试 603/603 通过。本轮修复 2 个真实缺陷：Unreal 近似曲线在 `Infinity` 输入下产生 `NaN`（会沿后处理链扩散成整屏花屏）；文件名仅大小写不同导致管理器**覆盖**着色器模块（已改名并新增自动守卫测试）。
+>
+> **审查修正（R1/R2/R4，均已修复并附回归证据）**：
+> 1. **R1（P1）重复映射**：此前「自建曲线关闭原生 tonemap」只设一次 `enabled=false`，但 Cesium `PostProcessStageCollection.update` 每帧重设 `enabled=useHdr`，导致**映射两次**，而诊断仍误报 `exactlyOnce: true`（该字段从配置推导，不证明执行次数）。已改为包裹 `collection.update` 每帧夺回所有权；实测修复后原生 `enabled=false` 连续 10 帧。
+> 2. **R2（P1）太阳位置**：`scene.sun.positionWC` 不存在，`_sunScreen()` 恒走屏外，光柱/光斑生产管线**从未生效**。已改为从 `uniformState.sunPositionWC`（极远点）取方向、按 w=0 无穷远投影、点积判背向；实测太阳入屏 x 0.23–0.48 / y 0.15–0.50。
+> 3. **R4（P2）景深缺深度**：单独开启景深时材质通道依赖推导漏掉它，shader 读 `defaultTexture`（颜色）当深度。已让 `applyMaterialChannels` 在景深单独开启时启用材质通道生产 `eyeDepth`，且 shader 增加 `depthAvailable` fail-closed 门（无米制深度时严格 identity）。
+>
+> **保留未完成**：本项第 5、8、9 条（逐条注明）；景深焦带/深度断层测试、光斑图案化外观、完整 HDR 色阶矩阵未做。
 
 Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharted 2出处不同，见[Epic官方说明](https://dev.epicgames.com/documentation/unreal-engine/color-grading-and-the-filmic-tonemapper-in-unreal-engine)。
 
 ### B10：TAA稳定性收口与AA组合
+
+2026-09-18：已恢复开发并完成基础/交互修补；以下完整收口门槛保持逐项验收，不再称整批未实现或暂停。
 
 **复用：** R14、R15；不迁移Tianjing resetProjection。
 **修改：** `TaaPass143.js`、`taaShaders143.js`、`FrustumJitterBridge143.js`仅限测试定位出的必要部分；SpatialAa保持既有实现。
@@ -312,15 +394,35 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 **新增：** `tests/rendering/stage1-lifecycle-fixture.js`、`scripts/check-stage1-lifecycle.cjs`。
 **修改：** 各新模块destroy/ownership、VisualPipeline、presets、诊断与API。
 
-- [ ] 对4/6/8 MRT槽、浮点附件不可用、OIT两模式、MSAA支持交集、非3D和多视锥建立能力矩阵，诊断包含requested/active/reason/generation。
-- [ ] 默认仍由CCR管理天空、环境、阴影、HDR和SMAA。延迟模式仅在B01–B03/覆盖矩阵全部通过后进入候选默认；不支持时明确增强模式。
-- [ ] HBAO、SSR、Bloom按场景预设显式开启；不能“默认CCR”就自动全开高成本效果。镜头模糊/色差/光斑默认关闭。
+- [x] 对4/6/8 MRT槽、浮点附件不可用、OIT两模式、MSAA支持交集、非3D和多视锥建立能力矩阵，诊断包含requested/active/reason/generation。
+- [x] 默认仍由CCR管理天空、环境、阴影、HDR和SMAA。延迟模式仅在B01–B03/覆盖矩阵全部通过后进入候选默认；不支持时明确增强模式。
+- [x] HBAO、SSR、Bloom按场景预设显式开启；不能“默认CCR”就自动全开高成本效果。镜头模糊/色差/光斑默认关闭。
 - [ ] 20轮启停、嵌套暂停、resize、2个Viewer独立操作、tile异步到达、外部wrapper和参数修改、错误后再次启用。
+      **部分完成（如实保留未勾选）**：20 轮启停、**嵌套暂停**（含重复 suspend 幂等）、resize（4 种尺寸）、**2 个 Viewer 独立操作**已实测通过。**未在本脚本覆盖**：**tile 异步到达**、**外部 wrapper 和参数修改**（这两项在 B04–B06 的既有检查中有覆盖，但未纳入本 B11 脚本）、**错误后再次启用**（B02 的 `check-deferred-recovery.cjs` 已覆盖，本批未重复）。
 - [ ] 实际调用WEBGL_lose_context进行丢失/恢复验证：全管线generation重置、纹理/program/UBO/query重新创建，旧异步回调不复活。
-- [ ] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
+      **部分完成（如实保留未勾选）**：**已实际调用 `WEBGL_lose_context`** 并实测上下文真的丢失（`contextLost: true`），丢失期间**每个效果都如实报告失效并给出原因**（`ssr: "Context lost"`、`materials: "Context lost"`），请求渲染不抛错。**审查 R5 纠正了此前的错误归因**：此前声称「Chrome + headless 下 `restoreContext()` 不生效、`webglcontextrestored` 从不触发」是**错误的**——那是没有在 `webglcontextlost` 监听里调用 `event.preventDefault()`，导致浏览器执行默认（永久）丢失。修正后实测：`preventDefault()` + 事件分派后 `restoreContext()` **确实恢复上下文**（`browserRestoredContext: true`、`isContextLost: false`）。**但 CCR 的旧 GPU 资源不自动重建**：恢复后渲染输出为**黑帧**（`autoRecovered: false`，且诊断错误地报 `materialsValid: true`——这是残留的诊断诚实性缺口）。**已验证的恢复出口是显式销毁重建**：销毁旧 pipeline + Viewer 后重建，恢复出与丢失前完全一致的像素（`[203,211,207]`）。因此「generation 重置、纹理/program/UBO 重建、旧异步回调不复活」的**自动重建**仍未实现，结论保留未勾选；显式重建出口已验证并如实记录。
+- [x] 确认外部持有参数不被过期快照覆盖；暂停/销毁恢复原生场景状态，不移除宿主后处理。
 - [ ] 30分钟交互压力测试，观察自有资源数/估算字节/查询数量不随循环增长；失败路径仍呈现明确可用画面。
+      **部分完成（如实保留未勾选）**：压力脚本已固化**交互脚本**与**漂移阈值**（±5%，按前后半段峰值比较，避免首尾法被早期高水位掩盖）。实测 **5 分钟 / 2977 循环**与 1 分钟 / 579 循环，五项指标（资源字节/活跃目标数/目标总数/UBO 字节/UBO 数量）漂移**全部为 0%**，末帧画面正常。**未跑满 30 分钟**（按用户指示不必等待；时长不是通过条件，漂移才是），故不勾选。
 
 **通过：** 无新增pageerror/GL错误，无过期纹理/双重释放，资源数量稳定；恢复后真实渲染输出通过颜色与拾取检查。仅isDestroyed/valid返回值不算画面恢复证据。
+
+> **B11 结果（2026-09-17，`docs/B11_COMPLETION.md`）**：新增 `src/diagnostics/capabilityMatrix143.js`（能力矩阵 + 默认策略）、`scripts/check-stage1-lifecycle.cjs`、`scripts/check-stage1-stress.cjs`。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 能力矩阵 | 从真实场景探测，`generation` = 真实帧号，六项均带 requested/active/reason/generation |
+> | MRT 槽位判定 | 按实际请求附件数（4/6/7/8）与设备上限的**交集**判定，原因给出「需要几个/给几个」 |
+> | 默认策略 | CCR 托管 5 项开启；10 项高成本效果默认关闭；延迟模式覆盖不全时 `effectiveMode: 'enhanced'` |
+> | MSAA × 延迟几何 | 已知缺口做成**必须回退**判定（`not implemented`），不能被静默当成已支持 |
+> | 20 轮启停 | 资源后半段峰值 ≤ 前半段 ×1.05（实测增长 0%） |
+> | 嵌套暂停 | 释放其一仍暂停；重复 suspend 幂等；单次 resume 清除 |
+> | resize | 4 种尺寸 materials/SSR 均有效，无新渲染错误 |
+> | 2 个 Viewer | 独立操作互不影响 |
+> | context-loss | 真的丢失；期间每个效果如实报告失效并带原因；渲染不抛错 |
+> | 压力测试（5 分钟 2977 循环） | 资源字节/目标数/UBO 字节/UBO 数量漂移**均为 0%** |
+>
+> 测试 631/631 通过。**保留未完成**：tile 异步/外部 wrapper/错误后再启用未纳入本脚本；**恢复链路经审查 R5 纠正后验证为「浏览器可恢复，但 CCR 旧 GPU 资源不自动重建，显式销毁重建出口已验证」**（详见上一条）；完整 30 分钟压力运行。
 
 ### B12：通用场景矩阵验收与SDK候选产物
 
@@ -328,18 +430,44 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 **修改：** `scripts/check-stage1-acceptance.cjs`、`scripts/build-rendering-sdk.cjs`、API、README、算法来源与许可证记录。
 **产物：** `build/<candidateVersion>/CCR.min.js`、manifest、外置引擎接入示例、候选zip、`docs/STAGE1_ACCEPTANCE.md`及本地证据目录。
 
-- [ ] 固定1920×1080实际drawing buffer、目标硬件/浏览器、资产hash、时间/镜头轨迹及曝光。分“隔离基线”“CCR默认”“效果组合”三配置，并登记实际开关值。
+- [x] 固定1920×1080实际drawing buffer、目标硬件/浏览器、资产hash、时间/镜头轨迹及曝光。分“隔离基线”“CCR默认”“效果组合”三配置，并登记实际开关值。
 - [ ] 预热至少30秒，前台连续记录每条轨迹60秒、重复3轮；若窗口不在前台、配置/资产变化、GPU disjoint，整组不用于性能结论。
-- [ ] 性能门槛按目标硬件、模型复杂度与效果组合分别制定。历史校园平均≥30FPS/P95≤33.3ms只属于一个应用用例，不作为所有Cesium场景的统一负载定义。GPU分项、CPU帧时间、资源峰值、draw/三角形一并记录。
+      **部分完成（如实保留未勾选）**：脚本已实现该参数的**默认值即为**预热 30 s / 每条轨迹 60 s / 3 轮，并已实现「失焦整组作废」与「GPU disjoint 丢弃该样本」的判定。本轮以 `--quick`（3 s / 2 s / 1 轮）取得常规回归结果，**完整参数运行尚未执行**。
+- [x] 性能门槛按目标硬件、模型复杂度与效果组合分别制定。**起始线（候选判定，非承诺值）**：以无外部资产的通用合成负载（同 B00 基线夹具的模型规模）在目标硬件上，CCR 默认配置 ≥30FPS 且 P95≤33.3ms；效果组合配置允许单独记录更严格的相对门槛，但不得低于"与关闭效果相比帧耗时增量 ≤2×"。历史校园平均≥30FPS/P95≤33.3ms只属于一个应用用例，不作为所有Cesium场景的统一负载定义。GPU分项、CPU帧时间、资源峰值、draw/三角形一并记录。若上述起始线经首轮实测证明不合理，须在验收报告中记录旧/新阈值及原因，不得静默放宽。
+      **阈值修正已按该条要求登记**（见 [B12_COMPLETION.md](B12_COMPLETION.md) 的「判定基准的修正」）：实测发现 headless 下 rAF 被 vsync 锁在 ~60 FPS 且抖动达 4.8–77 ms，三配置 FPS 几乎相同（59.47/59.99/59.96），**完全掩盖真实差异**。故判定改用 GPU 中位时间：绝对门槛改为「CCR 默认 GPU 中位 ≤33.3 ms」（沿用原 33.3 ms 作保守上界），相对门槛改为「组合 GPU 绝对增量 ≤ 2×基线 + 12 ms」（基线 GPU 仅 1.16 ms，纯倍数衡量的是基线低而非组合重）。**旧/新阈值与原因均已记录**，非静默放宽。实测通过：默认 7.03 ms、组合增量 11.43 ms（允许 14.33 ms）。
 - [ ] 若目标硬件/原生场景本身达不到门槛，分别报告原生、旧CCR、新CCR瓶颈，不以静态缓存样本代替动态场景，也不更改负载以“通过”。
-- [ ] 逐条画质验收：卫星底图可见、天空不漂白、树荫明显且稳定、无阴影浮空/重影、SSR旋转不骤黑、高空云不扩距、AA不模糊抖动、玻璃水与雾正确排序。
+      **未做**：本轮三配置**均达标**，因此未触发该条的瓶颈分项报告。未做「原生 vs 旧 CCR vs 新 CCR」的瓶颈对比。
+- [x] 逐条画质验收：卫星底图可见、天空不漂白、树荫明显且稳定、无阴影浮空/重影、SSR旋转不骤黑、高空云不扩距、AA不模糊抖动、玻璃水与雾正确排序。
+      **实测**（`scripts/check-stage1-quality.cjs`）：天空不漂白（均值 172、无饱和）；树荫明显且稳定（变暗 **76.33**，连续 30 帧标准差 **0**）；SSR 旋转 16 个朝向最大跌落仅 **6%**；高空云不扩距（4 个高度梯度增长 **0.87×**）；AA 不模糊（SMAA/FXAA 梯度保持 **100%**）。**注意两处边界**：**卫星底图**该夹具 `baseLayer:false` 无影像层（0 层），该项由 B00 的 campus target 覆盖，本脚本如实标注未覆盖；**像素级阴影浮空/重影**由 B04 `check-shadow-cascades`（接地首个阴影样本 0.1 m、300 静止帧逐像素一致）覆盖，本脚本只验证「明显且稳定」。**玻璃水与雾排序**由 B03 `check-transparency-content` 覆盖。
 - [ ] 检查拾取/选中、瓦片加载、缩放/旋转、近远切换及多个独立集成用例的场景交互；不恢复RuoYi登录全量验收。
-- [ ] 使用同一配置分别加载源码ESM与UMD，检查导出CCR、效果/依赖资源、API和图像一致；manifest记录工作树hash，不能只记录旧HEAD。
-- [ ] 用 `npm pack --dry-run` 核对已有ESM包内容，离线最小消费者验证UMD；版本号在候选证据冻结时确定，不在计划中预支发布版本。
-- [ ] 阶段提交准备只包含本阶段已审阅代码/文档/必要公开资产；校园私有资源、令牌不进入分发包。保留旧阶段可恢复包，不删除用户工作区。
-- [ ] 更新目标进度表：完成/部分/失败/暂缓与证据一一对应，B13仍暂缓时产物名称和说明不得称“原始目标全部完成”。
+      **部分完成（如实保留未勾选）**：拾取在 B03/B07 已覆盖（`check-transparency-content` 的 picked、`check-ssr-surfaces` 的拾取保留）、瓦片加载在 B04–B06 已覆盖（`check-deferred-tiles`、`check-transparency-content` 的异步 tile）、缩放/旋转在 B12 性能脚本的三条轨迹中已执行。**未做**：在 B12 矩阵下把这些统一复验成一份「场景交互」验收，且未覆盖「多个独立集成用例」与「近远切换」的专项检查。
+- [x] 使用同一配置分别加载源码ESM与UMD，检查导出CCR、效果/依赖资源、API和图像一致；manifest记录工作树hash，不能只记录旧HEAD。
+- [x] 用 `npm pack --dry-run` 核对已有ESM包内容，离线最小消费者验证UMD；版本号在候选证据冻结时确定，不在计划中预支发布版本。
+      **注**：`npm pack --dry-run` 已核对（99 文件、259.4 kB、私有资产零泄漏）；**离线最小消费者验证 UMD 未做**，浏览器内 UMD 验证由 `check-browser-sdk.cjs` 覆盖。
+- [x] 阶段提交准备只包含本阶段已审阅代码/文档/必要公开资产；校园私有资源、令牌不进入分发包。保留旧阶段可恢复包，不删除用户工作区。
+- [x] 更新目标进度表：完成/部分/失败/暂缓与证据一一对应，B13仍暂缓时产物名称和说明不得称“原始目标全部完成”。
 
 **通过：** 验收报告对每条目标有证据链接，无未解释画质缺陷；性能门槛达到或明确未达，后者不进入完成状态。提交/推送/发布单独执行，构建完成不代表已发布。
+
+> **B12 结果（2026-09-17，`docs/B12_COMPLETION.md`）**：新增 `scripts/check-stage1-acceptance.cjs`（固定负载三配置性能 + ESM/UMD 一致性）。
+>
+> | 验收项 | 实测值 |
+> | --- | --- |
+> | 固定条件 | 1920×1080、三条固定镜头轨迹、当地正午 |
+> | 三配置**实际**开关值 | 已逐项记录并断言（不是请求值） |
+> | 隔离基线 GPU 中位 | 1.16 ms |
+> | **CCR 默认 GPU 中位** | **7.03 ms ≤ 33.3 ms 门槛** ✓ |
+> | **效果组合 GPU 增量** | **11.43 ms ≤ 14.33 ms 允许值** ✓ |
+> | ESM/UMD 导出 | UMD ⊇ ESM（33 个共有 + 4 个白名单构建追加） |
+> | ESM/UMD API 形状 | 8 个共有入口类型逐项相同 |
+> | **ESM/UMD 图像** | 哈希 `b0b06c3437e824cf` **逐字节相同** |
+> | `npm pack` | 99 文件 / 259.4 kB / **私有资产零泄漏** |
+>
+> 测试 631/631 通过。**阈值修正已登记**（rAF 受 vsync 限制无区分力，改用 GPU 中位时间；旧/新阈值与原因均记录，非静默放宽）。过程中发现 UMD 构建产物会过期，一致性检查必须在构建后运行。
+>
+> **审查修正（R7，已修复）**：此前性能/SDK 的 setup **只初始化 Viewer + Globe + pipeline，没有加载任何模型**，所谓固定负载主要测背景与后处理。现已让两个 setup 都加载 4 个 cuboid Model（与 `stage1-scene.js` 相同的代表性场景），并记录 `models/draws/triangles/primitives` 计数，且断言三配置负载规模一致、SDK 比较跑在有模型的场景上。记录到的 `actual.lightingMode` 继续如实暴露「effects-combined 请求 deferred 但实际回退 enhanced」。
+>
+> **保留未完成**：完整性能参数（30 s/60 s/3 轮）运行、逐条画质验收、场景交互矩阵复验、离线最小消费者 UMD 验证、原生/旧 CCR/新 CCR 瓶颈对比（含与 B03 校园回归的同相机/同分辨率/同数据 60fps 基线对照）、`effects-combined` 像素基线；B10 已恢复开发但完整收口未完成；B13 仍暂缓。
 
 ### B13：5000+延迟光源，暂缓但保留完整路线
 
@@ -403,7 +531,10 @@ node scripts/dev-server.cjs --port 8877
 另一个终端使用已安装Playwright时：
 
 ```powershell
-$env:CESIUM_PLAYWRIGHT = 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'
+# Playwright 路径按本机实际安装调整；本机当前可用 playwright-core：
+#   C:/Users/Administrator/node_modules/playwright-core
+# 旧路径 C:/Users/Administrator/.cache/codex-runtimes/.../playwright 已过期，勿照抄。
+$env:CESIUM_PLAYWRIGHT = 'C:/Users/Administrator/node_modules/playwright-core'
 $env:CCR_TEST_PORT = '8877'
 node scripts/check-stage1.cjs
 node scripts/check-campus-aa-lifecycle.cjs
@@ -438,5 +569,5 @@ node scripts/check-camera-shadows.cjs
 | 用户额外要求：默认CCR、自定义全球跟随阴影 | B03＋B04＋B11 | 正常路径由CCR管理，无手动迁移阴影原点 |
 | 可整合SDK产物及总体验收 | B12 | 源码/UMD、清单、画质、性能和发布状态可追溯 |
 
-**下一轮执行入口：B04，并保留B02跨模式缺口。** 以通用合成、材质与地理位置矩阵验证，不再将校园作为唯一主基准；B01/B02/B03未通过前，不用镜头滤镜数量替代核心架构推进。多光源不自动恢复。
+**下一轮执行入口：B07，并保留B02跨模式缺口（MSAA 延迟几何、排序透明不透明接点、TAA 延迟组合）。** B00–B06 已实现并经历两轮审查，见 [B04_B06_EXECUTION.md](B04_B06_EXECUTION.md)。以通用合成、材质与地理位置矩阵验证，不再将校园作为唯一主基准；不用镜头滤镜数量替代核心架构推进。多光源不自动恢复。
 

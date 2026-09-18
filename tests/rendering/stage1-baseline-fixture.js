@@ -334,6 +334,10 @@ export async function runBaseline(fixture, options = {}) {
         drawingBuffer: [readback.width, readback.height],
         stats: readback.stats,
         hash: hashBytes(readback.data),
+        shadow: pipeline.customShadow ? { coverage: pipeline.customShadow.stats.coverage,
+          levels: pipeline.customShadow.levels?.map(level=>({extent:level.light.camera.frustum.width,anchor:level.light.anchor,
+            right:level.light.previousRight,direction:level.light.previousDirection,matrix:Array.from(level.light.viewProjection)})) } : null,
+        environmentFrame: pipeline.environmentRenderer?.frameData ? Array.from(pipeline.environmentRenderer.frameData) : null,
       })
       measurements.captures.push({ configuration: configuration.id, shot: shot.id, kind: shot.kind, camera: before, hash: record.shots[record.shots.length - 1].hash, stats: readback.stats })
     }

@@ -7,7 +7,7 @@ export default function createCampusShadowMap(Cesium, viewer, options) {
     lightCamera: viewer.shadowMap._lightCamera,
     enabled: viewer.shadows,
     cascadesEnabled: true,
-    numberOfCascades: options.shadowCascades,
+    numberOfCascades: options.shadowCascades === 1 ? 1 : 4,
     size: options.shadowSize,
     maximumDistance: options.shadowDistance,
     softShadows: true

@@ -52,3 +52,32 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 ```
 
 新增功能均显式启用；原默认保留。球壳云支持单视锥或纯天空帧，多视锥仍安全回退，雾仍为局部效果。算法参考见 ALGORITHM_REFERENCES.md。
+
+## 固定点位实例树木（2026-09-18）
+
+UMD 同时导出 `createFixedTreeCollection`，内部复用 `cesium-ez-tree` 的生成器、实例 primitive 与资源调度。默认用三种轻量程序化松树保留所有 WGS84 固定点位，几何共享；已接入 CCR 自定义阴影。点位清单和 `eztree/bark/pine_color_1k.jpg` 由宿主部署，程序化模式不加载树 GLB。GLB 比较模式显式设置 `source:'glb'`；树木前向材质暂不属于完整 PBR/MRT 范围。第三方许可和适配说明随构建产物保留。
+
+```js
+const trees = CCR.createFixedTreeCollection({
+  Cesium, viewer,
+  manifestUrl: '/vegetation/manifest.json',
+  clampToGround: true,
+  objectsToExclude: [oldTreeTileset]
+});
+await trees.readyPromise;
+// 页面销毁前：trees.destroy(); pipeline.destroy(); viewer.destroy();
+```
+
+## GeoJSON 程序化草地（2026-09-18）
+
+`createGrassCollection` 复用同一 `cesium-ez-tree` primitive，在 WGS84 多边形内生成草簇。默认 450 簇/公顷、上限 10,000，固定局部高度 3，不执行逐点场景贴地。宿主需同时部署预处理生成的 `polygons.json` 与相邻的 `eztree/models/grass.glb`。
+
+```js
+const grass = CCR.createGrassCollection({
+  Cesium, viewer,
+  polygonsUrl: '/grass/polygons.json',
+  height: 3
+});
+await grass.readyPromise;
+// 页面销毁前：grass.destroy(); trees.destroy(); pipeline.destroy(); viewer.destroy();
+```

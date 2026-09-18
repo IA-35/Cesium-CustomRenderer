@@ -1,0 +1,449 @@
+{
+  "scope": "cesium customRenderer only; current working tree",
+  "date": "2026-09-18T10:45:42.734Z",
+  "baseCommit": "e09bbc277f91240507ad694cf96a79d8fd820633",
+  "bundleSha256": "7e1272161f8a3720c145b2ef3e034d9ed1e1cc6346caa12e641af70b8080696f",
+  "sourceManifestMismatches": [],
+  "tests": {
+    "total": 683,
+    "passed": 681,
+    "failed": 2,
+    "failures": [
+      "campus-business-assets: old localhost:9528 URL",
+      "campus-business-assets: old SSE 128 expectation"
+    ]
+  },
+  "runtimeProbes": {
+    "toneDepthFallback": {
+      "result": {
+        "before": {
+          "native": 0,
+          "custom": 10,
+          "depth": true
+        },
+        "after": {
+          "mode": 2,
+          "hdr": true,
+          "native": 0,
+          "custom": 0,
+          "nativeEnabled": false,
+          "reason": "Metric depth unavailable",
+          "depth": false
+        },
+        "renderErrors": []
+      },
+      "errors": []
+    },
+    "staleMedium": {
+      "result": {
+        "before": {
+          "frame": 64,
+          "mediumValid": true,
+          "hdrValid": true
+        },
+        "after": {
+          "frame": 74,
+          "mediumValid": true,
+          "sameTexture": true,
+          "hdr": {
+            "enabled": true,
+            "supported": true,
+            "valid": false,
+            "reason": "requires perspective camera",
+            "error": null,
+            "frustumCount": 2,
+            "stats": {
+              "executions": 60,
+              "bypasses": 10,
+              "failures": 0
+            }
+          },
+          "lensValid": true
+        },
+        "renderErrors": []
+      },
+      "errors": []
+    },
+    "deferredDiagnostics": {
+      "result": {
+        "actual": {
+          "enabled": true,
+          "attached": true,
+          "failed": false,
+          "error": null,
+          "reason": null,
+          "valid": true,
+          "activeMode": "deferred",
+          "terms": {
+            "direct": true,
+            "indirect": true,
+            "emissive": true,
+            "shadow": true,
+            "ao": true
+          },
+          "debugMode": 0,
+          "stats": {
+            "frames": 58,
+            "draws": 232,
+            "lastAoValid": false,
+            "lastShadowValid": false,
+            "materialDraws": 4,
+            "nativeSupportedColorDraws": 0,
+            "compatibilityDraws": 21,
+            "coverageDraws": 0
+          },
+          "groupCount": 4,
+          "colorAttachmentCount": 4,
+          "materialLayout": "compact-v1",
+          "resources": {
+            "lightingFramebuffers": 1,
+            "lightingPrograms": 2,
+            "materialPrograms": 7,
+            "reflectionBytes": 0
+          }
+        },
+        "policy": {
+          "requested": true,
+          "active": false,
+          "effectiveMode": "enhanced",
+          "coverage": {
+            "opaqueLoop": true,
+            "transparentLoop": true,
+            "ssr": false,
+            "msaa": true
+          },
+          "candidates": false,
+          "reason": "Deferred lighting is not a candidate default yet: incomplete coverage (ssr)"
+        },
+        "renderErrors": []
+      },
+      "errors": []
+    },
+    "taaBillboardScope": {
+      "result": {
+        "before": {
+          "particles": 100,
+          "commands": 2,
+          "classifiedAsUi": true,
+          "overlay": {
+            "active": true,
+            "skipped": 2,
+            "drawn": 2,
+            "bytes": 1843200
+          },
+          "lumaSum": 109944
+        },
+        "particleAllowedIntoHdrChain": {
+          "lumaSum": 316479,
+          "overlay": {
+            "active": true,
+            "skipped": 0,
+            "drawn": 0,
+            "bytes": 1843200
+          }
+        },
+        "renderErrors": []
+      },
+      "errors": []
+    },
+    "globeLessViewer": {
+      "result": {
+        "error": "Cannot read properties of undefined (reading 'enableLighting')"
+      },
+      "errors": []
+    }
+  },
+  "cpuProbes": {
+    "treeOutsideView": {
+      "allAssetsReady": true,
+      "cachedCommands": 0,
+      "readyPromiseResolved": false
+    },
+    "grassBudget": {
+      "maxInstances": 10,
+      "actual": 25
+    },
+    "zeroDensity": {
+      "actual": 25
+    }
+  },
+  "positiveChecks": {
+    "stage1": {
+      "checks": {
+        "ssao": 17,
+        "hbao": 17,
+        "bloom": 8,
+        "shell": 1,
+        "noise": 1,
+        "scene": 29,
+        "umd": 29
+      },
+      "noise": {
+        "checks": {
+          "shellNoiseMatchesTrilinearReference": true
+        },
+        "samples": 12288,
+        "maximumError": 0.0000012723948157322695
+      },
+      "resize": [
+        {
+          "size": [
+            801,
+            603
+          ],
+          "rebuilt": true,
+          "ssao": true,
+          "hbao": true,
+          "bloom": true,
+          "clouds": true,
+          "ssr": true,
+          "smaa": true,
+          "errors": []
+        },
+        {
+          "size": [
+            1280,
+            720
+          ],
+          "rebuilt": true,
+          "ssao": true,
+          "hbao": true,
+          "bloom": true,
+          "clouds": true,
+          "ssr": true,
+          "smaa": true,
+          "errors": []
+        }
+      ],
+      "gpu": {
+        "frame": {
+          "samples": 11,
+          "p50": 5.265408,
+          "p95": 9.247744
+        },
+        "materials": {
+          "samples": 11,
+          "p50": 0.54272,
+          "p95": 1.15712
+        },
+        "hiz": {
+          "samples": 11,
+          "p50": 0.120832,
+          "p95": 0.141312
+        },
+        "ssr": {
+          "samples": 11,
+          "p50": 0.41984,
+          "p95": 0.528384
+        },
+        "ao": {
+          "samples": 11,
+          "p50": 0.856064,
+          "p95": 1.093632
+        },
+        "bloom": {
+          "samples": 11,
+          "p50": 0.412672,
+          "p95": 0.533504
+        },
+        "environment": {
+          "samples": 11,
+          "p50": 0.151552,
+          "p95": 0.192512
+        },
+        "smaa": {
+          "samples": 11,
+          "p50": 0.11776,
+          "p95": 0.144384
+        }
+      },
+      "errors": [],
+      "httpErrors": []
+    },
+    "frameBridge": {
+      "modes": [
+        {
+          "id": "mrt",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "msaa4",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 4,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "multipass",
+          "useOIT": true,
+          "mrt": false,
+          "multipass": true,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "multifrustum",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 10,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "sorted",
+          "useOIT": false,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "no-glass",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        },
+        {
+          "id": "umd",
+          "useOIT": true,
+          "mrt": true,
+          "multipass": false,
+          "samples": 1,
+          "frustums": 1,
+          "point": {
+            "x": 320,
+            "y": 129
+          }
+        }
+      ],
+      "errors": []
+    },
+    "ssr": {
+      "surface": 10800,
+      "standardPbr": 0,
+      "knownDepth": 10800,
+      "invalidDepth": 0,
+      "primitiveDraws": 3,
+      "standardPbrDraws": 0,
+      "invalidators": 0,
+      "ssrValid": true
+    },
+    "lifecycle": {
+      "capability": {
+        "generation": 41,
+        "mrt": true,
+        "attachmentsNeeded": 4,
+        "deviceSlots": {
+          "maxDrawBuffers": 8,
+          "maxColorAttachments": 8
+        },
+        "oit": true,
+        "msaa": true,
+        "deferredMode": "enhanced"
+      },
+      "lifecycle": {
+        "rounds": 20,
+        "firstHalfPeak": 2046080,
+        "secondHalfPeak": 2046080
+      },
+      "nestedSuspension": {
+        "activeBefore": true,
+        "suspendedFlag": true,
+        "ssrActiveWhileSuspended": false,
+        "stillSuspendedAfterOneRelease": true,
+        "resumedActive": true,
+        "resumedSuspended": false,
+        "duplicateSuspendIsIdempotent": true,
+        "singleResumeClearsIt": true
+      },
+      "resize": [
+        {
+          "size": [
+            320,
+            240
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            213,
+            160
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            400,
+            300
+          ],
+          "materials": true,
+          "ssr": true
+        },
+        {
+          "size": [
+            320,
+            240
+          ],
+          "materials": true,
+          "ssr": true
+        }
+      ],
+      "contextLoss": {
+        "lost": "lost",
+        "restored": "restored",
+        "browserRestoredContext": true,
+        "before": [
+          169,
+          185,
+          193
+        ],
+        "duringReasons": {
+          "ssr": "Suspended",
+          "materials": "Suspended"
+        },
+        "autoRecovered": false,
+        "restoredRender": null,
+        "explicitRebuild": {
+          "colour": [
+            169,
+            185,
+            193
+          ],
+          "materialsValid": true,
+          "path": "explicit-rebuild",
+          "picked": "recovery-building"
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ Cesium 1.143.0 渲染增强管线（CCR）的对外接口参考。全部签名�
 
 > 版本门槛：所有类都要求 `Cesium.VERSION` 匹配 `/^1\.143(?:\.0)?$/`，不匹配直接抛错。管线依赖 1.143 的若干内部结构（`scene._view.frustumCommandsList`、`globeDepthTexture`、`updateDerivedCommands`、`_primitiveBias` 等），升级 Cesium 前必须重新验证。
 
-> 阶段一状态（2026-09-15）：本文只描述**当前可用**的接口。计划中的 `setLighting` / `setOcclusionCulling` / `setToneMapping` / `setLensEffects` **尚未实现**，不要按计划文档调用它们。验收口径、图像基线与命令入口见 [阶段一验收说明](STAGE1_ACCEPTANCE.md)。
+> 阶段一状态（2026-09-17）：`setLighting`、`setOcclusionCulling` 已实现；`setToneMapping` / `setLensEffects` 仍未实现。B04–B06 的资源与覆盖契约见 [资源账本](B05_RESOURCE_LEDGER.md)。验收口径、图像基线与命令入口见 [阶段一验收说明](STAGE1_ACCEPTANCE.md)。
 
 ## 目录
 
@@ -49,7 +49,7 @@ Cesium 1.143.0 渲染增强管线（CCR）的对外接口参考。全部签名�
 </script>
 ```
 
-UMD 导出键（实测 `require('build/0.1.0/CCR.min.js')`，35 个）：
+UMD 导出键包含以下管线与固定植被入口：
 
 ```
 CESIUM_VERSION  VERSION  createVisualPipeline  getVisualPipeline
@@ -57,6 +57,9 @@ SmaaPass143  TaaPass143  FxaaPass143  taaBlendWeights  TaaJitter143  FrustumJitt
 ScreenSpaceGeometry143  MaterialChannels143  DepthPyramid143  MATERIAL_FLAGS
 ScreenSpaceAo143  HdrBloom143  ScreenSpaceReflection143  TransparentReflection143
 PerformanceGovernor143  quantile  LightUniforms143  RenderProfiler143
+FixedTreeCollection  createFixedTreeCollection  validateFixedTreePoints
+GrassCollection  createGrassCollection
+stableTreeVariation  projectedTreePixels  selectTreeLod  DEFAULT_TREE_LOD_THRESHOLDS
 halton  jitterSample  nearPlaneOffsets  isSubPixelOffset  DEFAULT_JITTER_SAMPLES
 resolveMsaaPolicy  isPostProcessAntiAliasing  postProcessAntiAliasingModes
 defaultFilters  normalizeOptions  normalizeColorGrading  colorGradingControls  colorGradingPresets
@@ -70,6 +73,64 @@ import { createVisualPipeline, getVisualPipeline } from 'src/index.js'
 const pipeline = createVisualPipeline({ Cesium, viewer, options })  // 创建并立即启用
 const same = getVisualPipeline(viewer)                              // 按 viewer 查找（WeakMap）
 ```
+
+### 1.3 固定点位实例树木
+
+`createFixedTreeCollection` 独立于 `VisualPipeline` 生命周期，使用固定版本 `cesium-ez-tree` 的 `EzTreePrimitive`。默认按三种程序化 Pine 预设显示采集点位，复用上游几何生成、20 字节量化实例属性、共享几何缓冲、空间剔除、分帧上传及缓存。常态 720 个点位由一个 primitive 管理，不再创建每块四个 Cesium Model，也不按距离稀释道路点位。
+
+默认程序化树使用一套轻量几何，三种树共六组几何资源，非四级 GLB LOD。`source:'glb'` 为外部模型比较入口，通过同一上游 GLB 通道加载已准备的四级网格；该路径的材质观感和成本尚未达到默认展示要求。输入清单由 `scripts/prepare-fixed-tree-assets.cjs` 生成，运行时程序化模式只读取点位、尺寸和树皮，不请求树 GLB。
+
+已适配 CCR 阴影投射/接收及 Mask 轮廓。树木使用上游前向植被着色器，不是完整 Model PBR/MRT；不能宣称它已接入延迟材质通道或成为 SSR 材质接收面。SMAA 等颜色后处理照常覆盖最终画面。
+
+```js
+const trees = CCR.createFixedTreeCollection({
+  Cesium,
+  viewer,
+  manifestUrl: '/assets/vegetation/manifest.json',
+  source: 'procedural', // 默认；不加载树 GLB
+  clampToGround: true,
+  heightOffset: 0.1,
+  // 排除旧树木层，避免新树贴到旧树冠上。
+  objectsToExclude: [oldTreeTileset]
+})
+
+await trees.readyPromise
+console.log(trees.getDiagnostics())
+trees.setVisible(false)
+trees.setVisible(true)
+
+// 必须在 viewer.destroy() 之前调用。
+trees.destroy()
+```
+
+校园示例默认加载本地程序化树；使用 `?trees=none` 可显式关闭，`?trees=<manifest-url>` 可替换清单。
+
+诊断的 `instances` 是固定点位总数；`visibleBatches` / `submittedInstances` 表示本帧实际提交的批次与批次内实例（仍可能包含屏外株）。`bufferBytes` / `textureBytes` 只统计集合所持有资源，不能代替整场景显存。
+
+### 1.4 GeoJSON 面内程序化草地
+
+`createGrassCollection` 读取 `prepare-grass-polygons.cjs` 生成的 WGS84 面数据，按面积调用 `cesium-ez-tree` 的程序化草簇采样和实例 primitive。默认密度为 450 簇/公顷（`0.045/㎡`），最多 10,000 簇；当前 14.0402 公顷数据生成 6,329 簇。
+
+草地采用固定局部 ENU 高度 `3`，不会调用 `scene.clampToHeightMostDetailed`。面采样每 12 个多边形主动让出一次主线程；资源 ready 只依赖 GLB/纹理完成，不要求初始镜头已经提交可见命令。
+
+```js
+const grass = CCR.createGrassCollection({
+  Cesium,
+  viewer,
+  polygonsUrl: '/grass/polygons.json',
+  height: 3,
+  density: 0.045,
+  maxInstances: 10000
+})
+
+await grass.readyPromise
+console.log(grass.getDiagnostics())
+grass.setVisible(false)
+grass.setMaximumDistance(600)
+grass.destroy() // 必须先于 viewer.destroy()
+```
+
+宿主需在面数据相邻位置部署 `eztree/models/grass.glb`。运行 `scripts/prepare-grass-polygons.cjs` 会同时生成 `polygons.json` 并复制该运行时资源。校园示例默认加载草地；使用 `?grass=none` 可显式关闭。
 
 | 入口 | 签名 | 说明 |
 |---|---|---|
@@ -126,7 +187,7 @@ viewer.destroy()
 | `getOptions` | — | 浅拷贝 | 读取当前生效值 |
 | `setEnabled` | `boolean` | — | `false` 恢复所有被接管的原生属性并释放自有资源；`true` 重新应用 |
 | `suspend` / `resume` | `owner = 'default'` | — | 多所有者挂起计数。挂起期间参数只保存，最后一个 owner 释放后一次性应用 |
-| `setCampusOrigin` | `Cartesian3` | — | 设阴影/环境中心。自 `SunLight` 直射方向推导 `dot(toLight, origin) <= 0` 时阴影不就绪 |
+| `setCampusOrigin` | `Cartesian3` | — | 设置局部环境/业务参考；阴影始终由相机和可见接收物自动定位，无需迁移原点 |
 | `invalidateShadows` | — | — | 手动让自定义阴影缓存失效（静态阴影下地形/模型变动时用） |
 | `write` | `(object, key, value)` | — | 记录原值后写属性，`restore()` 时只回滚仍由本模块拥有的键。高级用法 |
 | `destroy` | — | — | 释放全部资源并从注册表移除；幂等 |
@@ -210,8 +271,8 @@ viewer.destroy()
 | | `resolutionScale` | `1` | clamp `0.5 – 2` |
 | 阴影 | `shadows` | `true` | 布尔 |
 | | `shadowMode` | `'custom'` | `custom` / `native` |
-| | `shadowSize` | `4096` | `1024` / `2048` / `4096` |
-| | `shadowCascades` | `1` | `1` / `4` |
+| | `shadowSize` | `4096` | `1024` / `2048` / `4096`；custom 单级联时是整张贴图尺寸，三级时是近级尺寸，中远级各为一半（最低 512） |
+| | `shadowCascades` | `1` | `1` / `3` / `4`；custom 使用 1 或 3（历史 4 映射为 3）；native 非 1 使用原生 4 级 |
 | | `shadowDistance` | `4000` | `100 – 20000` m |
 | | `shadowDebug` | `false` | 布尔 |
 | | `shadowStatic` | `false` | 布尔 |
@@ -278,9 +339,10 @@ viewer.destroy()
 
 ### 5.1 阴影
 
-- **`shadowMode: 'custom'`（默认）**：自有正交光源相机 + 深度 pass，接收端为 PBR Model / 3D Tiles；校园 GLB 地面可接收。地形（Globe）接收端尚未接入。`shadowStatic: true` 会缓存静止阴影，需要**手动 `invalidateShadows()`** 才能在场景变化后更新。
-- **`shadowMode: 'native'`**：回退 Cesium 原生 `ShadowMap`，用 `write()` 接管 `scene.shadowMap`/`viewer.shadowMap` 参数，并把 `viewer.shadowMap._primitiveBias.depthBias` 调到 `0.0002`、`normalOffsetScale` 调到 `0.5`（1.143 内部依赖，非公共 API）。
-- 大场景投影成本提示（源码注释与文档记录）：大型校园 GLB 在 4 级联下 279 条投影命令会重复绘制成 1116 次；单级联 `shadowSize: 4096` 是默认折中，需要近景细节时可 `setOptions({ shadowMode: 'native', shadowCascades: 4, shadowSize: 2048 })` 对比。
+- **`shadowMode: 'custom'`（默认）**：CCR 自有光源相机、投影选择、深度图与接收 shader。默认单级联 4096²（共 64 MiB 深度附件）；显式 `shadowCascades: 3` 且保留默认 `shadowSize: 4096` 时为 4096² + 2048² + 2048²（96 MiB）；同时设 `shadowSize: 2048` 才是 2048² + 1024² + 1024²（24 MiB）。PBR Model、3D Tiles、Globe 和透明前向共享级联；Globe 保留自己的表面光照语义。
+- 线性/对数混合 split（lambda 0.6），按实际接收范围收紧覆盖；固定半径档位与 texel snapping 稳定，区间末端 10% 混合，阴影距离之外渐隐。每级独立选取画面外 caster，高程参与光空间深度范围。
+- `shadowMode: 'native'` 是显式原生对照选项，不是 custom 失败后的自动回退。原生多级对照可设 `shadowCascades: 4, shadowSize: 2048`；原生单级对照可设 `shadowCascades: 1, shadowSize: 4096`。
+- `shadowStatic: true` 按相机/太阳矩阵和实际命令内容签名复用。命令、shader、uniform、矩阵及资源替换会自动失效；同一纹理或实例缓冲原地改写仍须 `invalidateShadows()`。默认逐帧更新，不能用时间暂停推断资源不变。
 
 ### 5.2 环境（雾 / 云 / 天空）
 
@@ -506,7 +568,7 @@ profiler.destroy()
 2. **一次失败后再也起不来** → 失败是锁存的（`reason: '... failed; disable before retrying'`）。写 `setEnabled(false)` 再 `setEnabled(true)`。
 3. **AO/SSR 在遮挡物附近出现噪点或截断** → 属于屏幕空间固有边界（屏幕外信息不可恢复、未知遮挡保守拒绝、薄物体）。可增大 `distance`/`thickness` 或换视角验证，不要当成 bug。
 4. **静止场景不出画面（`requestRenderMode: true`）** → 改完参数要 `viewer.scene.requestRender()`；本管线的 setter 内部大多会调用，但直接改 `pipeline.options` 不会。
-5. **切换视图后阴影/云不对** → 调 `setCampusOrigin()`；静态阴影下再 `invalidateShadows()`。
+5. **切换视图后阴影/云不对** → 阴影随相机自动定位；检查 shadowDistance、太阳是否在地平线以上及 customShadow.stats.error。只有局部环境参考需要 setCampusOrigin；静态阴影资源原地改写后调用 invalidateShadows。
 6. **多视锥 / 分屏 / VR / 正交相机** → 环境、几何、材质、AO、SSR、TAA 都会按 `reason` 旁路，属预期行为。
 7. **销毁顺序** → `pipeline.destroy()` → `viewer.destroy()`。反向顺序会触发管线内部的视图已销毁分支。
 8. **调色和 Bloom 的曝光关系** → 曝光只在管线 ACES 通道做一次；调色是显示空间。环境支线内的天空有独立的 `rayleighScale`/`mieScale`/`atmosphereIntensity` 平衡，不要再手动补曝光。
@@ -614,3 +676,59 @@ compact-v1 是独立消费者契约，不能用旧 MaterialChannels 的编码读
 `getLightingDiagnostics().transparentForward` 提供当前帧 patchedCommands、patchedFamilies、compatibilityReasons、valid/reason。`partial` 表示仍有不支持的 Cesium shader 类型，详细矩阵见 [B03_COMPLETION.md](B03_COMPLETION.md)。
 
 `getScreenSpaceReflectionDiagnostics().lightingSource` 区分 `deferred-lighting` 与 `native-replay`；延迟 SSR 在 OIT 合成前替换环境镜面，透明 SSR 再通过原有 delta/OIT 合成。新附件只在 SSR 启用时分配，额外成本为 24 B/像素，不含 SSR 中间纹理及水环境探针。`getLightingDiagnostics().resources.reflectionBytes` 报告这些附件实际占用。
+
+## B05/B06 控制与诊断
+
+太阳 UBO 在延迟光照的一批 draw 中共享绑定；离开批次（包括异常退出）后恢复外部绑定。
+不同视图/同一帧的太阳数据仍按实际值更新，未用“每帧只更新一次”替代数据契约。
+环境积分仅有一个消费者时使用普通 uniforms；光柱/光斑需要介质数据时才创建共享环境 UBO。
+`frameUniforms` 诊断中的实际 buffer 数量随活跃消费者变化。
+
+太阳阴影网格自动使用主相机附近的局部参照。跨区域重定位保留网格相位，
+动态太阳不会再驱动以地球半径放大的采样跳动；无需传入业务场景原点。
+连续太阳运动时使用地表固定方向的仿射投影，投影矩阵与裁剪体同步更新，
+避免整个光平面旋转引起密集几何的反复采样变化。实景结果与边界见
+[校园动态阴影复查](CAMPUS_DYNAMIC_SHADOW_FOLLOWUP_2026-09-17.md)。
+
+### 上下文丢失与恢复
+
+`pipeline.getRenderDiagnostics().recovery` 返回 `{ required, reason }`。上下文丢失后，
+旧管线保持暂停，旧 Viewer 的默认渲染循环停止；浏览器恢复 WebGL 后也不会把旧纹理
+重新报告为有效。`setEnabled(true)`、普通 `resume()` 不解除这项暂停。
+使用自定义渲染循环的宿主也应在 `recovery.required` 为 true 时停止调用旧 Viewer 的 render。
+
+宿主收到 `webglcontextrestored` 后，应保存业务场景状态，依次销毁旧 pipeline 与 Viewer，
+重新调用自己的场景创建/资产加载函数，再恢复相机、时间、配置与交互状态。
+仅重新安装 CCR 无法修复 Cesium 1.143 已失效的原生 GPU 资源。不要把旧模型对象放回新 Viewer；
+应从资产 URL/业务描述重新加载。`check-stage1-lifecycle.cjs` 实际验证了相同模型重新加载、
+相机与时间恢复、颜色一致以及相同对象 ID 的拾取。
+
+### 景深与曲线切换
+
+`setLensEffects({ depthOfFieldEnabled: true })` 会按需启用米制深度；关闭后移除该项依赖，
+其它消费者仍需要的通道继续保留。缺少有效深度时景深返回原图，诊断报告无效。
+`setOptions` 与 `setLensEffects` 都支持运行中切换曲线/效果；暂停、关闭和销毁会退役
+色调映射包装，保留宿主后来安装的包装。
+
+光柱和光斑都关闭时，不执行其专用介质遮挡 pass；`getMediumOcclusionDiagnostics()`
+返回无有效输出及 `No medium consumer requested`。云和雾的正常颜色合成继续执行。
+
+```js
+pipeline.setOptions({ renderTargetPoolEnabled: true }) // 默认开启；false 用于同源对照
+pipeline.setOcclusionCulling({ enabled: true }) // 默认 false，按稳定视图/可靠静态模型保守剔除
+pipeline.getOcclusionDiagnostics()
+pipeline.getResourcePoolDiagnostics()
+pipeline.getFrameUniformDiagnostics()
+```
+
+遮挡查询每帧最多 128 组，连续两次同状态不可见才隐藏。相机、投影、viewport、命令/瓦片/材质 revision 变化当帧恢复；近裁剪面、相机内部、未知变形/动画保持可见。只省去主颜色及对应材质生产，太阳投影、拾取、瓦片加载/LOD 不停止。无有用遮挡体时不查询；requestRender 查询长期 pending 有有限轮询预算。直接几何 buffer 改写导致包围体不再可信，本实例保守停用剔除，确认边界更新后可关闭再开启。
+
+总诊断新增 occlusion/resourcePool/frameUniforms；RenderProfiler 新增 occlusion query 的 GPU scope。GPU 性能数字必须连同固定相机、时间、图像一致性和实际 skipped draws 一起看。复现与资源活跃期见 [B05_RESOURCE_LEDGER.md](B05_RESOURCE_LEDGER.md)。
+
+### 选中轮廓与阴影提交优化（2026-09-18）
+
+管线默认优化原生 selected ID 通道，保留原生 silhouette 及其选择语义。WebGL2、3D、单视锥、单采样、普通深度路径下，复用当前主画面深度，只补画选中 Model/3D Tiles 内容的 ID；透明对象和特殊深度命令仍按原路径绘制。MASK 和不透明遮挡物的深度来自本帧，拾取通道不受影响。MSAA、多视锥、清除 Globe 深度、透明 Globe、调试命令过滤或未知选中类型使用原生完整 ID 绘制。
+
+`pipeline.getRenderDiagnostics().selectionId` 返回本次 ID 通道的 `skipped`、`drawn`、累计 `copies`、`frameNumber`、`active` 与回退 `reason`。没有执行 ID 通道的帧不会报告旧帧仍 active。Context.draw 调用计数包含适配器跳过的请求，衡量实际绘制时应记录 WebGL draw 调用。
+
+阴影的 opaque/MASK 投影按程序和渲染状态排序；程序/纹理绑定仅在同步阴影提交范围内去重，退出后恢复原方法，不跨帧缓存 GL 状态。仍逐帧绘制全部投影物，4096 分辨率、动态太阳、材质和模型更新语义保持不变。
