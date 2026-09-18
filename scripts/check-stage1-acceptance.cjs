@@ -22,27 +22,13 @@ const argv = process.argv.slice(2)
 const arg = (key, fallback) => { const i = argv.indexOf(key); return i < 0 ? fallback : argv[i + 1] }
 const QUICK = argv.includes('--quick')
 
-// 主计划给定的**候选起始线**（非承诺值）。如实测证明不合理，必须在此记录旧/新值。
-//
-// ⚠️ 判定基准的重要修正（本轮实测后的记录，不是放宽阈值）：
-// 主计划的门槛以「FPS / 帧 P95」表述，隐含用前台帧间隔度量。但实测发现
-// headless Chrome 下 rAF 间隔被 **vsync 限制在 ~60 FPS**：隔离 59.31 / 默认 59.99 /
-// 组合 59.96 FPS——三配置几乎相同，完全掩盖了真实差异；同时 rAF 还有
-// 4.8–77 ms 的瞬态尖峰（headless 调度抖动），使 p95 失去意义。
-// 因此判定改用 **GPU 中位时间**（EXT_disjoint_timer_query_webgl2，与 vsync 无关）：
-//   * 门槛 1（绝对）：CCR 默认 GPU 中位 ≤ 33.3 ms（原 P95 阈值作为保守上界沿用）
-//   * 门槛 2（相对）：效果组合的 **GPU 绝对增量** ≤ 隔离基线的 2× 加一个固定余量
-//     —— 不用纯倍数：隔离基线 GPU 仅约 1.1 ms（近乎空场景），任何真实效果
-//     都会让倍数显得很大，那衡量的是基线的低而非组合的重。
-// FPS 与 rAF p95 仍照常记录，作为参考而不是判据。
+// Frame cadence, CPU submission and GPU elapsed time are independent gates.
+// GPU median alone cannot certify frame P95 or detect driver synchronization.
 const THRESHOLDS = {
   defaultMinFps: 30,
   defaultMaxP95Ms: 33.3,
-  // GPU 绝对门槛：沿用 33.3 ms 作为保守上界（比 30 FPS 更宽，因为 GPU 时间是净成本）。
   defaultMaxGpuMs: 33.3,
   combinedMaxCostRatio: 2,
-  // 相对门槛的固定余量：覆盖基线噪声量级（实测基线 GPU 中位 1.08–1.40 ms）。
-  combinedFixedAllowanceMs: 12,
   warmupSeconds: QUICK ? 3 : 30,
   recordSeconds: QUICK ? 2 : 60,
   rounds: QUICK ? 1 : 3
@@ -50,48 +36,9 @@ const THRESHOLDS = {
 
 const WIDTH = 1920, HEIGHT = 1080
 
-/**
- * R7：在页面上下文里加载代表性模型并返回负载计数。
- *
- * 作为字符串注入 page.evaluate，与 stage1-scene.js 的 cuboid 几何保持一致
- * （4 个 Model，普通 Primitive 路径，覆盖不透明/带高光材质）。返回
- * `{ models, draws, triangles, primitives }`，使性能/SDK 结论有可复现的输入规模，
- * 而不是只测空场景的 Globe + 背景 + 后处理。
- */
+// Shared deterministic load; no synthetic draw-count fallback.
 const LOAD_MODELS_SOURCE = `async function loadModels(C, scene, f) {
-  const origin = C.Cartesian3.fromDegrees(116.39, 39.9, 0), frame = C.Transforms.eastNorthUpToFixedFrame(origin)
-  const specs = [[[0,0,-1],[200,200,2]],[[0,0,12],[18,18,24]],[[24,0,7],[12,12,14]],[[0,25,3],[8,10,6]]]
-  const geometry = C.BoxGeometry.createGeometry(C.BoxGeometry.fromDimensions({ dimensions: new C.Cartesian3(1,1,1), vertexFormat: C.VertexFormat.POSITION_AND_NORMAL }))
-  const arrays = [new Float32Array(geometry.attributes.position.values), new Float32Array(geometry.attributes.normal.values), new Uint16Array(geometry.indices)]
-  const buffers = arrays.map(a => { const bytes = new Uint8Array(a.buffer); let text = ''; for (const v of bytes) text += String.fromCharCode(v); return { uri: 'data:application/octet-stream;base64,' + btoa(text), byteLength: bytes.length } })
-  const url = 'data:model/gltf+json,' + encodeURIComponent(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], buffers,
-    bufferViews: arrays.map((a, i) => ({ buffer: i, byteLength: a.byteLength })), accessors: [
-      { bufferView: 0, componentType: 5126, count: arrays[0].length / 3, type: 'VEC3', min: [-.5,-.5,-.5], max: [.5,.5,.5] },
-      { bufferView: 1, componentType: 5126, count: arrays[1].length / 3, type: 'VEC3' },
-      { bufferView: 2, componentType: 5123, count: arrays[2].length, type: 'SCALAR' }],
-    materials: [{ pbrMetallicRoughness: { baseColorFactor: [0.65,0.68,0.72,1], roughnessFactor: 0.8, metallicFactor: 0 } }], meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: 0 }] }] }))
-  const triangleCount = arrays[2].length / 3
-  f.models = []
-  for (let i = 0; i < specs.length; i++) {
-    const [p, s] = specs[i]
-    const matrix = C.Matrix4.multiply(frame, C.Matrix4.fromTranslation(new C.Cartesian3(...p)), new C.Matrix4())
-    C.Matrix4.multiplyByScale(matrix, new C.Cartesian3(...s), matrix)
-    const model = await C.Model.fromGltfAsync({ url, modelMatrix: matrix })
-    scene.primitives.add(model); f.models.push(model)
-  }
-  // 等待一帧让命令列表就绪，然后统计负载规模（对象/命令/三角形）。
-  await new Promise(res => { let n = 3; const off = scene.postRender.addEventListener(() => { if (--n === 0) { off(); res() } }) })
-  let draws = 0
-  const primitives = scene.primitives.length
-  // 统计场景内不透明命令数：走 frustumCommandsList，覆盖 OPAQUE + CESIUM_3D_TILE。
-  for (const bin of (scene._view?.frustumCommandsList || [])) {
-    for (const pass of [C.Pass.OPAQUE, C.Pass.CESIUM_3D_TILE]) draws += bin.indices[pass] || 0
-  }
-  // 每个 cuboid 是 36 索引 / 3 = 12 三角形；draws 若为 0（未分箱）则按模型数兜底。
-  const perBoxTriangles = 12
-  const triangles = f.models.length * perBoxTriangles
-  if (draws === 0) draws = f.models.length
-  return { models: f.models.length, draws, triangles, primitives }
+  return (await import('/tests/rendering/performance-scene.js')).loadPerformanceScene(f)
 }`
 
 /** 三条固定镜头轨迹（可复现）。 */
@@ -125,27 +72,17 @@ async function measureTrack(page, trackName, seconds, collectGpu) {
   return page.evaluate(async ({ trackName, seconds, collectGpu }) => {
     const C = Cesium, f = fixture, scene = f.viewer.scene
     const pipeline = f.activePipeline
-    const base = { longitude: 116.39, latitude: 39.9, height: 3000 }
-    let tick = 0
-    const applyTrack = () => {
-      const t = tick++ * 0.05
-      if (trackName === 'orbit') {
-        f.viewer.camera.setView({ destination: C.Cartesian3.fromDegrees(base.longitude, base.latitude, base.height),
-          orientation: { heading: (t % (Math.PI * 2)), pitch: -0.5, roll: 0 } })
-      } else if (trackName === 'pitch') {
-        f.viewer.camera.setView({ destination: C.Cartesian3.fromDegrees(base.longitude, base.latitude, base.height),
-          orientation: { heading: 0, pitch: -1.3 + (Math.sin(t) * 0.5 + 0.5) * 1.1, roll: 0 } })
-      } else {
-        f.viewer.camera.setView({ destination: C.Cartesian3.fromDegrees(base.longitude, base.latitude,
-          base.height * (1 + 0.4 * Math.sin(t))), orientation: { heading: 0, pitch: -0.5, roll: 0 } })
-      }
-      f.viewer.camera.lookAtTransform(C.Matrix4.IDENTITY)
-    }
+    const {applyPerformanceTrack,readPerformanceLoad}=await import('/tests/rendering/performance-scene.js')
+    let tick=0
+    const applyTrack=()=>applyPerformanceTrack(f,trackName,tick++*.05)
     applyTrack()
     await new Promise(r => { let n = 10; const off = scene.postRender.addEventListener(() => { if (--n === 0) { off(); r() } }) })
     // 记录期间必须保持前台；失焦则整组作废。
     const focused = document.hasFocus()
-    const intervals = []
+    const intervals = [], loads=[], cpu=[]
+    const originalRender=scene.render
+    scene.render=function(...args){const start=performance.now();try{return originalRender.apply(this,args)}finally{cpu.push(performance.now()-start)}}
+    const after=scene.postRender.addEventListener(()=>loads.push(readPerformanceLoad(f)))
     const start = performance.now()
     let previous = start
     await new Promise(resolve => {
@@ -192,12 +129,14 @@ async function measureTrack(page, trackName, seconds, collectGpu) {
           raw: sorted }
       })()
     }
+    scene.render=originalRender;after()
+    if(!loads.length||loads.some(load=>load.draws<32))throw new Error('Measured track lost its model load')
     const diagnostics = pipeline.getRenderDiagnostics()
     return {
-      trackName, focused, samples: intervals.length, intervals, gpu,
+      trackName, focused, samples: intervals.length, intervals, gpu, cpu, minVisibleDraws:Math.min(...loads.map(x=>x.draws)),
       // 实际开关值（不是请求值）。
       actual: {
-        environment: diagnostics.capability ? diagnostics.capability.defaults.managed.environment : null,
+        environment: !!pipeline.environmentRenderer?.enabled,
         materials: diagnostics.materials.valid,
         ssr: diagnostics.screenSpaceReflections.enabled,
         bloom: diagnostics.hdrBloom.enabled,
@@ -375,7 +314,7 @@ async function compareEsmAndUmd(browser) {
           const measured = await measureTrack(page, track.apply, THRESHOLDS.recordSeconds, true)
           if (!measured.focused) invalid = `round ${round} track ${track.name}: window lost focus`
           entry.rounds.push({ round, track: track.name, focused: measured.focused, samples: measured.samples,
-            stats: percentiles(measured.intervals), gpu: measured.gpu, actual: measured.actual })
+            stats: percentiles(measured.intervals), cpu:percentiles(measured.cpu), minVisibleDraws:measured.minVisibleDraws, gpu: measured.gpu, actual: measured.actual })
           entry.actual = measured.actual
         }
       }
@@ -411,10 +350,7 @@ async function compareEsmAndUmd(browser) {
       }
     }
 
-    // 门槛 1：CCR 默认必须达到性能起始线。
-    //
-    // 以 **GPU 中位时间** 为准（见 THRESHOLDS 上方说明：headless 下 rAF 被 vsync
-    // 限制且抖动极大，不能作判据）。FPS 与 rAF p95 一并记录但仅作参考。
+    // Whole-frame and GPU gates both apply, including quick smoke runs.
     const ccrDefault = summary['ccr-default']
     assert.ok(ccrDefault.gpuSupported && Number.isFinite(ccrDefault.gpuMedianMs),
       'the GPU timer must be available for a performance conclusion')
@@ -423,35 +359,30 @@ async function compareEsmAndUmd(browser) {
     // 参考项照常记录但**不**作为失败条件（headless rAF 抖动不是渲染成本）。
     report.referenceMetrics = {
       defaultFps: ccrDefault.fps, defaultP95Ms: ccrDefault.p95Ms,
-      note: 'rAF 派生指标仅作参考：headless 下受 vsync 限制且有调度尖峰，不作为判据'
+      note: 'Whole-frame FPS and P95 gates retained; GPU time is not a substitute'
     }
 
-    // 门槛 2：效果组合的 **GPU 绝对增量** 不得超过基线成本的 2 倍加固定余量。
-    //
-    // 不用纯倍数：隔离基线 GPU 仅约 1.1 ms（近乎空场景），任何真实效果都会让
-    // 倍数很大，那衡量的是基线低而非组合重。绝对增量才是用户可感的成本。
+    assert.ok(ccrDefault.fps>=THRESHOLDS.defaultMinFps,'Default FPS below target')
+    assert.ok(ccrDefault.p95Ms<=THRESHOLDS.defaultMaxP95Ms,'Default frame P95 exceeds target')
     const baseline = summary['isolated']
     const combined = summary['effects-combined']
     const useGpu = baseline.gpuSupported && combined.gpuSupported
     const gpuDelta = useGpu ? combined.gpuMedianMs - baseline.gpuMedianMs : null
-    const allowance = useGpu
-      ? baseline.gpuMedianMs * THRESHOLDS.combinedMaxCostRatio + THRESHOLDS.combinedFixedAllowanceMs
-      : baseline.meanMs * THRESHOLDS.combinedMaxCostRatio
-    const measured = useGpu ? gpuDelta : combined.meanMs
-    report.costBasis = useGpu
-      ? 'GPU median (EXT_disjoint_timer_query_webgl2)'
-      : 'rAF interval (GPU timer unavailable)'
+    const allowance = baseline.meanMs * THRESHOLDS.combinedMaxCostRatio
+    const measured = combined.meanMs
+    report.costBasis = 'whole-frame mean; CPU and GPU recorded separately'
     report.cost = { baselineGpuMs: useGpu ? baseline.gpuMedianMs : null,
       combinedGpuMs: useGpu ? combined.gpuMedianMs : null,
       gpuDeltaMs: gpuDelta, allowanceMs: allowance, basis: report.costBasis }
     assert.ok(measured <= allowance,
-      `the combined configuration's cost must stay within ${allowance.toFixed(2)} ms (2x baseline + ${THRESHOLDS.combinedFixedAllowanceMs} ms), got ${measured.toFixed(2)} ms (basis: ${report.costBasis})`)
+      `the combined configuration's cost must stay within ${allowance.toFixed(2)} ms (2x baseline frame time), got ${measured.toFixed(2)} ms (basis: ${report.costBasis})`)
 
     // 记录实际生效的开关值，证明测的是真实配置而非请求值。
     for (const entry of report.configurations) {
       assert.ok(entry.actual, `${entry.id}: actual switch state must be recorded`)
+      assert.equal(entry.actual.lightingMode,entry.requested.lightingMode,'Measured lighting mode must match request')
       // R7：每个配置都必须跑在**有模型负载**的场景上，而不是空场景。
-      assert.ok(entry.setup && entry.setup.load && entry.setup.load.models > 0,
+      assert.ok(entry.setup && entry.setup.load && entry.setup.load.models >= 225 && entry.setup.load.draws >= 32,
         `${entry.id}: the performance load must contain representative models`)
     }
     // R7：负载规模必须一致，保证三配置在同一输入上可比。

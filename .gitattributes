@@ -1,0 +1,5 @@
+# Keep manifest source hashes reproducible after Windows checkouts.
+src/** text eol=lf
+vendor/cesium-ez-tree/**/*.js text eol=lf
+build/0.1.0/*.js -text
+build/0.1.0/*.gz -text

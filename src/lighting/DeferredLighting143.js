@@ -139,7 +139,7 @@ export default class DeferredLighting143 {
       state.viewport=new C.BoundingRectangle(0,0,opaque.width,opaque.height)
       if(!this.white)this.white=new C.Texture({context:ctx,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.UNSIGNED_BYTE,
         source:{width:1,height:1,arrayBufferView:new Uint8Array([255,255,255,255])}})
-      for(const group of groups){
+      const drawGroups=()=>{for(const group of groups){
         const command=this.ensureProgram(group)
         command.framebuffer=target
         command.uniformMap={
@@ -155,7 +155,9 @@ export default class DeferredLighting143 {
         }
         command.execute(ctx,state)
         this.stats.draws++
-      }
+      }}
+      if(this.sunUniforms)this.sunUniforms.withPrograms(groups.map(group=>this.ensureProgram(group).shaderProgram),drawGroups)
+      else drawGroups()
       if(this.getOptions().screenSpaceReflectionEnabled){
         this.reflectionFrame=this.scene.frameState.frameNumber
         const reflected=this.prepareReflections(opaque)

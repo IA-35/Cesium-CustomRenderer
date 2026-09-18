@@ -51,6 +51,7 @@ export default class LensEffectPipeline143 {
     if (!this.enabled) return this.failed ? 'Lens effects failed; disable before retrying' : 'Disabled'
     if (this.scene.context._gl.isContextLost()) return 'Context lost'
     if (!this.scene.frameState.passes.render) return 'Not a color frame'
+    if (this.scene.highDynamicRange === false) return 'HDR disabled'
     return null
   }
 
@@ -113,29 +114,13 @@ export default class LensEffectPipeline143 {
       const permission = canEnableCurve(o.toneMappingCurve, { canDisableNative })
       if (!permission.enabled) throw new Error(permission.reason)
       if (!collection._tonemapping) throw new Error('Native tonemapping stage is not available to disable')
-      // ⚠️ 只在创建时置一次 `enabled = false` **不够**。
-      // Cesium 1.143 的 `PostProcessStageCollection.update` 每帧都会执行
-      // `tonemapping.enabled = useHdr`（PostProcessStageCollection.js:611），
-      // 下一帧就把我们的关闭覆盖回去。实测：连续 10 帧原生 `enabled` 全为 true，
-      // 同时自定义 `tone` stage 也在执行 —— 即**映射两次**（重复曝光与显示编码），
-      // 而诊断仍错误地报告 `exactlyOnce: true`。
-      //
-      // 正确做法：包裹 `collection.update`，在每次原生 update 之后重新关闭原生
-      // tonemapping，从而在整个生命周期内持续持有「唯一映射权」。
-      // 用包装而不是改 Cesium 内部字段，卸载时还原为原函数。
+      // Native update must prepare its fallback every frame. The custom stage
+      // disables it only after successfully mapping this frame, before native execute.
       this.ownedTonemapper = {
         collection,
         beforeEnabled: collection._tonemapping.enabled,
-        beforeUpdate: collection.update
+        active: true
       }
-      const owner = this
-      collection.update = function (...args) {
-        const result = owner.ownedTonemapper?.beforeUpdate.apply(this, args)
-        // 原生 update 刚把 enabled 设成 useHdr，这里立即夺回。
-        if (owner.ownedTonemapper && this._tonemapping) this._tonemapping.enabled = false
-        return result
-      }
-      collection._tonemapping.enabled = false
       create('tone', unrealFilmicShader, {
         sourceSize: sizeOf,
         exposure: () => scene.postProcessStages.exposure ?? 1,
@@ -273,9 +258,9 @@ export default class LensEffectPipeline143 {
       const ndcX = clip.x / clip.w
       const ndcY = clip.y / clip.w
       if (!Number.isFinite(ndcX) || !Number.isFinite(ndcY)) return outside()
-      // NDC -> uv（y 翻转，与纹理坐标系一致）。
+      // PostProcessStage UV uses a bottom-left origin, like clip space.
       const u = ndcX * 0.5 + 0.5
-      const v = 0.5 - ndcY * 0.5
+      const v = ndcY * 0.5 + 0.5
       // 超出画面即视为不可见：不 clamp，让 shader 的屏外判定退出。
       if (u < 0 || u > 1 || v < 0 || v > 1) return outside()
       this.sunScreen.x = u
@@ -301,6 +286,7 @@ export default class LensEffectPipeline143 {
 
   _execute(context, color, depth, id) {
     this.outputFrame = undefined
+    this.unavailableStages = {}
     const reason = this.scopeReason()
     if (reason) { this.reason = reason; this.stats.bypasses++; return color }
     try {
@@ -309,6 +295,10 @@ export default class LensEffectPipeline143 {
       for (const key of this.order) {
         const stage = this.stages[key]
         if (!stage || stage.isDestroyed()) continue
+        if (key === 'depthOfField' && !this._depthTexture()) {
+          this.unavailableStages[key] = 'Metric depth unavailable'
+          continue
+        }
         // 输入链：第一个用传入颜色，其后用上一个 stage 的输出。
         this._inputColor = current
         const collection = this._collectionFor(key, stage)
@@ -316,7 +306,12 @@ export default class LensEffectPipeline143 {
         collection.clear(context)
         if (!collection.ready || !stage.ready) continue
         collection.execute(context, current, depth, id)
-        if (stage.outputTexture && !stage.outputTexture.isDestroyed()) { current = stage.outputTexture; ran++ }
+        if (stage.outputTexture && !stage.outputTexture.isDestroyed()) {
+          current = stage.outputTexture; ran++
+          // Native update prepared a usable fallback this frame. Suppress it only
+          // once the custom curve actually produced this frame's mapped color.
+          if (key === 'tone') this.scene.postProcessStages._tonemapping.enabled = false
+        }
       }
       if (!ran) { this.reason = 'No stage ready'; this.stats.bypasses++; return color }
       this.outputFrame = this.scene.frameState.frameNumber
@@ -353,6 +348,7 @@ export default class LensEffectPipeline143 {
       valid: !this.scopeReason() && this.outputFrame === this.scene.frameState.frameNumber,
       reason: this.scopeReason() || this.reason, error: this.error, failed: this.failed,
       activeStages: this.order ? this.order.slice() : [],
+      unavailableStages: {...this.unavailableStages},
       toneMapping: toneMappingDiagnostics(o.toneMappingCurve),
       // 互斥必须如实报告：requested 与 effective 都要给，被压制的带原因。
       lens: { requested: lens.requested, active: lens.active, effective: lens.effective,
@@ -374,13 +370,12 @@ export default class LensEffectPipeline143 {
     this.outputFrame = undefined
     if (this.detach) this.detach()
     this.detach = undefined
-    // 还原原生 tonemap 的所有权（无论是被禁用、换了曲线，还是包裹了 update）。
+    // Restore native tone state without changing any update wrappers.
     if (this.ownedTonemapper) {
-      const { collection, before, beforeEnabled, beforeUpdate } = this.ownedTonemapper
+      const { collection, before, beforeEnabled } = this.ownedTonemapper
+      this.ownedTonemapper.active = false
       try {
         if (collection && !(collection.isDestroyed && collection.isDestroyed())) {
-          // 先解除 update 包裹，避免还原后仍被每帧改写。
-          if (beforeUpdate && collection.update !== beforeUpdate) collection.update = beforeUpdate
           if (before !== undefined) collection.tonemapper = before
           if (collection._tonemapping && beforeEnabled !== undefined) collection._tonemapping.enabled = beforeEnabled
         }

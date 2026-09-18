@@ -12,6 +12,7 @@ import MaterialChannels143 from './channels/MaterialChannels143.js'
 import ScreenSpaceAo143 from './ao/ScreenSpaceAo143.js'
 import HdrBloom143 from './bloom/HdrBloom143.js'
 import LensEffectPipeline143 from './stages/LensEffectPipeline143.js'
+import { LENS_EFFECT_DEFAULTS } from './stages/lensEffects143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import TransparentForward143 from './pipeline/TransparentForward143.js'
 import {peekRenderTargetPool} from './pipeline/RenderTargetPool143.js'
@@ -22,9 +23,11 @@ import { installOitCompatibility143 } from './reflections/OitCompatibility143.js
 import PerformanceGovernor143 from './performance/PerformanceGovernor143.js'
 import { selectMsaaSamples, renderResolution, readMsaaAttachments, resolveMsaaPolicy } from './antialiasing/settings143.js'
 import { capabilityDiagnostics } from './diagnostics/capabilityMatrix143.js'
+import SelectedIdPass143 from './selection/SelectedIdPass143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
+const contextLossOwner = Symbol('context loss requires Viewer rebuild')
 export const getVisualPipeline = viewer => pipelines.get(viewer)
 
 export default class VisualPipeline {
@@ -45,7 +48,18 @@ export default class VisualPipeline {
     this.color.enabled = false
     stages.add(this.color)
     pipelines.set(viewer, this)
+    this.contextCanvas = viewer.scene.canvas
+    this.onContextLost = event => {
+      event.preventDefault()
+      this.contextRecoveryRequired = true
+      // Cesium 1.143 does not rebuild its native GPU handles after restoration.
+      // Stop submitting into that retired context; the host must rebuild Viewer.
+      viewer.useDefaultRenderLoop = false
+      this.suspend(contextLossOwner)
+    }
+    this.contextCanvas?.addEventListener('webglcontextlost', this.onContextLost)
     try {
+      if (viewer.scene.context?.webgl2) this.selectedIdPass = new SelectedIdPass143(Cesium, viewer.scene, () => this.enabled && !this.suspensions.size && this.options.antialiasing !== 'taa')
       this.releaseOitCompatibility = installOitCompatibility143(Cesium, viewer.scene)
       this.setEnabled(true)
     } catch (error) {
@@ -66,6 +80,7 @@ export default class VisualPipeline {
   }
 
   restore() {
+    this.lensEffects?.setEnabled(false)
     this.occlusionCulling?.setEnabled(false)
     if (this.transparentForward) this.transparentForward.setEnabled(false)
     if (this.deferredLighting) this.deferredLighting.setEnabled(false)
@@ -104,7 +119,7 @@ export default class VisualPipeline {
     if (!this.environmentRenderer || !this.environmentRenderer.enabled) {
       this.write(s, 'light', this.light || (this.light = new C.SunLight({ intensity: 1.5 })))
     }
-    this.write(s.globe, 'enableLighting', true)
+    if (s.globe) this.write(s.globe, 'enableLighting', true)
     if (o.shadowMode === 'custom') {
       this.write(v.shadowMap, 'enabled', false)
       if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options,
@@ -414,10 +429,10 @@ export default class VisualPipeline {
         'sunFlareEnabled', 'sunFlareStrength', 'lightShaftEnabled', 'lightShaftStrength', 'lightShaftSamples']) {
         if (input[key] !== undefined) patch[key] = input[key]
       }
-      const before = this.lensEffectsRequested()
       this.options = normalizeOptions(patch, this.options)
-      if (before !== this.lensEffectsRequested() || !this.lensEffects) this.applyLensEffects()
-      else if (this.lensEffects) { this.lensEffects._release(); this.lensEffects.setEnabled(true) }
+      this.applyMaterialChannels()
+      this.lensEffects?.setEnabled(false)
+      this.applyLensEffects()
     }
     return this.lensEffects?.getDiagnostics?.() || { enabled: false, valid: false, reason: 'Not requested' }
   }
@@ -667,6 +682,7 @@ export default class VisualPipeline {
     const frameState = s && s.frameState
     return {
       generation: frameState && Number.isFinite(frameState.frameNumber) ? frameState.frameNumber : 0,
+      lighting: this.deferredLighting?.getDiagnostics() || {activeMode:'enhanced',valid:false,reason:'Deferred lighting not active'},
       attachmentsNeeded,
       ...limits,
       floatingPointTexture: !!(context && context.floatingPointTexture),
@@ -714,7 +730,10 @@ export default class VisualPipeline {
   }
   getRenderDiagnostics() {
     const fxaa = this.viewer.scene.postProcessStages.fxaa.enabled
-    return { enabled: this.enabled, suspended: this.suspensions.size > 0, colorGrading: this.getColorGrading(),
+    return { enabled: this.enabled, suspended: this.suspensions.size > 0,
+      recovery: { required: !!this.contextRecoveryRequired,
+        reason: this.contextRecoveryRequired ? 'Context lost; rebuild Viewer and pipeline, then reload scene assets' : null },
+      colorGrading: this.getColorGrading(),
       antiAliasing: { ...this.getAntiAliasing(), quality: this.options.spatialAaQuality, msaa: this.msaa, configuredMsaaSamples: this.viewer.scene.msaaSamples,
         allocatedAttachments: readMsaaAttachments(this.viewer.scene),
         postProcess: this.taa && this.taa.enabled && this.taa.getDiagnostics().valid ? { effective: 'taa' }
@@ -722,6 +741,7 @@ export default class VisualPipeline {
           : this.fxaa && this.fxaa.enabled ? this.fxaa.getDiagnostics() : { effective: fxaa ? 'fxaa' : 'off' } },
       resolution: renderResolution(this.viewer), geometry: this.getGeometryDiagnostics(), materials: this.getMaterialDiagnostics(),
       albedo: this.getAlbedoDiagnostics(),
+      selectionId: this.selectedIdPass?.getDiagnostics() || { active: false, reason: 'WebGL2 unavailable' },
       lighting: this.getLightingDiagnostics(),
       occlusion: this.getOcclusionDiagnostics(), resourcePool: this.getResourcePoolDiagnostics(), frameUniforms: this.getFrameUniformDiagnostics(),
       taa: this.getTaaDiagnostics(),
@@ -825,6 +845,9 @@ export default class VisualPipeline {
   setOptions(options) {
     if (this.destroyed) return this.getOptions()
     const next = normalizeOptions(options, this.options)
+    if (['toneMappingCurve', ...Object.keys(LENS_EFFECT_DEFAULTS)].some(key => next[key] !== this.options[key])) {
+      this.lensEffects?.setEnabled(false)
+    }
     if (next.shadowMode !== this.options.shadowMode || next.environment !== this.options.environment ||
         next.antialiasing !== this.options.antialiasing) this.restore()
     if (this.shadowMap && next.shadowCascades !== this.options.shadowCascades) {
@@ -853,12 +876,14 @@ export default class VisualPipeline {
   }
 
   resume(owner = 'default') {
+    if (owner === contextLossOwner) return
     if (this.destroyed || !this.suspensions.delete(owner)) return
     this.apply()
   }
 
   destroy() {
     if (this.destroyed) return
+    this.contextCanvas?.removeEventListener('webglcontextlost', this.onContextLost)
     // Drop the governor first: it must stop listening before the scene is torn down.
     if (this.governor) { this.governor.detach(); this.governor = null }
     if (!this.viewer.isDestroyed()) {
@@ -868,6 +893,7 @@ export default class VisualPipeline {
       this.viewer.scene.requestRender()
     }
     pipelines.delete(this.viewer)
+    this.selectedIdPass?.destroy()
     this.occlusionCulling?.destroy()
     // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
     if (this.transparentForward) this.transparentForward.destroy()

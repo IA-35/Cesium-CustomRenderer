@@ -54,9 +54,77 @@ test('initial terrain LOD cannot permanently shift the final shadow texel grid',
  const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
  const a=new LightFrustum(C,scene),b=new LightFrustum(C,scene),origin=C.Cartesian3.fromDegrees(120,40,100)
  const earlier=C.Cartesian3.add(origin,new C.Cartesian3(100,200,300),new C.Cartesian3()),sun=C.Cartesian3.normalize(new C.Cartesian3(-.46,.79,.398),new C.Cartesian3())
- a.update(earlier,sun,512,2048,true)
- a.update(origin,sun,256,2048,true);b.update(origin,sun,256,2048,true)
+ a.update(earlier,sun,512,2048,true,null,origin)
+ a.update(origin,sun,256,2048,true,null,origin);b.update(origin,sun,256,2048,true,null,origin)
  assert.deepEqual(Array.from(a.viewProjection),Array.from(b.viewProjection))
+})
+
+test('moving and rebasing the camera preserves a fixed-sun world grid',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const light=new LightFrustum(C,scene),origin=C.Cartesian3.fromDegrees(123.42,41.77,100)
+ const sun=C.Cartesian3.normalize(new C.Cartesian3(-.46,.79,.398),new C.Cartesian3())
+ let previous,maxPhase=0
+ for(let i=0;i<70;i++){
+  const camera=C.Cartesian3.add(origin,new C.Cartesian3(i*100,0,0),new C.Cartesian3())
+  light.update(camera,sun,2048,4096,true,null,camera)
+  const p=C.Matrix4.multiplyByPoint(light.viewProjection,origin,new C.Cartesian3()),uv=[p.x*2048,p.y*2048]
+  if(previous)for(let j=0;j<2;j++){const delta=uv[j]-previous[j];maxPhase=Math.max(maxPhase,Math.abs(delta-Math.round(delta)))}
+  previous=uv
+ }
+ assert.ok(maxPhase<1e-6,`rebase shifted the fixed-sun raster phase: ${maxPhase}`)
+})
+
+test('small solar rotations do not move the local raster phase at Earth-radius speed',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const light=new LightFrustum(C,scene),origin=C.Cartesian3.fromDegrees(123.42,41.77,100)
+ const point=C.Cartesian3.add(origin,C.Cartesian3.multiplyByScalar(C.Cartesian3.normalize(origin,new C.Cartesian3()),100,new C.Cartesian3()),new C.Cartesian3())
+ let previous,maxPhase=0
+ for(let i=0;i<120;i++){
+  const sun=C.Cartesian3.normalize(new C.Cartesian3(-.46+i*1e-7,.79,.398),new C.Cartesian3())
+  light.update(origin,sun,2048,4096,true)
+  const clip=C.Matrix4.multiplyByPoint(light.viewProjection,point,new C.Cartesian3()),uv=[clip.x*2048,clip.y*2048]
+  if(previous)for(let axis=0;axis<2;axis++){const delta=uv[axis]-previous[axis];maxPhase=Math.max(maxPhase,Math.abs(delta-Math.round(delta)))}
+  previous=uv
+ }
+ assert.ok(maxPhase<.005,`local solar motion changed raster phase by ${maxPhase} texels per step`)
+})
+
+test('solar motion leaves the receiver ground grid fixed across a campus-sized area',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const light=new LightFrustum(C,scene),origin=C.Cartesian3.fromDegrees(123.42,41.77,0),frame=C.Transforms.eastNorthUpToFixedFrame(origin)
+ const world=p=>C.Matrix4.multiplyByPoint(frame,new C.Cartesian3(...p),new C.Cartesian3())
+ const reference=world([0,0,1000]),points=[world([-900,-700,0]),world([900,700,0]),world([0,1000,0])]
+ let previous,maxPhase=0
+ for(let i=0;i<90;i++){
+  const sun=C.Cartesian3.normalize(C.Matrix4.multiplyByPointAsVector(frame,new C.Cartesian3(-.4+i*1e-5,-.3,1),new C.Cartesian3()),new C.Cartesian3())
+  light.update(origin,sun,2048,4096,true,null,reference)
+  const positions=points.map(p=>C.Matrix4.multiplyByPoint(light.viewProjection,p,new C.Cartesian3()))
+  if(previous)positions.forEach((p,j)=>{for(const axis of ['x','y']){const delta=(p[axis]-previous[j][axis])*2048;maxPhase=Math.max(maxPhase,Math.abs(delta-Math.round(delta)))}})
+  previous=positions
+ }
+ assert.ok(maxPhase<.0001,`ground sampling still moves with the sun: ${maxPhase} texels`)
+})
+
+test('surface projection preserves light rays, depth ordering and exact culling planes',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const origin=C.Cartesian3.fromDegrees(123.42,41.77,0),frame=C.Transforms.eastNorthUpToFixedFrame(origin)
+ const reference=C.Matrix4.multiplyByPoint(frame,new C.Cartesian3(0,0,500),new C.Cartesian3())
+ for(const height of [.001,.02,.15,.8]){
+  const light=new LightFrustum(C,scene),sun=C.Cartesian3.normalize(C.Matrix4.multiplyByPointAsVector(frame,new C.Cartesian3(.4,-.5,height),new C.Cartesian3()),new C.Cartesian3())
+  light.update(origin,sun,512,2048,true,null,reference)
+  const a=C.Matrix4.multiplyByPoint(light.viewProjection,origin,new C.Cartesian3())
+  const along=C.Cartesian3.add(origin,C.Cartesian3.multiplyByScalar(sun,100,new C.Cartesian3()),new C.Cartesian3())
+  const b=C.Matrix4.multiplyByPoint(light.viewProjection,along,new C.Cartesian3())
+  assert.ok(Math.abs(a.x-b.x)<1e-8&&Math.abs(a.y-b.y)<1e-8,'a light ray must address one texel column')
+  assert.ok(b.z<a.z,'towards the light must be nearer in the depth map')
+  const inverse=C.Matrix4.inverse(light.viewProjection,new C.Matrix4())
+  for(const coordinate of [.9,1.1])for(const axis of ['x','y','z']){
+   const clip=new C.Cartesian3();clip[axis]=coordinate
+   const point=C.Matrix4.multiplyByPoint(inverse,clip,new C.Cartesian3())
+   const visible=light.cullingVolume.computeVisibility(new C.BoundingSphere(point,.001))
+   assert.equal(visible===C.Intersect.OUTSIDE,coordinate>1)
+  }
+ }
 })
 test('receivers outside shadow distance produce no work while elevated receivers retain altitude',()=>{
  const cam=camera(10000),coverage=new CascadedShadowCoverage(C)

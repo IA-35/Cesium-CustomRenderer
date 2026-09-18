@@ -1,6 +1,7 @@
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { taaResolveShader, taaDepthShader } from './taaShaders143.js'
 import TaaJitter143 from './TaaJitter143.js'
+import TaaOverlay143 from './TaaOverlay143.js'
 
 let nextId = 0
 
@@ -166,9 +167,12 @@ export default class TaaPass143 {
 
   _attachJitter() {
     const scene = this.scene
-    if (!scene.preUpdate || typeof scene.preUpdate.addEventListener !== 'function') return false
+    if (!scene.preRender?.addEventListener || !scene.postRender?.addEventListener) return false
     this.jitterListener = () => this._applyJitter()
-    scene.preUpdate.addEventListener(this.jitterListener)
+    this.restoreJitterListener = () => this.jitter?.restore()
+    // Camera movement detection and public picking must never see raster jitter.
+    scene.preRender.addEventListener(this.jitterListener)
+    scene.postRender.addEventListener(this.restoreJitterListener)
     this.attached = true
     return true
   }
@@ -181,6 +185,9 @@ export default class TaaPass143 {
     this._applyFallback()
     const samples = this.getOptions().taaJitterSamples || 8
     if (this.jitter.samples !== samples) { this.jitter.samples = samples; this.resetHistory() }
+    const defer = this.healthy && this.scene._view?.frustumCommandsList?.length === 1 && this.scene.msaaSamples === 1
+    if (defer && this.overlay && !this.overlay.active) { this.historyValid=false;this.historyAge=0 }
+    this.overlay?.begin(defer)
     if (!this.healthy) { this.jitter.restore(); return }
     this.jitter.apply()
   }
@@ -213,7 +220,8 @@ export default class TaaPass143 {
         this._createStages()
         this.jitter = new TaaJitter143(this.C, this.scene, { samples: this.getOptions().taaJitterSamples })
         this.jitter.setEnabled(true)
-        if (!this._attachJitter()) throw new Error('Scene pre-update event is unavailable')
+        this.overlay = new TaaOverlay143(this.C, this.scene, this.jitter)
+        if (!this._attachJitter()) throw new Error('Scene pre-render/post-render events are unavailable')
         this.detach = registerHdrEffect(this.scene, 25, (...args) => this._execute(...args))
         this.enabled = true
         this.reason = 'Not rendered'
@@ -242,10 +250,11 @@ export default class TaaPass143 {
         this.healthy = false; this.historyValid = false; this.historyAge = 0; this.staticFrames = 0; this._fallback(true)
       }
       this.stats.bypasses++
-      return color
+      return this.overlay?.composite(color) || color
     }
     const viewport = this.C.BoundingRectangle.clone(context.uniformState.viewport)
     try {
+      this.jitter?.bridge?.restoreColorProjection()
       const scene = this.scene, frame = scene.frameState
       const size = `${color.width}x${color.height}`
       if (size !== this.historySize) {
@@ -287,10 +296,10 @@ export default class TaaPass143 {
 
       destination.collection.update(context, frame.useLogDepth, false)
       destination.collection.clear(context)
-      if (!destination.collection.ready) { this.historyValid = false; this.reason = 'Not ready'; return color }
+      if (!destination.collection.ready) { this.historyValid = false; this.reason = 'Not ready'; return this.overlay?.composite(color) || color }
       destination.collection.execute(context, color, depth, id)
       const output = destination.collection.outputTexture
-      if (!output) { this.historyValid = false; this.reason = 'No output'; return color }
+      if (!output) { this.historyValid = false; this.reason = 'No output'; return this.overlay?.composite(color) || color }
 
       // The depth history is written after the resolve so the resolve still reads the
       // previous frame's depth, and the shared depth target can be reused every frame.
@@ -314,7 +323,7 @@ export default class TaaPass143 {
       this.outputFrame = frame.frameNumber
       this.reason = null
       this.stats.frames++
-      return output
+      return this.overlay?.composite(output) || output
     } catch (error) {
       this._fail(error)
       return color
@@ -342,8 +351,9 @@ export default class TaaPass143 {
       stats: { ...this.stats }, historyValid: this.historyValid, historySize: this.historySize,
       activeFrame: this.active, blend: [...this.blend], staticFrames: this.staticFrames,
       jitter: this.jitter ? this.jitter.getDiagnostics() : null,
+      overlay: this.overlay?.getDiagnostics() || null,
       samplers: { historyColor: sampler(this.historyColor), historyDepth: sampler(this.historyDepth) },
-      bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0),
+      bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0) + (this.overlay?.getDiagnostics().bytes || 0),
       scope: 'temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage'
     }
   }
@@ -369,12 +379,14 @@ export default class TaaPass143 {
     this.output = undefined
     this.outputFrame = undefined
     const scene = this.scene
-    if (this.attached && this.jitterListener && scene.preUpdate &&
-        typeof scene.preUpdate.removeEventListener === 'function') {
-      scene.preUpdate.removeEventListener(this.jitterListener)
+    if (this.attached) {
+      scene.preRender.removeEventListener(this.jitterListener)
+      scene.postRender.removeEventListener(this.restoreJitterListener)
     }
     this.attached = false
     this.jitterListener = undefined
+    this.restoreJitterListener = undefined
+    this.overlay?.destroy();this.overlay=undefined
     if (this.jitter) { this.jitter.destroy(); this.jitter = undefined }
     if (this.detach) this.detach()
     this.detach = undefined

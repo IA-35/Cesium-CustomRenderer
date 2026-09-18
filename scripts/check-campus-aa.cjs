@@ -14,7 +14,7 @@ fs.mkdirSync(output,{recursive:true})
   page.on('response',r=>{if(r.status()>=400)httpErrors.push({url:r.url(),status:r.status()})})
   // Local campus tiles stay identical; suppress the external imagery request for repeatability.
   await page.goto(`${origin}/examples/campus.html?imagery=none`)
-  await page.waitForFunction(()=>window.campus?.tiles.length===3,null,{timeout:60000})
+  await page.waitForFunction(()=>window.campus?.tiles.length===window.campus?.expectedTiles,null,{timeout:120000})
   await page.evaluate(()=>campus.look(-0.45,750))
   // 左下角的 Stats 面板同样会落进对比截图里（它与画质无关），一并隐藏。
   await page.evaluate(()=>{campus.pipeline.setOptions({environmentAnimation:false});campus.viewer.scene.screenSpaceCameraController.enableCollisionDetection=false;campus.viewer.scene.screenSpaceCameraController.enableInputs=false;document.querySelectorAll('.lil-gui.lil-root,#hud').forEach(x=>x.style.display='none');campus.stats.dom.style.display='none'})

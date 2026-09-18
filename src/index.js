@@ -15,6 +15,10 @@ export { default as FrustumJitterBridge143 } from './antialiasing/FrustumJitterB
 export { halton, jitterSample, nearPlaneOffsets, isSubPixelOffset, DEFAULT_JITTER_SAMPLES } from './antialiasing/jitter143.js'
 export { resolveMsaaPolicy, isPostProcessAntiAliasing, postProcessAntiAliasingModes } from './antialiasing/settings143.js'
 export { default as PerformanceGovernor143, quantile } from './performance/PerformanceGovernor143.js'
+export { default as FixedTreeCollection, createFixedTreeCollection } from './instances/FixedTreeCollection.js'
+export { default as GrassCollection, createGrassCollection } from './instances/GrassCollection.js'
+export { validateFixedTreePoints, stableTreeVariation } from './instances/fixedTreeData.js'
+export { projectedTreePixels, selectTreeLod, DEFAULT_TREE_LOD_THRESHOLDS } from './instances/lodSelector.js'
 export { MATERIAL_FLAGS } from './channels/materialShader143.js'
 export { defaultFilters, normalizeOptions, normalizeColorGrading, colorGradingControls, colorGradingPresets } from './presets.js'
 // B01: frame execution bridge. A low-level building block whose first real consumer is B02's deferred

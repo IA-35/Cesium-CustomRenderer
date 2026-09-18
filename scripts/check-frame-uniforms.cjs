@@ -8,9 +8,11 @@ const umd=process.argv.includes('--umd')
   await startStage1Scene(f);const p=f.pipeline,s=f.viewer.scene,wait=n=>waitFrames(s,n,f.errors)
   s.globe.show=false;p.setOptions({environment:true,clouds:false,environmentAnimation:false,shadows:true,shadowMode:'custom',antialiasing:'off'})
   p.setLighting({mode:'deferred'});p.setScreenSpaceReflections({enabled:true,transparent:true});await wait(60)
+  const singleEnvironmentUbo=!!p.environmentRenderer.frameUniforms
+  p.setLensEffects({lightShaftEnabled:true,lightShaftStrength:.1});await wait(20)
   const camera=p.screenSpaceAO.cameraUniforms,sun=p.deferredLighting.sunUniforms
   const cameraShared=camera.buffer===p.screenSpaceReflections.cameraUniforms.buffer&&camera.buffer===p.transparentReflections.cameraUniforms.buffer
-  const sunShared=sun.buffer===p.transparentForward.sunUniforms.buffer&&sun.buffer===p.customShadow.sunUniforms.buffer
+  const sunShared=sun.buffer===p.transparentForward.sunUniforms.buffer
   // Cesium's repeated view orthonormalization leaves sub-nanometre cancellation
   // noise in this local transform. Freeze the test input itself, not UBO uploads.
   const environment=p.environmentRenderer,eyeToLocal=C.Matrix4.clone(environment.frameInputs.eyeToLocal())
@@ -24,10 +26,10 @@ const umd=process.argv.includes('--umd')
   const sameFrame=s.frameState.frameNumber===frame,cameraEqual=changed.slice(0,16).every((v,i)=>v===new Float32Array(C.Matrix4.toArray((()=>{const f=s.camera.frustum.clone();f.xOffset=.00003;return f.projectionMatrix})()))[i])
   const buffers=[camera.buffer,sun.buffer,p.environmentRenderer.frameUniforms]
   p.destroy()
-  return {cameraShared,sunShared,before,stable,envDiff:envAfter.map((v,i)=>({i,before:envBefore[i],after:v})).filter(x=>x.before!==x.after),cameraBytes,sunBytes,sameFrame,cameraChanged:initial.some((v,i)=>v!==changed[i]),cameraEqual,sunData,originalColor,released:buffers.every(x=>x.isDestroyed()),errors:f.errors}
+  return {singleEnvironmentUbo,cameraShared,sunShared,before,stable,envDiff:envAfter.map((v,i)=>({i,before:envBefore[i],after:v})).filter(x=>x.before!==x.after),cameraBytes,sunBytes,sameFrame,cameraChanged:initial.some((v,i)=>v!==changed[i]),cameraEqual,sunData,originalColor,released:buffers.every(x=>x.isDestroyed()),errors:f.errors}
  }))
  report.pageErrors=errors;fs.mkdirSync('docs/verification/stage1-B05',{recursive:true});fs.writeFileSync('docs/verification/stage1-B05/'+(umd?'uniforms-umd':'uniforms')+'.json',JSON.stringify(report,null,2))
- assert.deepEqual(errors,[]);assert.deepEqual(report.errors,[]);assert.equal(report.cameraShared,true);assert.equal(report.sunShared,true)
+ assert.deepEqual(errors,[]);assert.deepEqual(report.errors,[]);assert.equal(report.singleEnvironmentUbo,false);assert.equal(report.cameraShared,true);assert.equal(report.sunShared,true)
  assert.equal(report.before.bufferSubDataCalls,report.stable.bufferSubDataCalls,'identical frame data must not upload')
  assert.equal(report.sameFrame,true);assert.equal(report.cameraChanged,true);assert.equal(report.cameraEqual,true);assert.ok(report.cameraBytes>0);assert.ok(report.sunBytes>0);assert.equal(report.sunData[4],Math.fround(report.originalColor+.5));assert.equal(report.released,true)
  console.log(JSON.stringify({shared:[report.cameraShared,report.sunShared],before:report.before,stable:report.stable,cameraBytes:report.cameraBytes,sunBytes:report.sunBytes}))

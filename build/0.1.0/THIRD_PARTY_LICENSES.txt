@@ -61,3 +61,93 @@ POSSIBILITY OF SUCH DAMAGE.
 The views and conclusions contained in the software and documentation are 
 those of the authors and should not be interpreted as representing official
 policies, either expressed or implied, of the copyright holders.
+
+
+cesium-ez-tree / LICENSE
+MIT License
+
+Copyright (c) 2026 TJ
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+cesium-ez-tree / NOTICE.md
+# Notices And Third-Party Attribution
+
+## EZ-Tree
+
+This project is inspired by and partially derived from Daniel Greenheck's
+EZ-Tree project:
+
+- Repository: https://github.com/dgreenheck/ez-tree
+- npm package: `@dgreenheck/ez-tree`
+- License: MIT
+- Copyright: Copyright (c) 2024 Daniel Greenheck
+
+The Cesium implementation adapts the procedural tree generation concepts for
+CesiumJS primitives, GPU instancing, render commands, worker scheduling, and
+geospatial placement.
+
+## CesiumJS
+
+This package depends on CesiumJS and imports Cesium `Source/*` modules.
+
+- Repository: https://github.com/CesiumGS/cesium
+- License: Apache-2.0
+
+## Assets
+
+The package includes bark textures, leaf textures, grass texture, and GLB
+models used by the runtime demo and primitive.
+
+Current source notes are preserved in:
+
+- `assets/bark/README.md`
+- `assets/grass/README.md`
+- `assets/models/README.md`
+
+Bark source links recorded by the original migration:
+
+- Birch: https://www.texturecan.com/details/221/
+- Pine: https://www.texturecan.com/details/588/
+- Oak: https://polyhaven.com/a/bark_brown_02
+- Willow: https://polyhaven.com/a/bark_willow_02
+
+The GLB model files and extracted `grass.webp` are recorded as coming from the
+original EZ-Tree demo application's `src/app/public` assets.
+
+
+cesium-ez-tree / CCR_PATCHES.md
+# cesium-ez-tree integration
+
+Upstream: https://github.com/Xiaobai-grow/cesium-ez-tree
+Pinned commit: cbea56e4550f9b3ef9cbc96424abbdcde9ac7eb2 (MIT, copyright TJ 2026).
+Original LICENSE and NOTICE.md are retained. The src directory is upstream source with the following local adaptations; it is not a new instancing renderer.
+
+- Engine imports are externalized by scripts/build-eztree-runtime.cjs into a factory accepting the host Cesium 1.143 namespace. No second engine is bundled.
+- External tree GLBs use the existing EzTreeGltfAsset parser, image loading, geometry buffers and EzTreePrimitive command/instance packing/cache/job budgets. A treeAssets option extends the existing ground-asset route.
+- Four geometry LODs are tagged by node extras during asset preparation and selected per upstream spatial cell with hysteresis. Fixed surveyed trees always keep full instanceCount; upstream density thinning is not used for these trees.
+- Prepared geometry is in metres with no remaining node transforms. Authored vertex COLOR_0/1 are not interpreted as albedo or opacity (upstream GLB path reads POSITION/NORMAL/TEXCOORD_0/indices).
+- Cesium-compatible Y-up/Z-forward to ENU axis correction, linear base-color sampling, opaque/masked color consistency and lightweight two-sided foliage lighting.
+- CCR shadow flags, receiver marker and light-view command selection retain alpha-tested silhouettes, including available offscreen cells. Wind is disabled for the fixed-tree integration.
+- Generated runtime.js is rebuilt from these sources; it must not be edited manually.
+
+The campus default is now the upstream procedural Pine generator with three seeded presets, reduced branch tessellation/leaf-card budgets and original bark texture. A `treePresets` option permits caller-provided upstream preset objects. Instance density is held at 1.0 for both branch and leaf records; all surveyed points remain. This default has one lightweight geometry level, not four GLB levels. External GLB remains an explicit comparison path; its dark leaf appearance has not been accepted for default use.
+
+This remains a forward vegetation shader, not the full Cesium Model PBR material pipeline. Native/CCR appearance, frame time, model/resource counts and actual tree/shadow pixel evidence must be verified before claiming integration success.

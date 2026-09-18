@@ -54,6 +54,20 @@ test('depth shader preserves mask discard, clipping and original vertex transfor
   assert.match(program.fragmentShaderSource.sources[0], /void main/)
 })
 
+test('caster commands reuse storage while following the current source draw',()=>{
+  const E=createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const source={id:17},program={},state={},adapter=new ShadowReceiver143(E,{frameState:{frameNumber:1}},{})
+  adapter.castPrograms.set(source.id,program);adapter.castStates.set(8,{value:state})
+  const command=new E.DrawCommand({shaderProgram:source,renderState:{id:8},uniformMap:{},count:3,offset:0})
+  const first=adapter.cast(command,{})
+  command.count=12;command.offset=6;command.uniformMap={changed:()=>1}
+  const target={},second=adapter.cast(command,target)
+  assert.equal(second,first);assert.notEqual(second,command)
+  assert.equal(second.count,12);assert.equal(second.offset,6);assert.equal(second.uniformMap,command.uniformMap)
+  assert.equal(second.framebuffer,target);assert.equal(second.shaderProgram,program)
+  assert.equal(command.shaderProgram,source)
+})
+
 test('static cache detects transform, alpha, shader, resource and selection changes', () => {
   const cache = new ShadowCache()
   let alpha = 0.5

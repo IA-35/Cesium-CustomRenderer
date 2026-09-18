@@ -170,8 +170,9 @@ function passFixture() {
     highDynamicRange: true,
     drawingBufferWidth: resolution.width, drawingBufferHeight: resolution.height,
     postProcessStages: { execute() {} },
-    preUpdate: { addEventListener: fn => listeners.push(fn),
+    preRender: { addEventListener: fn => listeners.push(fn),
       removeEventListener: fn => { const index = listeners.indexOf(fn); if (index >= 0) listeners.splice(index, 1) } },
+    postRender: new C.Event(),
     requestRender() {},
     frameState: { passes: { render: true, pick: false, depth: false }, useLogDepth: false, frameNumber: 1 },
     isDestroyed: () => false
@@ -190,7 +191,7 @@ test('the temporal pass owns the jitter hook and releases the offset with its li
 
   pass.setEnabled(true)
   assert.equal(pass.getDiagnostics().enabled, true)
-  assert.equal(f.listeners.length, 1, 'pre-update hook installed')
+  assert.equal(f.listeners.length, 1, 'pre-render hook installed')
   assert.equal(pass.getDiagnostics().jitter.enabled, true)
 
   // Before the first successful resolve there is no history, so the frame must stay unjittered.

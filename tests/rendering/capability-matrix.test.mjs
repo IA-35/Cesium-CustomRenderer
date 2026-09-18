@@ -229,17 +229,18 @@ test('deferred lighting is not a candidate default until coverage is complete', 
   assert.equal(policy.deferred.active, false)
   // 不支持时必须**明确**回退增强模式。
   assert.equal(policy.deferred.effectiveMode, 'enhanced')
-  assert.match(policy.deferred.reason, /not a candidate default yet/)
-  assert.match(policy.deferred.reason, /ssr/)
-  assert.match(policy.deferred.reason, /msaa/)
+  assert.match(policy.deferred.reason, /No current deferred output/)
+  assert.match(policy.deferred.candidateReason, /ssr/)
+  assert.match(policy.deferred.candidateReason, /msaa/)
 })
 
-test('deferred lighting becomes active only with full coverage and a supported layout', () => {
+test('current producer output determines activity independently of default eligibility', () => {
   const full = { opaqueLoop: true, transparentLoop: true, ssr: true, msaa: true }
   const active = resolveDefaultPolicy({
     options: { lightingMode: 'deferred' },
     capability: { mrt: { active: true }, floatAttachments: { active: true } },
-    coverage: full
+    coverage: full,
+    actual: {activeMode:'deferred',valid:true}
   })
   assert.equal(active.deferred.candidates, true)
   assert.equal(active.deferred.active, true)
@@ -249,7 +250,8 @@ test('deferred lighting becomes active only with full coverage and a supported l
   const unsupported = resolveDefaultPolicy({
     options: { lightingMode: 'deferred' },
     capability: { mrt: { active: false }, floatAttachments: { active: true } },
-    coverage: full
+    coverage: full,
+    actual: {activeMode:'enhanced',valid:false,reason:'Requires supported material layout'}
   })
   assert.equal(unsupported.deferred.active, false)
   assert.equal(unsupported.deferred.effectiveMode, 'enhanced')

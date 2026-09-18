@@ -6,6 +6,7 @@ import selectLightTiles from './CasterCommands143.js'
 import CameraShadowCoverage from './CameraShadowCoverage.js'
 import CascadedShadowCoverage,{terrainDepthRange} from './CascadedShadowCoverage.js'
 import {shadowUniforms} from './shadowUniforms143.js'
+import {groupShadowCommands,withShadowBindings} from './ShadowSubmit143.js'
 
 // Each level selects its own light-space casters. Native ShadowMap is never a fallback.
 export default class DirectionalShadowPass {
@@ -14,8 +15,8 @@ export default class DirectionalShadowPass {
     this.coverage=new CascadedShadowCoverage(C);this.singleCoverage=new CameraShadowCoverage(C)
     this.stats={updates:0,cacheHits:0,casters:0,receivers:0,selectedOffscreen:0,error:null,cascades:[]}
     this.uniforms=shadowUniforms(C,this.scene,()=>this.getReceiverData(viewer.camera))
-    this.adapter=new ShadowReceiver143(C,this.scene,this.uniforms,{cascades:true,sunUbo:false,
-      shouldReceive:command=>command.pass!==C.Pass.TRANSLUCENT||!isTransparentForwardActive()})
+    this.isTransparentForwardActive=isTransparentForwardActive
+    this.configureReceivers(getOptions().shadowCascades!==1)
     this.proxy={update:state=>this.update(state),isDestroyed:()=>this.dead,destroy(){}}
     this.scene.primitives.add(this.proxy)
     this.removePreUpdate=this.scene.preUpdate.addEventListener(()=>{if(this.enabled)this.scene.primitives.raiseToTop(this.proxy)})
@@ -30,8 +31,17 @@ export default class DirectionalShadowPass {
   get light(){return this.levels.at(-1)?.light}
   setOrigin(){this.invalidate()}
   invalidate(){for(const level of this.levels)level.cache.invalidate();this.ready=false;this.version++}
+  configureReceivers(cascades){
+    this.adapter?.destroy()
+    this.adapter=new ShadowReceiver143(this.C,this.scene,this.uniforms,{cascades,sunUbo:false,
+      shouldReceive:command=>command.pass!==this.C.Pass.TRANSLUCENT||!this.isTransparentForwardActive()})
+    if(this.enabled)this.adapter.install()
+  }
   setEnabled(enabled){
-    if(this.dead||enabled===this.enabled)return
+    if(this.dead)return
+    const cascades=this.getOptions().shadowCascades!==1
+    if(enabled&&this.adapter.cascades!==cascades)this.configureReceivers(cascades)
+    if(enabled===this.enabled)return
     this.enabled=enabled;this.invalidate()
     if(enabled){this.adapter.install()}
     else{this.adapter.detach();this.debugStage.enabled=false;this.releaseTargets()}
@@ -46,6 +56,10 @@ export default class DirectionalShadowPass {
     if(Number.isFinite(bound?.radius))return bound
     if(bound?.halfAxes)return this.C.BoundingSphere.fromOrientedBoundingBox(bound,new this.C.BoundingSphere())
     return null
+  }
+  orderCasters(commands){return groupShadowCommands(commands)}
+  submitCasters(commands,ctx,passState,us){
+    withShadowBindings(ctx._gl,()=>{for(const c of this.orderCasters(commands)){us.updatePass(c.pass);c.execute(ctx,passState)}})
   }
   roots(collection,out=[]){
     if(collection.show===false)return out
@@ -105,13 +119,13 @@ export default class DirectionalShadowPass {
       for(let i=0;i<count;i++){
         const level=this.levels[i],region=regions.cascades[i],lightCommands=[]
         const broad=count===1?null:this.depthBounds(region,direction,bounds)
-        level.light.update(region.center,direction,region.extent,sizes[i],true,broad)
+        level.light.update(region.center,direction,region.extent,sizes[i],true,broad,camera.positionWC)
         const pass=new C.Cesium3DTilePassState({pass:C.Cesium3DTilePass.SHADOW,camera:level.light.camera,cullingVolume:level.light.cullingVolume,commandList:lightCommands})
         try{selectLightTiles(s.primitives,state,pass)}finally{state.commandList=commandList;state.camera=camera;state.cullingVolume=cullingVolume}
         for(const c of lightCommands)if(c.pass===C.Pass.COMPUTE)c.execute(s._computeEngine)
         const candidates=[...new Set([...commandList,...lightCommands])].filter(c=>c.castShadows&&c.shaderProgram&&c.pass!==C.Pass.TRANSLUCENT&&
           (!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE))
-        if(count>1)level.light.update(region.center,direction,region.extent,sizes[i],true,this.depthBounds(region,direction,candidates.map(c=>this.sphere(c.boundingVolume)).filter(Boolean)))
+        if(count>1)level.light.update(region.center,direction,region.extent,sizes[i],true,this.depthBounds(region,direction,candidates.map(c=>this.sphere(c.boundingVolume)).filter(Boolean)),camera.positionWC)
         const casters=candidates.filter(c=>!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE)
           .map(c=>this.adapter.cast(c,level.target.framebuffer,level.light.camera,camera))
         const key=options.shadowStatic?level.cache.signature(level.light.viewProjection,sizes[i],casters):null
@@ -119,7 +133,7 @@ export default class DirectionalShadowPass {
         else{
           us.updateCamera(level.light.camera);us.viewport=level.target.passState.viewport
           level.target.clear.execute(ctx,level.target.passState)
-          for(const c of casters){us.updatePass(c.pass);c.execute(ctx,level.target.passState)}
+          this.submitCasters(casters,ctx,level.target.passState,us)
           level.cache.commit(key);level.ready=true;level.updates++
         }
         results.push({size:sizes[i],near:region.near??regions.near,far:region.far??regions.far,extent:region.extent,texelWorld:level.light.texelWorld,

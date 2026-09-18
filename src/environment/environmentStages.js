@@ -116,15 +116,20 @@ float sunVisibility(vec3 p) {
   if (clip.w <= 0.0) return 1.0;
   vec3 uvz = clip.xyz / clip.w * 0.5 + 0.5;
   if (any(lessThan(uvz, vec3(0.0))) || any(greaterThan(uvz, vec3(1.0)))) return 1.0;
+  vec2 grid = uvz.xy / shadowInfo.y - 0.5;
+  vec2 base = floor(grid);
+  vec2 fraction = fract(grid);
   float visibility = 0.0;
   for (int y = 0; y < 2; y++) {
     for (int x = 0; x < 2; x++) {
-      vec2 offset = (vec2(float(x), float(y)) - 0.5) * shadowInfo.y;
-      float stored = texture(shadowTexture, uvz.xy + offset).r;
-      visibility += step(uvz.z - shadowInfo.z, stored);
+      vec2 uv = (base + vec2(float(x), float(y)) + 0.5) * shadowInfo.y;
+      uv = clamp(uv, vec2(0.5 * shadowInfo.y), vec2(1.0 - 0.5 * shadowInfo.y));
+      float stored = texture(shadowTexture, uv).r;
+      vec2 weight = mix(vec2(1.0) - fraction, fraction, vec2(float(x), float(y)));
+      visibility += weight.x * weight.y * step(uvz.z - shadowInfo.z, stored);
     }
   }
-  return visibility * 0.25;
+  return visibility;
 }
 `
 

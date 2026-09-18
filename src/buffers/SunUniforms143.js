@@ -32,12 +32,21 @@ export function acquireSunUniforms(C,scene){
       if(active===undefined){void program.allUniforms;const index=context._gl.getUniformBlockIndex(program._program,'CCRSunFrame');active=index!==0xffffffff;owner.programs.set(program,active)}
       if(!active)return previous.call(this,command,passState,...args)
       owner.update()
+      if(owner.scopedPrograms?.has(program))return previous.call(this,command,passState,...args)
       return withUniformBlocks(context._gl,[program],[{name:'CCRSunFrame',buffer:owner.buffer}],()=>previous.call(this,command,passState,...args))
     }
     context.draw=owner.hook;owners.set(scene,owner)
   }
   owner.references++;let released=false
   return {buffer:owner.buffer,update:()=>{if(released)throw new Error('Sun uniform lease released');return owner.update()},
+    withPrograms(programs,callback){
+      if(released)throw new Error('Sun uniform lease released')
+      const previous=owner.scopedPrograms
+      return withUniformBlocks(scene.context._gl,programs,[{name:'CCRSunFrame',buffer:owner.buffer}],()=>{
+        owner.scopedPrograms=new Set(programs)
+        try{return callback()}finally{owner.scopedPrograms=previous}
+      })
+    },
     getDiagnostics:()=>({...owner.buffer.getDiagnostics(),references:owner.references,viewRevision:owner.revision,released}),
     release(){if(released)return;released=true;if(--owner.references)return;owner.token.active=false;if(scene.context?.draw===owner.hook)scene.context.draw=owner.previous;owner.buffer.destroy();owners.delete(scene)}}
 }

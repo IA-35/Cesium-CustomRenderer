@@ -371,6 +371,8 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 
 ### B10：TAA稳定性收口与AA组合
 
+2026-09-18：已恢复开发并完成基础/交互修补；以下完整收口门槛保持逐项验收，不再称整批未实现或暂停。
+
 **复用：** R14、R15；不迁移Tianjing resetProjection。
 **修改：** `TaaPass143.js`、`taaShaders143.js`、`FrustumJitterBridge143.js`仅限测试定位出的必要部分；SpatialAa保持既有实现。
 **新增：** `tests/rendering/taa-stability-fixture.js`；迁移旧宿主taa-quality夹具和测试入口。
@@ -465,7 +467,7 @@ Epic将现代UE Filmic描述为ACES体系；这与本地Cesium FILMIC的Uncharte
 >
 > **审查修正（R7，已修复）**：此前性能/SDK 的 setup **只初始化 Viewer + Globe + pipeline，没有加载任何模型**，所谓固定负载主要测背景与后处理。现已让两个 setup 都加载 4 个 cuboid Model（与 `stage1-scene.js` 相同的代表性场景），并记录 `models/draws/triangles/primitives` 计数，且断言三配置负载规模一致、SDK 比较跑在有模型的场景上。记录到的 `actual.lightingMode` 继续如实暴露「effects-combined 请求 deferred 但实际回退 enhanced」。
 >
-> **保留未完成**：完整性能参数（30 s/60 s/3 轮）运行、逐条画质验收、场景交互矩阵复验、离线最小消费者 UMD 验证、原生/旧 CCR/新 CCR 瓶颈对比（含与 B03 校园回归的同相机/同分辨率/同数据 60fps 基线对照）、`effects-combined` 像素基线；B10 与 B13 仍暂缓。
+> **保留未完成**：完整性能参数（30 s/60 s/3 轮）运行、逐条画质验收、场景交互矩阵复验、离线最小消费者 UMD 验证、原生/旧 CCR/新 CCR 瓶颈对比（含与 B03 校园回归的同相机/同分辨率/同数据 60fps 基线对照）、`effects-combined` 像素基线；B10 已恢复开发但完整收口未完成；B13 仍暂缓。
 
 ### B13：5000+延迟光源，暂缓但保留完整路线
 

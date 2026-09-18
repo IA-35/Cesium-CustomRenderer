@@ -90,6 +90,7 @@ export default class HdrEnvironmentPass143 {
 
   _execute(context, color, depth, id) {
     this._valid = false
+    this.occlusionFrame = undefined
     const reason = this._scopeReason()
     if (reason) {
       this.reason = reason
@@ -151,8 +152,10 @@ export default class HdrEnvironmentPass143 {
    * 失败不影响主呈像：捕获错误并记录，主链照常输出（遮挡数据是可选消费者输入）。
    */
   _executeOcclusion(context, color, depth, id) {
+    this.occlusionFrame = undefined
     const stage = this._occlusionStage
     if (!stage) return
+    if (!stage.enabled) { this.occlusionReason = 'No medium consumer requested'; return }
     try {
       if (!this.occlusionCollection) {
         const collection = new this.C.PostProcessStageCollection()
@@ -171,6 +174,7 @@ export default class HdrEnvironmentPass143 {
       if (bindings.length) withUniformBlocks(context._gl, programs, bindings, () => collection.execute(context, color, depth, id))
       else collection.execute(context, color, depth, id)
       this.occlusionReason = null
+      this.occlusionFrame = this.scene.frameState.frameNumber
     } catch (error) {
       // 遮挡数据失败不应拖垮环境呈像；记录下来供诊断。
       this.occlusionReason = error instanceof Error ? error.message : String(error)
@@ -194,6 +198,7 @@ export default class HdrEnvironmentPass143 {
     this.occlusionCollection = undefined
     this._occlusionStage = undefined
     this.occlusionReason = undefined
+    this.occlusionFrame = undefined
     if (occlusionCollection && !occlusionCollection.isDestroyed()) {
       try {
         occlusionCollection.destroy()

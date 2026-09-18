@@ -112,11 +112,13 @@ node scripts/check-stage1-baseline.cjs --target fixtures --mode update --configu
 | B07 SSR 材质/水面/积水覆盖 | 完成 | [B07_COMPLETION.md](B07_COMPLETION.md)、[B07_RECONNAISSANCE.md](B07_RECONNAISSANCE.md) |
 | B08 全局地理高度雾与介质遮挡 | 完成主体 | [B08_COMPLETION.md](B08_COMPLETION.md)、[B08_RECONNAISSANCE.md](B08_RECONNAISSANCE.md) |
 | B09 Tonemap 与镜头效果 | 完成主体 | [B09_COMPLETION.md](B09_COMPLETION.md)、[B09_RECONNAISSANCE.md](B09_RECONNAISSANCE.md) |
-| B10 TAA 稳定性收口 | **暂缓（按用户指示）** | 未实现 |
+| B10 TAA 稳定性收口 | 已恢复开发，基础及交互修补已实现，完整运动/组合矩阵未收口 | TAA_INTERACTION_FIX_2026-09-18.md、INTEGRATION_2026-09-18.md |
 | B11 生命周期/能力降级/默认策略 | 完成主体 | [B11_COMPLETION.md](B11_COMPLETION.md) |
 | B12 场景矩阵验收与 SDK 候选产物 | 完成主体 | [B12_COMPLETION.md](B12_COMPLETION.md) |
 
 ### 固定负载性能（B12）
+
+以下数字为早期历史记录，不作为当前版本性能认证。后续已修正有效负载与绘制计数；以实际负载门禁和最新运行证据为准，见 REVIEW_REMEDIATION_2026-09-17.md。
 
 1920×1080、三条固定镜头轨迹、当地正午。判定使用 **GPU 中位时间**
 （`EXT_disjoint_timer_query_webgl2`），因为实测 headless 下 rAF 被 vsync 锁在
@@ -136,9 +138,7 @@ ESM 与 UMD 在相同配置下**图像逐字节相同**（哈希 `b0b06c3437e824
 
 ## 11. 产物与命名边界
 
-当前产物：`build/0.1.0/`（`CCR.min.js` 455501 字节、gzip 149816、sha256
-`70570c64fdd02a3f103afd6d43de642724b703e2a2961cc3f4c1276c270b31c4`、
-manifest、example.html、许可证）。版本 `0.1.0`。
+当前产物位于 `build/0.1.0/`，版本 `0.1.0`。字节数、SHA-256 和逐源码文件指纹统一以该目录 `manifest.json` 为准，不在验收正文重复固化旧哈希。
 
 **B13（5000+ 延迟光源）仍暂缓**，因此产物名称与说明**不得**称「原始目标全部完成」。
 本文件与各批次完成报告一律按「阶段一当前范围」表述。
@@ -155,8 +155,8 @@ manifest、example.html、许可证）。版本 `0.1.0`。
 | B07 | 「SSR 关/开基础 PBR 色差 ≤0.01/≤2%」未单独测量；粗糙度梯度图像验证；相机旋转/俯仰/近远序列 |
 | B08 | 多视锥透明分段**未接入渲染路径**；透明片元按自身距离读取介质；云雾真正分段 T/S 合成；云层档位未改 12–50 km；全球测试未含山区/云下中上/高空俯视 |
 | B09 | 景深焦带/深度断层测试；光斑图案化外观；完整 HDR 色阶矩阵；未复用 Cesium blur/DoF stage（因二次 gamma 风险，走计划给出的适配出口） |
-| B10 | **整批暂缓**（用户指示） |
-| B11 | context-loss **恢复链路无法验证**（环境不触发 `webglcontextrestored`）；完整 30 分钟压力运行（已跑 5 分钟 2977 循环、漂移 0%）；tile 异步/外部 wrapper 未纳入本批脚本；能力矩阵未在真实受限设备（4/6 槽）上跑过 |
+| B10 | 已实现基础 TAA、稳定 ID/POI 分层；完整运动向量、动态物体与跨模式延迟接管仍未收口 |
+| B11 | 浏览器恢复事件与显式销毁重建出口已验证；旧 Viewer GPU 资源不自动重建。完整 30 分钟压力运行、完整异步/外部 wrapper 矩阵、真实受限设备（4/6 槽）验证仍未完成 |
 | B12 | 完整性能参数（30 s/60 s/3 轮）运行；**卫星底图**逐条验收（该夹具无影像层，由 B00 campus 覆盖）；像素级阴影浮空/重影（由 B04 覆盖）；场景交互统一复验；离线最小消费者 UMD 验证；`effects-combined` 像素基线 |
 | B13 | **整批暂缓**（5000+ 延迟光源） |
 

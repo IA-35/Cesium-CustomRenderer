@@ -138,6 +138,11 @@ float campus_shadowVisibility(vec3 position,vec3 normal) {
 `
 
 export function receiverSource(C, source, globe = false, cascades = false, sunUbo = false) {
+  const ezMarker = 'float ccr_ezTreeVisibility = 1.0;'
+  if (source.sources.some(text => text.includes(ezMarker))) {
+    return new C.ShaderSource({ defines: [...source.defines, ...(cascades ? ['CCR_SHADOW_CASCADES'] : []), ...(sunUbo ? ['CCR_SUN_UBO'] : [])],
+      sources: [pcf, ...source.sources.map(text => text.replace(ezMarker, 'float ccr_ezTreeVisibility = campus_shadowVisibility(v_positionEC, normalEC);'))] })
+  }
   if (globe && source.sources.some(text => text.includes('czm_geodeticSurfaceNormal(v_positionMC'))) {
     // Globe imagery has no separable PBR specular term. Attenuate its surface
     // lighting before atmospheric composition, retaining an ambient floor.

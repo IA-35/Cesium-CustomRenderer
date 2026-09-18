@@ -146,10 +146,9 @@ export const EXPLICIT_ONLY_EFFECTS = Object.freeze([
  * 默认策略判定。
  *
  * 返回每项的 `requested / active / reason`，使「为什么这项没开」总是可回答的。
- * 延迟模式的判定是重点：**只要覆盖矩阵未全部通过就必须回退增强模式并说明**，
- * 不允许静默进入。
+ * 默认资格由覆盖矩阵判定；当前生效模式只取当帧生产者结果，不能混为一谈。
  */
-export function resolveDefaultPolicy({ options = {}, capability = {}, coverage = {} } = {}) {
+export function resolveDefaultPolicy({ options = {}, capability = {}, coverage = {}, actual = {} } = {}) {
   const reason = []
   // 延迟模式：候选默认的门槛是覆盖矩阵全部通过。
   const coverageChecks = {
@@ -161,10 +160,9 @@ export function resolveDefaultPolicy({ options = {}, capability = {}, coverage =
   const coverageIncomplete = Object.keys(coverageChecks).filter(key => !coverageChecks[key])
   const deferredCandidates = coverageIncomplete.length === 0
   const deferredRequested = options.lightingMode === 'deferred'
-  const deferredActive = deferredRequested && deferredCandidates && capability.mrt?.active !== false
+  const deferredActive = deferredRequested && actual.valid === true && actual.activeMode === 'deferred'
   if (deferredRequested && !deferredActive) {
-    if (!deferredCandidates) reason.push(`Deferred lighting is not a candidate default yet: incomplete coverage (${coverageIncomplete.join(', ')})`)
-    if (capability.mrt?.active === false) reason.push('Deferred lighting requires a supported material layout')
+    reason.push(actual.reason || 'No current deferred output')
   }
   return {
     version: CAPABILITY_MATRIX_VERSION,
@@ -176,12 +174,13 @@ export function resolveDefaultPolicy({ options = {}, capability = {}, coverage =
       effectiveMode: deferredActive ? 'deferred' : 'enhanced',
       coverage: coverageChecks,
       candidates: deferredCandidates,
+      candidateReason: deferredCandidates ? null : `Incomplete default coverage (${coverageIncomplete.join(', ')})`,
       reason: reason.length ? reason.join('; ') : null
     },
     explicitOnly: Object.fromEntries(EXPLICIT_ONLY_EFFECTS.map(name => [name, {
       requested: readRequested(name, options),
       // 这些效果只能由预设显式开启，默认值为假。
-      active: readRequested(name, options) && capabilitySatisfied(name, capability)
+      active: name === 'deferredLighting' ? deferredActive : readRequested(name, options) && capabilitySatisfied(name, capability)
     }])),
     reason
   }
@@ -214,5 +213,5 @@ function capabilitySatisfied(name, capability) {
 /** 对外诊断文本：能力矩阵与默认策略一起给出，便于定位「为什么没生效」。 */
 export function capabilityDiagnostics(probe = {}, options = {}, coverage = {}) {
   const capability = buildCapabilityMatrix(probe)
-  return { capability, defaults: resolveDefaultPolicy({ options, capability, coverage }) }
+  return { capability, defaults: resolveDefaultPolicy({ options, capability, coverage, actual: probe.lighting }) }
 }

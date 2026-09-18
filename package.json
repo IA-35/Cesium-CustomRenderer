@@ -13,6 +13,12 @@
   },
   "files": [
     "src",
+    "vendor/cesium-ez-tree/runtime.js",
+    "vendor/cesium-ez-tree/LICENSE",
+    "vendor/cesium-ez-tree/NOTICE.md",
+    "vendor/cesium-ez-tree/CCR_PATCHES.md",
+    "vendor/cesium-ez-tree/assets/bark",
+    "vendor/cesium-ez-tree/assets/models/grass.glb",
     "public/rendering/smaa",
     "README.md"
   ],
@@ -36,11 +42,14 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
+    "@turf/projection": "^7.4.0",
     "babel-loader": "^9.1.3",
     "lil-gui": "^0.21.0",
     "webpack": "^5.90.0"
   },
   "scripts": {
+    "pretest": "node scripts/build-eztree-runtime.cjs",
+    "prepack": "npm run build",
     "test": "node --test tests/rendering/*.test.mjs",
     "build": "node scripts/build-rendering-sdk.cjs",
     "serve": "node scripts/dev-server.cjs"

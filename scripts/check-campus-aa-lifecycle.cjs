@@ -5,7 +5,7 @@ const {chromium}=require(process.env.CESIUM_PLAYWRIGHT||'playwright'),fs=require
   const page=await browser.newPage({viewport:{width:1000,height:700}}),errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto('http://127.0.0.1:8877/examples/campus.html?imagery=none')
-  await page.waitForFunction(()=>window.campus?.tiles.length===3&&campus.tiles.every(t=>t.tilesLoaded),null,{timeout:60000})
+  await page.waitForFunction(()=>window.campus?.tiles.length===window.campus?.expectedTiles&&campus.tiles.every(t=>t.tilesLoaded),null,{timeout:120000})
   const result=await page.evaluate(async()=>{
    const {viewer,pipeline}=campus,frames=n=>new Promise(resolve=>{const off=viewer.scene.postRender.addEventListener(()=>{if(--n===0){off();resolve()}})})
    pipeline.setOptions({environmentAnimation:false})

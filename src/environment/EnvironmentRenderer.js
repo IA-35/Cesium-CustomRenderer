@@ -65,7 +65,7 @@ export default class EnvironmentRenderer {
           uniforms[name] = () => { this.updateShellCamera(); return this[name] }
         }
       }
-      if(uniformBuffersSupported(this.scene.context)){
+      if(this.useFrameUniforms()){
         this.frameUniforms=new UniformBuffer143(this.scene.context._gl,192);this.frameData=new Float32Array(48);this.frameInputs=uniforms
       }
       this.stages = createEnvironmentStages(C, uniforms, this.state.environmentQuality, this.state.cloudGeometry,!!this.frameUniforms)
@@ -83,6 +83,18 @@ export default class EnvironmentRenderer {
       return [{name:'CCREnvironmentFrame',buffer:this.frameUniforms}]
     },()=>{this.frameUniforms?.destroy();this.frameUniforms=null;this.frameInputs=null;this.frameData=null})
     this.removeUpdate = this.scene.preUpdate.addEventListener(() => this.update())
+  }
+
+  mediumRequested() {
+    const options=this.getOptions()
+    return !!((options.lightShaftEnabled&&options.lightShaftStrength>0)||
+      (options.sunFlareEnabled&&options.sunFlareStrength>0))
+  }
+
+  useFrameUniforms() {
+    // One raymarch consumer gains no sharing from a UBO, but its binding queries
+    // serialize behind the shadow pass. Share only with the medium consumer.
+    return this.mediumRequested()&&uniformBuffersSupported(this.scene.context)
   }
 
   shadowReady() {
@@ -161,12 +173,16 @@ export default class EnvironmentRenderer {
     this.lighting.apply({ ...this.state, skyIntensity: this.state.skyLightIntensity,
       sunColor: new C.Color(...this.state.sunColor, 1) })
     if (this.frame && (this.withinRegion || this.state.cloudGeometry === 'shell')) {
-      if (previousQuality !== this.state.environmentQuality || previousGeometry !== this.state.cloudGeometry) this.hdr.setEnabled(false)
+      if (previousQuality !== this.state.environmentQuality || previousGeometry !== this.state.cloudGeometry ||
+          !!this.frameUniforms !== this.useFrameUniforms()) this.hdr.setEnabled(false)
       if (!this.hdr.error) this.hdr.setEnabled(true)
     } else if (this.hdr.enabled) {
       // ENU cloud layers are regional. Preserve native global atmosphere instead
       // of treating the far side of Earth's curvature as below the fog layer.
       this.hdr.setEnabled(false)
+    }
+    if (this.stages?.occlusionStage) {
+      this.stages.occlusionStage.enabled=this.mediumRequested()
     }
     this.syncNativeFog(this.hdr.enabled && !this.hdr._scopeReason())
   }
@@ -226,6 +242,9 @@ export default class EnvironmentRenderer {
    * **不依赖 B06 的对象级可见性**（主计划明确要求）。
    */
   getMediumOcclusionDiagnostics() {
+    if (!this.enabled || !this.hdr?.getDiagnostics().valid || this.hdr.occlusionFrame !== this.scene.frameState.frameNumber) {
+      return {valid:false,texture:null,reason:'No medium output for the current frame'}
+    }
     const stage = this.stages && this.stages.occlusionStage
     if (!stage || stage.isDestroyed()) {
       return { valid: false, texture: null, reason: this.enabled ? 'Occlusion stage not created' : 'Environment disabled',

@@ -12,6 +12,7 @@ const { execFileSync } = require('node:child_process')
 const webpack = require('webpack')
 
 const root = path.resolve(__dirname, '..')
+execFileSync(process.execPath, [path.join(root, 'scripts/build-eztree-runtime.cjs')], { cwd: root, stdio: 'inherit' })
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const library = 'CCR'
 const cesiumVersion = pkg.dependencies.cesium.replace(/^[^\d]*/, '')
@@ -66,6 +67,9 @@ compiler.run((error, stats) => {
   // consumable by require() without changing browser script loading.
   fs.writeFileSync(path.join(output, 'package.json'), JSON.stringify({ type: 'commonjs' }, null, 2))
   fs.copyFileSync(path.join(root, 'public/rendering/smaa/LICENSE.txt'), path.join(output, 'THIRD_PARTY_LICENSES.txt'))
+  for (const name of ['LICENSE', 'NOTICE.md', 'CCR_PATCHES.md']) {
+    fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\ncesium-ez-tree / ' + name + '\n' + fs.readFileSync(path.join(root, 'vendor/cesium-ez-tree', name), 'utf8'))
+  }
   fs.copyFileSync(path.join(root, 'docs/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
   const hashes = {}
   const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -74,6 +78,7 @@ compiler.run((error, stats) => {
     else if (item.name.endsWith('.js')) hashes[path.relative(root, target).replace(/\\/g, '/')] = crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex')
   } }
   walk(source)
+  walk(path.join(root, 'vendor/cesium-ez-tree'))
   const manifest = { name: library, version, cesiumVersion, format: 'UMD',
     runtimeDependencies: [`external Cesium ${cesiumVersion} distribution`, 'WebGL2 browser'],
     embeddedAssets: Object.keys(lookups), bundledEngine: false, bundledBusinessUI: false,

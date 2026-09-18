@@ -16,6 +16,7 @@ export default class ShadowReceiver143 {
     this.programs = new Map()
     this.commands = new Map()
     this.castPrograms = new Map()
+    this.casterCommands = new WeakMap()
     this.castStates = new Map()
     this.receiverUsed = new Map()
     this.castUsed = new Map()
@@ -103,7 +104,8 @@ export default class ShadowReceiver143 {
       state = {value:C.RenderState.fromCache(options),options}
       this.castStates.set(command.renderState.id, state)
     }
-    const cast = C.DrawCommand.shallowClone(command)
+    const cast = C.DrawCommand.shallowClone(command,this.casterCommands.get(command))
+    this.casterCommands.set(command,cast)
     cast.shaderProgram = program
     cast.renderState = state.value
     cast.framebuffer = framebuffer
@@ -160,6 +162,7 @@ export default class ShadowReceiver143 {
     }
     this.programs.clear()
     this.castPrograms.clear()
+    this.casterCommands = new WeakMap()
     for(const state of this.castStates.values())this.C.RenderState.removeFromCache(state.options)
     this.castStates.clear()
     this.receiverUsed.clear()

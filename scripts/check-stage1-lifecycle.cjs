@@ -32,9 +32,10 @@ const PORT = process.env.CCR_TEST_PORT || 8877
       f.viewer.clock.shouldAnimate = false
       scene.postUpdate.addEventListener(() => { f.viewer.clock.currentTime = shifted })
 
-      const wait = frames => new Promise(resolve => {
+      const wait = frames => new Promise((resolve,reject) => {
         let n = frames
-        const off = scene.postRender.addEventListener(() => { if (--n === 0) { off(); resolve() } })
+        const timer=setTimeout(()=>{off();reject(new Error('Frame wait timed out'))},10000)
+        const off = scene.postRender.addEventListener(() => { if (--n === 0) { off();clearTimeout(timer); resolve() } })
       })
       /** 读中心 8×8 的颜色均值：真实渲染输出，而不是状态位。 */
       const centreColor = () => {
@@ -216,10 +217,21 @@ const PORT = process.env.CCR_TEST_PORT || 8877
 
       // --- 6) context-loss 全链路 --------------------------------------
       {
+        const {cubeUrl}=await import('/tests/rendering/stage1-scene.js')
+        const reloadAsset=async viewer=>{
+          const origin=C.Cartesian3.fromDegrees(116.39,39.9,60),matrix=C.Transforms.eastNorthUpToFixedFrame(origin)
+          C.Matrix4.multiplyByScale(matrix,new C.Cartesian3(60,60,120),matrix)
+          const model=await C.Model.fromGltfAsync({url:cubeUrl(C),modelMatrix:matrix,id:'recovery-building'})
+          viewer.scene.primitives.add(model)
+          viewer.clock.currentTime=C.JulianDate.clone(shifted)
+          viewer.camera.lookAt(origin,new C.HeadingPitchRange(0,-.6,400));viewer.camera.lookAtTransform(C.Matrix4.IDENTITY)
+          await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{off();reject(new Error('Recovery asset timeout'))},15000);let n=45
+            const off=viewer.scene.postRender.addEventListener(()=>{if(model.ready&&--n<=0){off();clearTimeout(timer);resolve()}})})
+        }
         const pipeline = make({ screenSpaceReflectionEnabled: true, hdrBloomEnabled: true })
-        await wait(20)
+        await reloadAsset(f.viewer)
         const diagnosticsBefore = pipeline.getRenderDiagnostics()
-        const beforeLoss = { colour: centreColor(),
+        const beforeLoss = { colour: centreColor(), picked:scene.pick(new C.Cartesian2(scene.canvas.clientWidth/2,scene.canvas.clientHeight/2))?.id,
           materialsValid: diagnosticsBefore.materials.valid,
           ssrValid: diagnosticsBefore.screenSpaceReflections.valid,
           bloomValid: diagnosticsBefore.hdrBloom.valid }
@@ -255,7 +267,7 @@ const PORT = process.env.CCR_TEST_PORT || 8877
           let renderSurvived = true
           try {
             scene.requestRender()
-            await wait(3)
+            await new Promise(resolve=>setTimeout(resolve,100))
           } catch { renderSurvived = false }
           duringLoss.renderSurvived = renderSurvived
 
@@ -277,7 +289,7 @@ const PORT = process.env.CCR_TEST_PORT || 8877
           // 用真实像素证明画面恢复，并如实记录用的是哪种路径。
           let restoredRender = null
           let autoRecovered = false
-          if (!afterGlLost) {
+          if (!afterGlLost && !afterDiagnostics.recovery?.required) {
             try {
               await wait(30)
               const colour = centreColor()
@@ -293,6 +305,7 @@ const PORT = process.env.CCR_TEST_PORT || 8877
           if (!autoRecovered) {
             try {
               pipeline.destroy()
+              f.viewer.destroy()
               const host = document.createElement('div')
               host.style.cssText = 'width:320px;height:240px;position:absolute;left:-9999px'
               document.body.appendChild(host)
@@ -307,16 +320,15 @@ const PORT = process.env.CCR_TEST_PORT || 8877
                   hdrBloomEnabled: true, materialChannelsEnabled: false, shadowMode: 'native',
                   screenSpaceReflectionEnabled: true } })
               rebuilt.setCampusOrigin(C.Cartesian3.fromDegrees(116.39, 39.9, 0))
-              rebuiltViewer.camera.setView({ destination: C.Cartesian3.fromDegrees(116.39, 39.9, 2000),
-                orientation: { heading: 0, pitch: -0.35, roll: 0 } })
-              await new Promise(resolve => { let n = 30; const off = rebuiltViewer.scene.postRender.addEventListener(() => { if (--n === 0) { off(); resolve() } }) })
+              await reloadAsset(rebuiltViewer)
               const w = rebuiltViewer.scene.drawingBufferWidth, h = rebuiltViewer.scene.drawingBufferHeight, size = 8
               const data = rebuiltViewer.scene.context.readPixels({ x: Math.floor(w / 2 - size / 2), y: Math.floor(h / 2 - size / 2), width: size, height: size })
               let r = 0, g = 0, b = 0
               for (let i = 0; i < size * size; i++) { r += data[i * 4]; g += data[i * 4 + 1]; b += data[i * 4 + 2] }
               const n = size * size
               const colour = [Math.round(r / n), Math.round(g / n), Math.round(b / n)]
-              explicitRebuild = { colour, materialsValid: rebuilt.getRenderDiagnostics().materials.valid, path: 'explicit-rebuild' }
+              explicitRebuild = { colour, materialsValid: rebuilt.getRenderDiagnostics().materials.valid, path: 'explicit-rebuild',
+                picked:rebuiltViewer.scene.pick(new C.Cartesian2(rebuiltViewer.canvas.clientWidth/2,rebuiltViewer.canvas.clientHeight/2))?.id }
               rebuilt.destroy(); rebuiltViewer.destroy(); host.remove()
             } catch (error) {
               explicitRebuild = { colour: [0, 0, 0], materialsValid: false, path: 'explicit-rebuild', error: error.message }
@@ -418,6 +430,10 @@ const PORT = process.env.CCR_TEST_PORT || 8877
       'requesting a render while the context is lost must not throw')
     assert.equal(loss.afterLoss.glStillLost, false,
       'preventDefault + restoreContext must actually restore the context (R5: it does work in headless Chrome)')
+    assert.equal(loss.afterLoss.materialsValid, false, 'retired material resources cannot become valid after browser restore')
+    assert.equal(loss.afterLoss.ssrValid, false, 'retired SSR resources cannot become valid after browser restore')
+    assert.equal(loss.beforeLoss.picked,'recovery-building')
+    assert.equal(loss.explicitRebuild?.picked,'recovery-building','reloaded assets must preserve picking identity')
     // R5：恢复后必须用真实像素证明画面回来——自动重建或显式重建出口二选一成立。
     const recovered = (loss.autoRecovered && loss.restoredRender && loss.restoredRender.colour.some(v => v > 0))
       || (loss.explicitRebuild && loss.explicitRebuild.colour.some(v => v > 0))

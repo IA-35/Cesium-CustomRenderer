@@ -2,6 +2,7 @@ import { forwardShader } from './transparentForwardShader143.js'
 import { createFrameBridge } from './FrameBridge143.js'
 import {shadowUniforms} from '../shadows/shadowUniforms143.js'
 import {acquireSunUniforms} from '../buffers/SunUniforms143.js'
+import {particleBillboards} from './particleBillboards143.js'
 
 // Own only the derived shader and added uniforms. Vertex transforms, material
 // evaluation, alpha/discard, depth, picking and OIT remain with the engine.
@@ -85,15 +86,7 @@ export default class TransparentForward143 {
     if(command.shaderProgram?.fragmentShaderSource.defines?.includes('LIGHTING_PBR'))return 'model'
     if(command.owner?.appearance?.material?.type==='Water')return 'water'
     if(!this.C.BillboardCollection||!(command.owner instanceof this.C.BillboardCollection))return 'compatibility'
-    const visit=collection=>{
-      if(!collection)return false
-      for(let i=0;i<collection.length;i++){const p=collection.get(i)
-        if(this.C.ParticleSystem&&p instanceof this.C.ParticleSystem&&p._billboardCollection===command.owner)return true
-        if(this.C.PrimitiveCollection&&p instanceof this.C.PrimitiveCollection&&visit(p))return true
-      }
-      return false
-    }
-    return visit(this.scene.primitives)?'particle':'compatibility'
+    return particleBillboards(this.C,this.scene.primitives).has(command.owner)?'particle':'compatibility'
   }
   programFor(source,family){
     const key=family+':'+source.id
