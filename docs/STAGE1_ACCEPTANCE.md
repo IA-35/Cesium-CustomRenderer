@@ -74,7 +74,7 @@ node scripts/check-stage1-baseline.cjs --target campus --mode visual --repeat 1
 node scripts/check-stage1-baseline.cjs --target fixtures --mode update --configuration ccr-default --repeat 2
 ```
 
-历史tests/rendering/stage1-baseline.json不再读取或更新。当前golden针对本次Chrome/RTX3070环境；硬件/资产变化先判不匹配，再审阅新图像，不能自动更新以掩盖回归。
+历史 `tests/rendering/stage1-baseline.json` 已于 2026-09-19 清理，可从 Git 历史查看。正式基准保留在 `tests/rendering/baselines/`。当前golden针对本次Chrome/RTX3070环境；硬件/资产变化先判不匹配，再审阅新图像，不能自动更新以掩盖回归。
 
 ## 5. 证据目录
 

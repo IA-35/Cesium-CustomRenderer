@@ -66,7 +66,11 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 
 内部 `campus_*` shader/UBO 标识符和公共方法 `setCampusOrigin` 沿用原契约，本轮只统一浏览器全局名称。旧校园资产的材质/叶片兼容规则仍按指定资源路径匹配，对其他资产不生效。
 
-## 本次审查与验证
+## 工作区与当前验证入口
+
+测试结构和运行方式见 [tests/README.md](tests/README.md)，最近一次分支整合与二审见 [整合记录](docs/INTEGRATION_2026-09-18.md)。清理范围见 [工作区清理记录](docs/WORKSPACE_CLEANUP_2026-09-19.md)。
+
+## 初次抽取时的历史验证
 
 - 分离后的 65 个源文件均存在；初始比较发现 3 个 JavaScript 文件漏了宿主最近的兼容修复，本轮已同步，另外 1 个差异是内部 README。
 - 修复原生 HDR 关闭时的空后处理输出，以及 TAA 回退 FXAA 在帧中途切换的问题；没有重做渲染算法。

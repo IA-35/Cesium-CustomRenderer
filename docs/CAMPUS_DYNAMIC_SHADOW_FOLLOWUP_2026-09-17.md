@@ -45,4 +45,4 @@
 - `CCR.min.js` 463887 字节，SHA256 `07a4a299ee409a669bc9bad311f5fab8a8a939d0646a210ef10982429e1c946d`，manifest 与源码一致。
 - 本轮未改 golden、未提交或推送；工作区独立的校园 SSE 配置测试冲突仍保留。
 
-实景脚本：`scripts/check-campus-shadow-motion.cjs`。原始报告和帧图：`docs/verification/campus-shadow-motion/` 与 `campus-shadow-motion-fixed/`。前后动图：`docs/verification/campus-shadow-comparison.gif`。其他证据：`volume-shadow-filter.json`、`surface-shadow-all-unit.log`、`surface-final-*.log`。
+本段为历史记录：原实景脚本 `scripts/check-campus-shadow-motion.cjs`、临时帧图/动图和日志已于 2026-09-19 清理，JSON 报告保留。旧脚本可从 Git 历史取回；当前阴影复验使用 `scripts/check-solar-shadow-motion.cjs` 与 `scripts/check-volume-shadow-filter.cjs`。详见 `WORKSPACE_CLEANUP_2026-09-19.md`。
