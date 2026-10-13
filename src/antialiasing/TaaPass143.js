@@ -1,6 +1,7 @@
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { taaResolveShader, taaDepthShader } from './taaShaders143.js'
 import TaaJitter143 from './TaaJitter143.js'
+import { attachTaaSelectionDepth } from './TaaSelectionDepth143.js'
 import TaaOverlay143 from './TaaOverlay143.js'
 
 let nextId = 0
@@ -31,9 +32,9 @@ export function taaBlendWeights(settings = {}) {
 // instead of smearing it. This is not Unreal's TSR: it does not upsample, has no velocity
 // or reactive mask, and needs no compute, subgroup or stencil support.
 export default class TaaPass143 {
-  constructor(C, scene, getOptions) {
+  constructor(C, scene, getOptions, rhi = null) {
     if (!/^1\.143(?:\.0)?$/.test(C.VERSION)) throw new Error('TaaPass143 requires Cesium 1.143')
-    Object.assign(this, { C, scene, getOptions, enabled: false, destroyed: false, failed: false })
+    Object.assign(this, { C, scene, getOptions, rhi, enabled: false, destroyed: false, failed: false })
     const context = scene.context
     this.missing = ['webgl2', 'depthTexture', 'floatingPointTexture', 'colorBufferFloat'].filter(name => !context || !context[name])
     if (context && !(context.halfFloatingPointTexture && context.colorBufferHalfFloat) && !context.colorBufferFloat) {
@@ -95,6 +96,7 @@ export default class TaaPass143 {
     const fallback = () => context.defaultTexture
     const halfFloat = !!(context.halfFloatingPointTexture && context.colorBufferHalfFloat)
     const datatype = halfFloat ? C.PixelDatatype.HALF_FLOAT : C.PixelDatatype.FLOAT
+    this.historyDatatype = datatype
     const depthUniforms = {
       u_jitterUv: () => this.jitterUv,
       u_surfaceDepth: () => this.surfaceDepth() || fallback(),
@@ -149,6 +151,69 @@ export default class TaaPass143 {
     const { globe, context } = this.scene
     const texture = globe && globe.show && context.uniformState.globeDepthTexture
     return texture && !texture.isDestroyed() ? texture : undefined
+  }
+
+  declareGraph(graph) {
+    this.graph = graph
+    this.graphHistory = {
+      colorA: graph.importResource('taa.history.colorA', { format: 'rgba16f', history: true }),
+      colorB: graph.importResource('taa.history.colorB', { format: 'rgba16f', history: true }),
+      depthA: graph.importResource('taa.history.depthA', { format: 'r32f', history: true }),
+      depthB: graph.importResource('taa.history.depthB', { format: 'r32f', history: true }),
+      depth: graph.importResource('taa.history.depth', { format: 'r32f', history: true })
+    }
+    return this.graphHistory
+  }
+
+  _releaseRhiHistory() {
+    for (const entry of this.rhiHistory || []) { entry.colorFramebuffer?.release(); entry.depthFramebuffer?.release(); entry.color?.release(); entry.depth?.release() }
+    this.rhiHistory = undefined; this.rhiHistorySize = null
+    if (this.rhiCopyColor?.shaderProgram && !this.rhiCopyColor.shaderProgram.isDestroyed()) this.rhiCopyColor.shaderProgram.destroy()
+    if (this.rhiCopyDepth?.shaderProgram && !this.rhiCopyDepth.shaderProgram.isDestroyed()) this.rhiCopyDepth.shaderProgram.destroy()
+    this.rhiCopyColor = this.rhiCopyDepth = undefined
+  }
+
+  _ensureRhiHistory(width, height, datatype) {
+    if (!this.rhi) return false
+    const size = `${width}x${height}:${datatype}`
+    if (this.rhiHistorySize === size && this.rhiHistory) return true
+    this._releaseRhiHistory()
+    const C = this.C, context = this.scene.context
+    try {
+      this.rhiHistory = [0, 1].map(() => {
+        const color = this.rhi.createTexture({ width, height, pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype,
+          sampler: this.linearSampler })
+        const depth = this.rhi.createTexture({ width, height, pixelFormat: C.PixelFormat.RED, pixelDatatype: C.PixelDatatype.FLOAT,
+          sampler: this.nearestSampler })
+        return { color, depth, colorFramebuffer: this.rhi.createFramebuffer([color.texture]), depthFramebuffer: this.rhi.createFramebuffer([depth.texture]) }
+      })
+      const renderState = C.RenderState.fromCache({ viewport: new C.BoundingRectangle(0, 0, width, height), depthTest: { enabled: false }, depthMask: false })
+      const shader = 'uniform sampler2D u_source; in vec2 v_textureCoordinates; void main() { out_FragColor = texture(u_source, v_textureCoordinates); }'
+      this.rhiCopyColor = context.createViewportQuadCommand(shader, { renderState })
+      this.rhiCopyDepth = context.createViewportQuadCommand(shader, { renderState })
+      this.rhiHistorySize = size
+      return true
+    } catch (error) { this._releaseRhiHistory(); throw error }
+  }
+
+  _copyToRhi(context, source, target, command) {
+    if (!source || !target || !command) return
+    command.uniformMap = { u_source: () => source }
+    command.framebuffer = target.framebuffer
+    const passState = new this.C.PassState(context)
+    passState.framebuffer = target.framebuffer
+    passState.viewport = new this.C.BoundingRectangle(0, 0, source.width, source.height)
+    command.execute(context, passState)
+  }
+
+  _bindGraphHistory() {
+    const history = this.rhiHistory?.[this.active]
+    if (!this.graph?.activeFrame || !this.graphHistory || !history) return
+    this.graph.bindExternal(this.graphHistory.colorA, this.rhiHistory[0].color.texture)
+    this.graph.bindExternal(this.graphHistory.colorB, this.rhiHistory[1].color.texture)
+    this.graph.bindExternal(this.graphHistory.depthA, this.rhiHistory[0].depth.texture)
+    this.graph.bindExternal(this.graphHistory.depthB, this.rhiHistory[1].depth.texture)
+    this.graph.bindExternal(this.graphHistory.depth, this.rhiHistory[0].depth.texture)
   }
 
   // A one-stage collection with `inputPreviousStageTexture: false` receives the chain's
@@ -223,6 +288,8 @@ export default class TaaPass143 {
         this.overlay = new TaaOverlay143(this.C, this.scene, this.jitter)
         if (!this._attachJitter()) throw new Error('Scene pre-render/post-render events are unavailable')
         this.detach = registerHdrEffect(this.scene, 25, (...args) => this._execute(...args))
+        this.detachSelectionDepth = attachTaaSelectionDepth(this.scene, () =>
+          this.healthy && this.jitter?.holding && this.outputFrame === this.scene.frameState.frameNumber && !this._scopeReason())
         this.enabled = true
         this.reason = 'Not rendered'
       } catch (error) { this._fail(error) }
@@ -263,7 +330,8 @@ export default class TaaPass143 {
         this.historySize = size
         this.resetHistory()
       }
-      this.C.Matrix4.clone(scene.camera.viewMatrix, this.view)
+      this._ensureRhiHistory(color.width, color.height, this.historyDatatype)
+       this.C.Matrix4.clone(scene.camera.viewMatrix, this.view)
       this.C.Matrix4.clone(scene.camera.frustum.projectionMatrix, this.projection)
       const pixel = this.jitter && this.jitter.holding ? this.jitter.pixel : { x: 0, y: 0 }
       this.jitterUv.x = pixel.x / color.width
@@ -273,7 +341,10 @@ export default class TaaPass143 {
       this.projection[9] += 2 * this.jitterUv.y
 
       const destination = this.frames[this.active]
-      this.historyColor = this.frames[1 - this.active].resolve.outputTexture
+             // Keep the proven Cesium stage output as the resolve input during the RHI migration.
+       // RHI history is still copied and owned for Graph/lifetime validation; sampling it here
+       // before the copy path has been validated reintroduces visible temporal jitter.
+       this.historyColor = this.frames[1 - this.active].resolve.outputTexture
       this.historyDepth = this.depth.pack.outputTexture
       if (!this.historyColor || !this.historyDepth) this.historyValid = false
       // Set before the resolve reads them, and after any stage that may have rewritten them.
@@ -307,6 +378,12 @@ export default class TaaPass143 {
       this.depth.collection.clear(context)
       if (this.depth.collection.ready) this.depth.collection.execute(context, color, depth, id)
 
+      const currentHistory = this.rhiHistory?.[this.active]
+       if (currentHistory) {
+         this._copyToRhi(context, output, currentHistory.color, this.rhiCopyColor)
+         if (this.depth.pack.outputTexture) this._copyToRhi(context, this.depth.pack.outputTexture, currentHistory.depth, this.rhiCopyDepth)
+       }
+       this._bindGraphHistory()
       const previous = this.previousView
       this.previousView = this.view
       this.view = previous
@@ -388,9 +465,12 @@ export default class TaaPass143 {
     this.restoreJitterListener = undefined
     this.overlay?.destroy();this.overlay=undefined
     if (this.jitter) { this.jitter.destroy(); this.jitter = undefined }
+    if (this.detachSelectionDepth) this.detachSelectionDepth()
+    this.detachSelectionDepth = undefined
     if (this.detach) this.detach()
     this.detach = undefined
-    for (const frame of this.frames || []) {
+    this._releaseRhiHistory()
+     for (const frame of this.frames || []) {
       if (frame.collection && !frame.collection.isDestroyed()) frame.collection.destroy()
     }
     this.frames = undefined

@@ -1,6 +1,6 @@
 # CCR 实例化网格与植被功能设计
 
-> 2026-09-18 修订：用户指定复用 cesium-ez-tree，并允许以程序化树替代 GLB。当前校园默认已切换为该仓库的程序化 Pine 生成器及 EzTreePrimitive；此前 EXT_mesh_gpu_instancing / 132 Model 方案停止使用。默认保留 720 点位、共享六组几何和树皮纹理、80 米分块，无实例数量稀释。以下为早期设计记录，执行结果以 `EZ_TREE_INTEGRATION_2026-09-18.md` 为准。
+> 2026-09-20 修订：用户指定复用 cesium-ez-tree，校园默认使用三种四级 LOD GLB 树；程序化 Pine 保留为性能对照。此前 EXT_mesh_gpu_instancing / 132 Model 方案停止使用。两条路径都保留 720 点位、80 米分块，无实例数量稀释。以下为早期设计记录，执行结果以 `EZ_TREE_INTEGRATION_2026-09-18.md` 为准。
 
 日期：2026-09-14，2026-09-18 按真实资产修订。状态：已取得真实模型与点位，进入 PoC 实施；尚未完成 GPU 验收。
 

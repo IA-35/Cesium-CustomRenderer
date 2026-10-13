@@ -19,7 +19,7 @@ export function installPooledStageCache(C,scene,collection,stages,kind,retained=
 
 export default class PooledStageCache143 {
   constructor(C,scene,collection,stages,kind,retained){
-    Object.assign(this,{C,scene,collection,stages,kind,owner:{kind},slots:[],nodes:[],nameToNode:new Map(),retained:new Set(retained),hooks:[]})
+    Object.assign(this,{C,scene,collection,stages,kind,owner:{kind},slots:[],nodes:[],nameToNode:new Map(),retained:new Set(retained),hooks:[],graph:null,graphResources:new Map()})
     this.pool=getRenderTargetPool(C,scene.context);this.pool.attach(this.owner)
     // First build the complete resource ledger, before allocating GPU targets.
     const names=new Set(stages.map(stage=>stage.name))
@@ -42,6 +42,31 @@ export default class PooledStageCache143 {
       node.stage.execute=hook;this.hooks.push({stage:node.stage,previous,hook})
     }
   }
+  declareGraph(graph) {
+    this.graph = graph
+    this.graphResources.clear()
+    for (const slot of this.slots) {
+      const node = slot.nodes[0]
+      const resource = graph.createResource(`${this.kind}.${node.name}`, {
+        width: Math.ceil(this.scene.drawingBufferWidth * node.scale),
+        height: Math.ceil(this.scene.drawingBufferHeight * node.scale),
+        format: String(node.pixelFormat), datatype: String(node.pixelDatatype)
+      })
+      this.graphResources.set(slot, resource)
+    }
+    for (const node of this.nodes) {
+      graph.addPass(`${this.kind}.${node.name}`, pass => {
+        for (const name of node.reads) {
+          const dependency = this.nameToNode.get(name)
+          if (dependency) pass.read(this.graphResources.get(dependency.slot))
+        }
+        pass.write(this.graphResources.get(node.slot))
+        pass.sideEffect()
+      }, null, { phase: this.kind })
+    }
+    return this.graphResources
+  }
+
   begin(input){
     this.unreserve?.();this.unreserve=this.pool.reserve([input])
     this.releaseFrame();this.prepared=false;this.input=input
@@ -54,6 +79,7 @@ export default class PooledStageCache143 {
       for(const slot of this.slots){
         const node=slot.nodes[0],width=Math.ceil(this.scene.drawingBufferWidth*node.scale),height=Math.ceil(this.scene.drawingBufferHeight*node.scale)
         slot.lease=this.pool.acquire(this.owner,{context,width,height,pixelFormat:node.pixelFormat,pixelDatatype:node.pixelDatatype,samples:1})
+        if (this.graph && this.graphResources.has(slot) && this.graph.activeFrame) this.graph.trackLease(this.graphResources.get(slot), slot.lease)
         slot.lastId=slot.lease.id
         slot.clear=new this.C.ClearCommand({framebuffer:slot.lease.framebuffer,color:node.stage.clearColor})
       }
@@ -61,7 +87,13 @@ export default class PooledStageCache143 {
     }catch(error){this.releaseFrame();throw error}
   }
   clear(context){for(const slot of this.slots)slot.clear.execute(context)}
-  finishStage(index){for(const slot of this.slots)if(slot.last===index)slot.lease?.release()}
+  finishStage(index){
+    const completedName=this.nodes[index]?.name
+    for(const slot of this.slots) if(slot.last===index) {
+      const completed=this.graph?.activeFrame && this.graph.completePass(`${this.kind}.${completedName}`)
+      if(!completed) slot.lease?.release()
+    }
+  }
   releaseFrame(){for(const slot of this.slots){slot.lease?.release();slot.lease=null;slot.clear=null}this.prepared=false}
   updateDependencies(){} // this adapter's declared graph is immutable
   getFramebuffer(name){const lease=this.nameToNode.get(name)?.slot.lease;return lease?.valid?lease.framebuffer:undefined}

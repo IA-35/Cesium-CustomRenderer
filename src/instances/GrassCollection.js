@@ -40,17 +40,19 @@ export class GrassCollection {
     this.scene = options.viewer.scene
     this.polygonsUrl = new URL(options.polygonsUrl, typeof document !== 'undefined' ? document.baseURI : undefined).href
     this.fetchJson = options.fetchJson || fetchJson
+    this.profile = options.profile === 'lightweight' ? 'lightweight' : 'legacy'
+    const lightweight = this.profile === 'lightweight'
     this.cellSize = options.cellSize ?? 64
-    // Match cesium-ez-tree's default 450 grass clumps per hectare. One instance
-    // represents a clump, not a single blade.
-    this.density = options.density ?? 0.045
-    this.maxInstances = options.maxInstances ?? 10000
-    this.scale = options.scale ?? 1
+    // Lightweight cards support dense close coverage; retain legacy asset budgets.
+    this.density = options.density ?? (lightweight ? 4 : 0.045)
+    this.maxInstances = options.maxInstances ?? (lightweight ? 650000 : 10000)
+    this.scale = options.scale ?? (lightweight ? 0.24 : 1)
     this.patchScale = options.patchScale ?? 55
-    this.patchiness = options.patchiness ?? 0.75
+    this.patchiness = options.patchiness ?? (lightweight ? 1 : 0.75)
     this.seed = options.seed ?? 20260908
     this.color = options.color || [0.42, 0.62, 0.27]
     this.height = options.height ?? 3
+    this.objectsToExclude = options.objectsToExclude || []
     this.visible = options.show !== false
 
     this.destroyed = false
@@ -62,6 +64,7 @@ export class GrassCollection {
     this._variantCounts = Object.create(null)
     this._groundClamped = false
     this._groundFallbacks = 0
+    this._groundSamples = 0
     this.primitive = null
     this._runtime = options.ezTreeRuntime || getEzTreeRuntime(this.C)
     this.readyPromise = this._load()
@@ -104,10 +107,14 @@ export class GrassCollection {
         useWorkers: false,
         assetBaseUrl: new URL('./eztree/', this.polygonsUrl).href,
       })
-      const grassAssets = GRASS_VARIANTS.map(variant => ({
+      const variants = this.profile === 'lightweight'
+        ? [{ id: 'grass-light', file: 'eztree/models/grass.glb', scale: 1 }]
+        : GRASS_VARIANTS
+      const grassAssets = variants.map(variant => ({
         id: variant.id,
         url: new URL(variant.file, this.polygonsUrl).href,
         scale: variant.scale,
+        alphaFromColor: this.profile !== 'lightweight',
       }))
       this.primitive = new this._runtime.EzTreePrimitive({
         modelMatrix: this._modelMatrix,
@@ -116,8 +123,9 @@ export class GrassCollection {
         show: this.visible,
         lodCellSize: this.cellSize,
         cullingTileSize: 320,
-        maximumGrassDistance: 900,
-        grassMinimumLodRatio: 0.1,
+        maximumGrassDistance: this.profile === 'lightweight' ? 220 : 900,
+        grassLodNearDistance: this.profile === 'lightweight' ? 35 : 250,
+        grassMinimumLodRatio: this.profile === 'lightweight' ? 0.02 : 0.1,
         windStrength: 0.18,
         windFrequency: 0.9,
         castShadows: false,
@@ -182,7 +190,24 @@ export class GrassCollection {
         grassPatchScale: this.patchScale,
         grassPatchiness: this.patchiness,
       })
-      for (const instance of instances) if (instance.kind === 'grass') collected.push(instance)
+      let groundHeight = this.height
+      if (this.profile === 'lightweight' && instances.length && this.scene.sampleHeightSupported) {
+        const C = this.C
+        const world = C.Matrix4.multiplyByPoint(this._modelMatrix, instances[0].translation, new C.Cartesian3())
+        const position = C.Cartographic.fromCartesian(world)
+        const sampledHeight = this.scene.sampleHeight(position, this.objectsToExclude)
+        if (Number.isFinite(sampledHeight)) {
+          position.height = sampledHeight + 0.02
+          C.Cartographic.toCartesian(position, C.Ellipsoid.WGS84, world)
+          const inverse = C.Matrix4.inverseTransformation(this._modelMatrix, new C.Matrix4())
+          groundHeight = C.Matrix4.multiplyByPoint(inverse, world, new C.Cartesian3()).z
+          this._groundSamples++
+        } else this._groundFallbacks++
+      }
+      for (const instance of instances) if (instance.kind === 'grass') {
+        if (this.profile === 'lightweight') instance.translation.z = groundHeight
+        collected.push(instance)
+      }
       // The upstream sampler is synchronous. Yield between small polygon groups
       // so camera, loading UI and cancellation remain responsive.
       if (polygonIndex % 12 === 11) await new Promise(resolve => setTimeout(resolve, 0))
@@ -192,33 +217,29 @@ export class GrassCollection {
 
   _buildInstances(sampled) {
     const C = this.C
-    const color = this.color
-    // Instance attribute packing quantizes the fixed ENU height together with
-    // XY. Height is assigned before the primitive builds its packed buffer.
+    // Quantize root height with XY after per-polygon ground sampling.
     return sampled.map((instance, index) => {
       const id = `grass-${index}`
-      const variant = GRASS_VARIANTS[fnv1a(id) & 1]
+      const variant = this.profile === 'lightweight'
+        ? { id: 'grass-light', scale: 1 } : GRASS_VARIANTS[fnv1a(id) & 1]
       const translation = instance.translation
-      const tint = instance.color
       this._variantCounts[variant.id] = (this._variantCounts[variant.id] || 0) + 1
       return {
         kind: 'grass',
         id,
         asset: variant.id,
-        translation: new C.Cartesian3(translation.x, translation.y, this.height),
+        translation: new C.Cartesian3(translation.x, translation.y, this.profile === 'lightweight' ? translation.z : this.height),
         scale: new C.Cartesian3(
-          instance.scale.x * variant.scale,
-          instance.scale.y * variant.scale,
-          instance.scale.z * variant.scale,
+          instance.scale.x * variant.scale * (this.profile === 'lightweight' ? 0.13 : 1),
+          instance.scale.y * variant.scale * (this.profile === 'lightweight' ? 0.13 : 1),
+          instance.scale.z * variant.scale * (this.profile === 'lightweight' ? 0.10 : 1),
         ),
         rotation: instance.rotation,
         windPhase: instance.windPhase,
-        color: new C.Color(
-          tint?.red ?? color[0],
-          tint?.green ?? color[1],
-          tint?.blue ?? color[2],
-          1,
-        ),
+        // The six-triangle upstream asset has a grayscale mask and needs a green
+        // tint in linear space. Legacy atlases already contain their own color.
+        color: this.profile === 'lightweight' ? new C.Color(0.20, 0.34, 0.07, 1)
+          : (C.Color.WHITE ? C.Color.clone(C.Color.WHITE) : new C.Color(1, 1, 1, 1)),
       }
     })
   }
@@ -258,7 +279,7 @@ export class GrassCollection {
     const batches = new Map()
     for (const record of submitted) {
       const key = record.lodGroup?.key || `cell:${record.cellX}:${record.cellY}`
-      batches.set(key, (batches.get(key) || 0) + record.instanceCount)
+      batches.set(key, (batches.get(key) || 0) + record.command.instanceCount)
     }
     let textureBytes = 0
     for (const asset of resources?.gltfAssetRecords || []) {
@@ -267,12 +288,14 @@ export class GrassCollection {
     return {
       backend: 'cesium-ez-tree',
       source: 'grass',
+      profile: this.profile,
       state: this.state,
       visible: this.visible,
       polygons: this._polygons,
       areaHectares: Number(this._areaHectares.toFixed(4)),
       density: this.density,
-      heightMode: 'fixed',
+      heightMode: this.profile === 'lightweight' ? 'polygon-sampled' : 'fixed',
+      groundSamples: this._groundSamples,
       height: this.height,
       instances: this._instances,
       grassAssets: this.primitive?.grassAssets?.length || 0,
@@ -287,6 +310,8 @@ export class GrassCollection {
       geometryResources: resources?.meshResources.length || 0,
       bufferBytes: (resources?.meshGpuMemoryBytes || 0) + (resources?.instanceGpuMemoryBytes || 0),
       textureBytes,
+      shadowCastingDraws: (resources?.records || []).filter(record => record.command?.castShadows).length,
+      shadowReceivingDraws: (resources?.records || []).filter(record => record.command?.receiveShadows).length,
       groundClamped: false,
       groundFallbacks: this._groundFallbacks,
       error: this.error,

@@ -37,7 +37,7 @@ function harness() {
     static multiplyByPoint(_matrix, point, result) { Object.assign(result, point); return result }
   }
   const models = []; const removed = []; const listeners = []; let requests = 0
-  const ezTreeRuntime = {configureEzTree(){}, EzTreePrimitive: class {static loadPreset(){return {branch:{children:{},sections:{},segments:{}},leaves:{}}}constructor(options){Object.assign(this,options);this._instances=options.instances;this._externalLodGroups=new Map();this._resources={pendingTextureCount:0,gltfRecordsBuilt:true,cachedCommandCount:1,gltfAssetRecords:[],barkTextureRecords:new Map(),meshResources:[],records:[]};models.push(this)}destroy(){this.dead=true}}}
+  const ezTreeRuntime = {configureEzTree(){}, EzTreePrimitive: class {static loadPreset(){return {branch:{children:{},length:{},start:{},sections:{},segments:{}},leaves:{}}}constructor(options){Object.assign(this,options);this._instances=options.instances;this._externalLodGroups=new Map();this._resources={pendingTextureCount:0,gltfRecordsBuilt:true,cachedCommandCount:1,gltfAssetRecords:[],barkTextureRecords:new Map(),meshResources:[],records:[]};models.push(this)}destroy(){this.dead=true}}}
   const Cesium = {
     Cartesian3, Matrix4, ShadowMode: { ENABLED: 3 },
     Transforms: { eastNorthUpToFixedFrame(origin) { return { origin } } },
@@ -53,14 +53,60 @@ function harness() {
 }
 
 
-async function load(h, resources, manifestUrl) {
+async function load(h, resources, manifestUrl, options = {}) {
   const collection=createFixedTreeCollection({Cesium:h.Cesium,viewer:h.viewer,manifestUrl,
-    ezTreeRuntime:h.ezTreeRuntime,clampToGround:false,fetchJson:async url=>structuredClone(resources.get(url))})
+    ezTreeRuntime:h.ezTreeRuntime,clampToGround:false,fetchJson:async url=>structuredClone(resources.get(url)),...options})
   await new Promise(resolve=>setTimeout(resolve,0))
   h.listeners.slice().forEach(f=>f())
   await collection.readyPromise
   return collection
 }
+test('uses the configured fixed height without sampling the scene', async()=>{
+  const {manifestUrl,resources}=fixture(),h=harness()
+  h.scene.clampToHeightMostDetailed=async()=>{throw new Error('must not sample scene height')}
+  const t=await load(h,resources,manifestUrl,{heightOffset:2})
+  assert.deepEqual(h.models[0]._instances.map(instance=>instance.translation.z),[2,2])
+  assert.equal(t.getDiagnostics().groundClamped,false)
+  t.destroy()
+})
+
+test('scales fixed GLB trees and their culling radius', async()=>{
+  const {manifestUrl,resources}=fixture(),h=harness(),baselineHarness=harness()
+  const baseline=await load(baselineHarness,resources,manifestUrl,{source:'glb'})
+  const t=await load(h,resources,manifestUrl,{source:'glb',scale:1.6})
+  const instance=h.models[0]._instances[0]
+  assert.equal(instance.kind,'externalTree')
+  assert.equal(instance.scale.x / baselineHarness.models[0]._instances[0].scale.x,1.6)
+  assert.equal(instance.radius,12.8)
+  baseline.destroy()
+  t.destroy()
+})
+
+test('uses each point type to choose a distinct procedural tree form', async()=>{
+  const {manifestUrl,resources}=fixture(),h=harness()
+  const manifest=resources.get(manifestUrl)
+  manifest.pointCount=3
+  manifest.typeMap={松柏:'cypress',松树:'pine',松树01:'pine-small'}
+  manifest.prototypes=[
+    {id:'pine',height:10.5},
+    {id:'cypress',height:9.5},
+    {id:'pine-small',height:8.5}
+  ]
+  const points=resources.get('https://example.test/vegetation/points.json')
+  points.summary.objectCount=3
+  points.objects=[
+    {type:'松柏',object:'c',relativePosition:[0,0],geographicPosition:[123,41]},
+    {type:'松树',object:'p',relativePosition:[20,0],geographicPosition:[123.001,41]},
+    {type:'松树01',object:'s',relativePosition:[40,0],geographicPosition:[123.002,41]}
+  ]
+  const t=await load(h,resources,manifestUrl,{source:'procedural'})
+  const primitive=h.models[0]
+  assert.deepEqual(primitive._instances.map(instance=>instance.preset),['cypress','pine','pine-small'])
+  assert.equal(primitive.treePresets.cypress.branch.length[1],10)
+  assert.equal(primitive.treePresets.pine.branch.length[1],29)
+  assert.equal(primitive.treePresets['pine-small'].branch.length[1],17)
+  t.destroy()
+})
 test('uses one upstream primitive for all fixed points with ENU transforms', async()=>{
   const {manifestUrl,resources}=fixture(),h=harness(),t=await load(h,resources,manifestUrl)
   assert.equal(h.models.length,1)

@@ -122,6 +122,18 @@ test('levels are independent RGBA32F targets with ordered sources and exact byte
   f.checkRestored()
 })
 
+test('AO-only consumers can cap the pyramid at the base reduction', () => {
+  const f = fixture(), pyramid = new DepthPyramid143(f.C, f.scene)
+  pyramid.setMaxLevel(0)
+  assert.equal(pyramid.update(f.source, 7), true)
+  assert.deepEqual(pyramid.getLevels().map(level => [level.width, level.height]), [[3, 2]])
+  assert.equal(f.draws.length, 1)
+  assert.equal(pyramid.getDiagnostics().maxLevel, 0)
+  pyramid.setMaxLevel(undefined)
+  assert.equal(pyramid.update(f.source, 7), true)
+  assert.deepEqual(pyramid.getLevels().map(level => [level.width, level.height]), [[3, 2], [2, 1], [1, 1]])
+})
+
 test('current frame and buffer size gate visibility; invalidation reuses resources and release permits rebuilding', () => {
   const f = fixture(), pyramid = new DepthPyramid143(f.C, f.scene)
   pyramid.update(f.source, 7)

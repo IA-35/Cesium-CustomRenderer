@@ -49,6 +49,9 @@ async function comparePng(page, before, after) {
       // Grass has its own acceptance check and must not contaminate tree pixels.
       campus.grass.setVisible(false)
     })
+    await page.evaluate(() => campus.look(-0.65, 1800))
+    await frames(30)
+    await page.screenshot({ path: path.join(output, 'overview.png') })
     const views = [
       ['high', 123.4137, 41.7640, 1200, -70],
       ['mid', 123.4137, 41.7668, 180, -35],
@@ -99,17 +102,21 @@ async function comparePng(page, before, after) {
     assert.ok(colors.green>10000,`No green tree canopy: ${JSON.stringify(colors)}`)
     assert.ok(colors.green>colors.neutralBright*3,`Canopy is predominantly white/grey: ${JSON.stringify(colors)}`)
 
-    const browserState = await page.evaluate(() => ({ errors: [...campus.errors], diagnostics: campus.trees.getDiagnostics() }))
+    const browserState = await page.evaluate(() => ({
+      errors: [...campus.errors], diagnostics: campus.trees.getDiagnostics(),
+      fixedHeights: [...new Set(campus.trees.primitive._instances.map(instance => Number(instance.translation.z.toFixed(3))))]
+    }))
     assert.deepEqual(browserState.errors, [])
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(httpErrors, [])
     assert.equal(browserState.diagnostics.instances, 720)
+    assert.deepEqual(browserState.fixedHeights, [2])
     assert.equal(browserState.diagnostics.groundFallbacks, 0)
-    assert.equal(browserState.diagnostics.groundClamped, true)
+    assert.equal(browserState.diagnostics.groundClamped, false)
     for (const { diagnostics } of states) {
       assert.ok(diagnostics.visibleBatches <= diagnostics.batches)
       assert.equal(diagnostics.backend, 'cesium-ez-tree')
-      assert.equal(diagnostics.source, 'procedural')
+      assert.equal(diagnostics.source, 'glb')
       assert.equal(diagnostics.modelCount, 0)
       assert.equal(diagnostics.primitiveCount, 1)
       assert.equal(diagnostics.lodBatches.reduce((sum, count) => sum + count, 0), diagnostics.batches)
@@ -122,7 +129,8 @@ async function comparePng(page, before, after) {
     const report = {
       scope: '1440x900 headless Chrome; real campus tiles; SM_NH_Shu disabled; fixed camera route',
       states: states.map(({ name, diagnostics }) => ({ name, ...diagnostics })),
-      pixelDelta, colors, shadows: { withTrees: shadowWithTrees, withoutTrees: shadowWithoutTrees },
+      pixelDelta, colors, fixedHeights: browserState.fixedHeights,
+      shadows: { withTrees: shadowWithTrees, withoutTrees: shadowWithoutTrees },
       pageErrors, httpErrors
     }
     fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2))

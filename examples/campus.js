@@ -1,37 +1,54 @@
 import CampusAssetCompatibility from './compat/CampusAssetCompatibility.js'
+import { loadCampusGlbs, assertCampusGlbBase } from './campus-glb.js'
+import { SharedGlbTextureCache } from './shared-glb-textures.js'
+import { prepareCampusTraffic } from './campus-traffic-placement.js'
 // examples/campus.js
 //
 // 南湖校区实景示例的脚本部分，从 examples/campus.html 内联的 <script type="module"> 拆出。
 // HTML 只保留场景容器（#scene）与一个只读输出区（#status / #aaExplanation / #aaActual），
 // 所有可调控件改由右上角的 lil-gui 面板生成，不再用 querySelector 逐个手写 DOM 事件。
 //
-// 校园 3D Tiles 与业务系统保持一致，默认通过本机业务前端的 /Dongda 代理加载。
+// 默认直接加载 SM_NH 建筑 GLB；?models=tiles 保留原始建筑 Tiles 对照。
 // 周边白模继续使用本工程的本地副本；镜头、控件语义与采样逻辑保持不变。
 import '../build/0.1.0/CCR.min.js'
 import SampleGuard from '/src/diagnostics/SampleGuard.js'
 import GUI from '/node_modules/lil-gui/dist/lil-gui.esm.js'
 import Stats from './js/stats.module.js'
 
-const { createVisualPipeline, createFixedTreeCollection, createGrassCollection, colorGradingControls, colorGradingPresets } = globalThis.CCR
+const { createVisualPipeline, createFixedTreeCollection, createGrassCollection, createWaterSurfaceCollection, createTrafficSystem, colorGradingControls, colorGradingPresets } = globalThis.CCR
 
 const status = document.querySelector('#status')
 const aaExplanation = document.querySelector('#aaExplanation')
 const aaActual = document.querySelector('#aaActual')
 const errors = []
 const query = new URLSearchParams(location.search)
+const trafficParam = query.get('traffic')
+const trafficManifestUrl = ['0', 'none'].includes(trafficParam) ? null :
+  (trafficParam && trafficParam !== '1' ? trafficParam : '/examples/campus-traffic/traffic.json')
+let traffic = null
+let campusAssetsLoaded = false, trafficLoading = null
+const lightweightVegetation = query.get('vegetation') !== 'legacy'
 // 固定点位树木默认启用；?trees=none 关闭，?trees=<url> 可替换清单。
 const treeParam = query.get('trees')
 const treeEnabled = !['0', 'none'].includes(treeParam)
 const treeManifestUrl = treeParam && !['0', 'none', '1'].includes(treeParam)
   ? treeParam
-  : '/assets/vegetation/manifest.json'
+  : (lightweightVegetation && query.get('treeSource') !== 'procedural'
+    ? '/assets/vegetation/ez-tree/manifest.json' : '/assets/vegetation/manifest.json')
+const treeSource = query.get('treeSource') === 'procedural' ? 'procedural' : 'glb'
 // 面内程序化草地默认启用；?grass=none 关闭，?grass=<url> 可替换面数据。
-// 默认约 450 簇/公顷，固定 ENU 高度 3 米；不执行逐点场景贴地。
+// 轻量草默认 4 簇/平方米，按面采样地面高度；?vegetation=legacy 对照旧资产。
 const grassParam = query.get('grass')
 const grassEnabled = !['0', 'none'].includes(grassParam)
 const grassPolygonsUrl = grassParam && !['0', 'none', '1'].includes(grassParam)
   ? grassParam
   : '/assets/grass/polygons.json'
+// CGCS2000 水面已预处理为 WGS84；?water=none 关闭，?water=<url> 可替换面数据。
+const waterParam = query.get('water')
+const waterEnabled = !['0', 'none'].includes(waterParam)
+const waterPolygonsUrl = waterParam && !['0', 'none', '1'].includes(waterParam)
+  ? waterParam
+  : '/assets/water/polygons.json'
 // 沈阳影像服务：本机实测可达；换成 ?imagery=none 可关闭，换成 ?imagery=<模板> 可替换。
 const DEFAULT_IMAGERY = window.CCR_EXAMPLE_CONFIG?.imageryUrl || null
 const imageryParam = query.get('imagery')
@@ -40,20 +57,31 @@ const previewImageryUrl = imageryParam === 'none' ? null : (imageryParam || DEFA
 const CAMPUS_ASSETS = '/assets/campus-assets'
 const DEFAULT_BUSINESS_ASSETS = 'http://localhost:8083/Dongda'
 const base = query.get('assets') || DEFAULT_BUSINESS_ASSETS
+const modelMode = query.get('models') === 'tiles' ? 'tiles' : 'glb'
+const glbManifest = await fetch('./campus-glb-manifest.json').then(response => {
+  if (!response.ok) throw new Error(`GLB manifest: HTTP ${response.status}`)
+  return response.json()
+})
+let glbBase = query.get('glbAssets') || glbManifest.baseUrl
+// 默认 baseUrl 走本机 nginx 8083 的 /DongdaModel_PBR/ 代理；不可达时依次回退到本地静态目录
+// /assets/campus-glb-release、再回退 dev-server 的 /campus-mobile-glb。探测一次，避免 70 个 404。
+const glbBaseCandidates = query.get('glbAssets')
+  ? [query.get('glbAssets')]
+  : [glbManifest.baseUrl, ...(glbManifest.fallbackBaseUrls || [])]
 const BUSINESS_TILESETS = [
   { name: 'SM_NH_Terr', url: 'SM_NH_Terr/tileset.json', height: 2 },
   // { name: 'SM_NH_Shu', url: 'SM_NH_Shu/tileset.json', height: 2 },
-  { name: 'SM_NH_Building', url: 'SM_NH_Building/tileset.json', height: 2 },
-  { name: 'SM_NH_YFL', url: 'SM_NH_YFL/SW/tileset.json', height: 2 },
-  { name: 'SM_NH_ZHL', url: 'SM_NH_ZHL/SW/tileset.json', height: 2 },
-  { name: 'SM_NH_SYL1', url: 'SM_NH_SYL1/SW/tileset.json', height: 2 },
-  { name: 'SM_NH_SYL2', url: 'SM_NH_SYL2/SW/tileset.json', height: 2 },
-  { name: 'SM_NH_XSST1', url: 'SM_NH_XSST1/tileset.json', height: 2 },
-  { name: 'SM_NH_XSST2', url: 'SM_NH_XSST2/tileset.json', height: 2 },
-  { name: 'SM_NH_XSCST', url: 'SM_NH_XSCST/tileset.json', height: 2 },
-  { name: 'SM_NH_ZXST', url: 'SM_NH_ZXST/tileset.json', height: 2 },
-  { name: 'SM_NH_DDFW', url: 'SM_NH_DDFW/tileset.json', height: 2 },
-  { name: 'SM_NH_TSG', url: 'SM_NH_TSG/SW/tileset.json', height: 2 }
+  // { name: 'SM_NH_Building', url: 'SM_NH_Building/tileset.json', height: 2 },
+  // { name: 'SM_NH_YFL', url: 'SM_NH_YFL/SW/tileset.json', height: 2 },
+  // { name: 'SM_NH_ZHL', url: 'SM_NH_ZHL/SW/tileset.json', height: 2 },
+  // { name: 'SM_NH_SYL1', url: 'SM_NH_SYL1/SW/tileset.json', height: 2 },
+  // { name: 'SM_NH_SYL2', url: 'SM_NH_SYL2/SW/tileset.json', height: 2 },
+  // { name: 'SM_NH_XSST1', url: 'SM_NH_XSST1/tileset.json', height: 2 },
+  // { name: 'SM_NH_XSST2', url: 'SM_NH_XSST2/tileset.json', height: 2 },
+  // { name: 'SM_NH_XSCST', url: 'SM_NH_XSCST/tileset.json', height: 2 },
+  // { name: 'SM_NH_ZXST', url: 'SM_NH_ZXST/tileset.json', height: 2 },
+  // { name: 'SM_NH_DDFW', url: 'SM_NH_DDFW/tileset.json', height: 2 },
+  // { name: 'SM_NH_TSG', url: 'SM_NH_TSG/SW/tileset.json', height: 2 }
 ]
 const contextParam = query.get('contextTiles')
 const previewWhiteModelUrl = contextParam === 'none' ? null
@@ -65,6 +93,10 @@ const viewer = new Cesium.Viewer('scene', {
   requestRenderMode: false
 })
 viewer.scene.globe.show = true
+// 修改鼠标右键旋转
+viewer.scene.screenSpaceCameraController.tiltEventTypes = [Cesium.CameraEventType.PINCH, Cesium.CameraEventType.RIGHT_DRAG];
+// 修改鼠标中键为缩放
+viewer.scene.screenSpaceCameraController.zoomEventTypes = [Cesium.CameraEventType.WHEEL, Cesium.CameraEventType.PINCH];
 if (previewImageryUrl) viewer.imageryLayers.add(new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({ url: previewImageryUrl })))
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601('2026-09-08T03:00:00Z')
 viewer.clock.shouldAnimate = false
@@ -76,12 +108,23 @@ viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#52654c')
 viewer.scene.renderError.addEventListener((scene, error) => { errors.push(error.message); status.textContent = error.message })
 const requestedShadow = query.get('shadow')
 const pipeline = createVisualPipeline({ Cesium, viewer,
-  options: ['custom', 'native'].includes(requestedShadow) ? { shadowMode: requestedShadow } : {} })
+  options: { environmentReflectionEnabled: true,
+    environmentReflectionMap: '/assets/environment/98_ibl.ktx2',
+    ...(['custom', 'native'].includes(requestedShadow) ? { shadowMode: requestedShadow } : {}) } })
 const tiles = []
+const models = []
+const activeTilesets = modelMode === 'tiles' ? BUSINESS_TILESETS : BUSINESS_TILESETS.filter(asset => asset.name === 'SM_NH_Terr')
+const cameraCenter = Cesium.Cartesian3.fromDegrees(glbManifest.origin.longitude, glbManifest.origin.latitude, glbManifest.origin.height)
+const assetsReady = () => tiles.length === activeTilesets.length && tiles.every(tile => tile.tilesLoaded) &&
+  (modelMode !== 'glb' || (models.length === glbManifest.models.length && models.every(model => model.ready)))
 const contextTiles = []
+let contextTilesReady = Promise.resolve()
 let trees = null
 let grass = null
-window.campus = { viewer, pipeline, tiles, contextTiles, errors, base, trees, grass, treeReady: null, grassReady: null, expectedTiles: BUSINESS_TILESETS.length }
+let water = null
+let sharedGlbTextures = modelMode === 'glb' ? new SharedGlbTextureCache(Cesium) : null
+window.campus = { viewer, pipeline, tiles, models, modelMode, glbBase, cameraCenter, assetsReady, contextTiles, errors, base, trees, grass, water, sharedGlbTextures,
+  treeReady: null, grassReady: null, waterReady: null, expectedTiles: activeTilesets.length, expectedModels: modelMode === 'glb' ? glbManifest.models.length : 0 }
 // Legacy asset fixes belong to this example, not to the renderer.
 const assetCompatibility = new CampusAssetCompatibility(Cesium, viewer.scene)
 const updateAssetCompatibility = () => assetCompatibility.setEnabled(
@@ -91,6 +134,7 @@ const updateAssetCompatibility = () => assetCompatibility.setEnabled(
 const removeAssetCompatibility = viewer.scene.preUpdate.addEventListener(updateAssetCompatibility)
 updateAssetCompatibility()
 window.addEventListener('pagehide', () => { removeAssetCompatibility(); assetCompatibility.destroy() }, { once: true })
+window.addEventListener('pagehide', () => { traffic?.destroy(); sharedGlbTextures?.destroy(); water?.destroy(); grass?.destroy(); trees?.destroy(); pipeline.destroy(); viewer.destroy() }, { once: true })
 
 Object.defineProperty(window.campus, 'geometry', { get: () => pipeline.geometry })
 
@@ -108,10 +152,11 @@ const ui = {
   materials: false,
   depthPyramid: false,
   ao: { enabled: false, radius: 3, strength: 1 },
-  ssr: { enabled: false, transparent: false, distance: 150, strength: 1 },
+  reflection: { enabled: false, strength: 1 },
   governor: false,
-  trees: { visible: true, source: query.get('treeSource') === 'glb' ? 'GLB（比较）' : 'ez-tree 程序化松树', state: treeEnabled ? '等待加载' : '未启用', instances: 0, batches: 0, lods: '0 / 0 / 0 / 0' },
+  trees: { visible: true, source: treeSource === 'glb' ? (lightweightVegetation ? 'EZ-Tree 松树／松柏' : '原 GLB 四级 LOD') : 'ez-tree 程序化松树', state: treeEnabled ? '等待加载' : '未启用', instances: 0, batches: 0, lods: '0 / 0 / 0 / 0' },
   grass: { visible: true, state: grassEnabled ? '等待加载' : '未启用', polygons: 0, area: 0, instances: 0, draws: 0 },
+  water: { visible: true, state: waterEnabled ? '等待加载' : '未启用', features: 0, heights: '' },
   environment: { on: false, high: false, playing: false }
 }
 const aaNotes = {
@@ -145,11 +190,9 @@ const syncUI = () => {
   ui.ao.enabled = ao.enabled === true
   ui.ao.radius = ao.radius
   ui.ao.strength = ao.strength
-  const ssr = pipeline.getScreenSpaceReflectionDiagnostics().requested
-  ui.ssr.enabled = ssr.enabled === true
-  ui.ssr.transparent = ssr.transparent === true
-  ui.ssr.distance = ssr.distance
-  ui.ssr.strength = ssr.strength
+  const reflection = pipeline.getEnvironmentReflectionDiagnostics().requested
+  ui.reflection.enabled = reflection.enabled === true
+  ui.reflection.strength = reflection.strength
   ui.governor = pipeline.getPerformanceDiagnostics().enabled === true
   ui.environment.on = options.environment === true
   ui.environment.high = options.environmentQuality === 'high'
@@ -179,18 +222,17 @@ action(shadowFolder, '阴影深度图', () => pipeline.setOptions({ shadowMode: 
 shadowFolder.close()
 
 // 相机按钮在瓦片到位前点不动，注册时先留一个提示分支，避免面板在加载完成后跳动。
+// 用 setView 而非 lookAt：lookAt 会设置 lookAtTransform 让相机进入「绕目标点旋转」模式，
+// 导致左键永远绕点转、无法平移。这里用经纬度+高度直接定位相机（悬空俯瞰），保持左键平移。
 const look = (pitch, range) => {
-  const target = tiles.find(tile => tile.name === 'SM_NH_Building')
-  if (!target) { dump('模型尚未加载完成，相机按钮暂不可用。'); return }
-  viewer.camera.lookAt(target.boundingSphere.center, new Cesium.HeadingPitchRange(0, pitch, range))
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(
+      glbManifest.origin.longitude, glbManifest.origin.latitude, range),
+    orientation: { heading: 0, pitch, roll: 0 }
+  })
 }
 // 也挂到 window.campus 上：scripts/ 里的浏览器核查脚本直接调用它，不必去点 GUI 按钮。
-window.campus.look = look
-const cameraFolder = gui.addFolder('相机')
-action(cameraFolder, '全景', () => look(-0.65, 1800))
-action(cameraFolder, '建筑近景', () => look(-0.45, 750))
-action(cameraFolder, '天空视角', () => look(-0.08, 1600))
-cameraFolder.close()
+
 
 const environmentFolder = gui.addFolder('环境与时间')
 for (const [label, preset] of [['晴天', 'clear'], ['晨雾', 'morning'], ['层云', 'overcast'], ['夕照', 'sunset'], ['霾', 'haze']]) {
@@ -281,21 +323,14 @@ aoFolder.add(ui.ao, 'radius', 0.1, 20, 0.1).name('半径（米）').listen()
 aoFolder.add(ui.ao, 'strength', 0, 2, 0.1).name('强度').listen()
   .onChange(value => pipeline.setScreenSpaceAO({ strength: Number(value) })).onFinishChange(() => syncUI())
 
-const ssrFolder = gui.addFolder('屏幕反射')
-ssrFolder.add(ui.ssr, 'enabled').name('开启反射').listen().onChange(value => {
-  pipeline.setScreenSpaceReflections({ enabled: value })
+const reflectionFolder = gui.addFolder('Cube 环境反射')
+reflectionFolder.add(ui.reflection, 'enabled').name('开启环境反射').listen().onChange(value => {
+  pipeline.setEnvironmentReflections({ enabled: value })
   syncUI()
-  dump(pipeline.getScreenSpaceReflectionDiagnostics())
+  dump(pipeline.getEnvironmentReflectionDiagnostics())
 })
-ssrFolder.add(ui.ssr, 'transparent').name('透明反射（需开启反射）').listen().onChange(value => {
-  pipeline.setScreenSpaceReflections({ transparent: value })
-  syncUI()
-  dump(pipeline.getTransparentReflectionDiagnostics())
-})
-ssrFolder.add(ui.ssr, 'distance', 1, 2000, 1).name('距离（米）').listen()
-  .onChange(value => pipeline.setScreenSpaceReflections({ distance: Number(value) })).onFinishChange(() => syncUI())
-ssrFolder.add(ui.ssr, 'strength', 0, 1, 0.1).name('强度').listen()
-  .onChange(value => pipeline.setScreenSpaceReflections({ strength: Number(value) })).onFinishChange(() => syncUI())
+reflectionFolder.add(ui.reflection, 'strength', 0, 1, 0.05).name('镜面强度').listen()
+  .onChange(value => pipeline.setEnvironmentReflections({ strength: Number(value) })).onFinishChange(() => syncUI())
 
 const performanceFolder = gui.addFolder('性能')
 performanceFolder.add(ui, 'governor').name('调速器（目标 30fps）').listen().onChange(value => {
@@ -316,11 +351,10 @@ const syncTreeUI = () => {
 async function loadTrees() {
   if (trees) return trees.readyPromise
   ui.trees.state = 'loading'
-  const oldTrees = tiles.find(tile => tile.name === 'SM_NH_Shu')
   trees = createFixedTreeCollection({
     Cesium, viewer, manifestUrl: treeManifestUrl || '/assets/vegetation/manifest.json',
-    source: query.get('treeSource') === 'glb' ? 'glb' : 'procedural',
-    clampToGround: true, heightOffset: 0.1, objectsToExclude: oldTrees ? [oldTrees] : []
+    source: treeSource,
+    clampToGround: false, heightOffset: 1.5
   })
   window.campus.trees = trees
   try {
@@ -347,47 +381,149 @@ treeFolder.add(ui.trees, 'lods').name('几何细节').listen().disable()
 action(treeFolder, '读取诊断', () => dump(trees ? trees.getDiagnostics() : '固定树木尚未加载'))
 treeFolder.close()
 
-const syncGrassUI = () => {
-  if (!grass) return
-  const diagnostics = grass.getDiagnostics()
-  ui.grass.visible = diagnostics.visible
-  ui.grass.state = diagnostics.state
-  ui.grass.polygons = diagnostics.polygons
-  ui.grass.area = diagnostics.areaHectares
-  ui.grass.instances = diagnostics.instances
-  ui.grass.draws = diagnostics.submittedDraws
+// const syncGrassUI = () => {
+//   if (!grass) return
+//   const diagnostics = grass.getDiagnostics()
+//   ui.grass.visible = diagnostics.visible
+//   ui.grass.state = diagnostics.state
+//   ui.grass.polygons = diagnostics.polygons
+//   ui.grass.area = diagnostics.areaHectares
+//   ui.grass.instances = diagnostics.instances
+//   ui.grass.draws = diagnostics.submittedDraws
+// }
+// async function loadGrass() {
+//   if (grass) return grass.readyPromise
+//   ui.grass.state = 'loading'
+//   grass = createGrassCollection({
+//     Cesium, viewer, polygonsUrl: grassPolygonsUrl,
+//     profile: lightweightVegetation ? 'lightweight' : 'legacy',
+//     height: lightweightVegetation ? 1.85 : 1.5, scale: lightweightVegetation ? 0.5 : 0.75,
+//     objectsToExclude: [...models, ...contextTiles, trees?.primitive].filter(Boolean)
+//   })
+//   window.campus.grass = grass
+//   try {
+//     await grass.readyPromise
+//     syncGrassUI()
+//     return grass
+//   } catch (error) {
+//     grass.destroy(); grass = null; window.campus.grass = null
+//     ui.grass.state = 'error'
+//     throw error
+//   }
+// }
+// window.campus.loadGrass = loadGrass
+// const grassFolder = gui.addFolder('面内程序化草地')
+// grassFolder.add(ui.grass, 'visible').name('显示').listen().onChange(value => { grass?.setVisible(value); syncGrassUI() })
+// action(grassFolder, '加载草地', () => {
+//   window.campus.grassReady = loadGrass().then(() => dump(grass.getDiagnostics())).catch(error => dump(`草地加载失败：${error.message}`))
+// })
+// grassFolder.add(ui.grass, 'state').name('状态').listen().disable()
+// grassFolder.add(ui.grass, 'polygons').name('面数').listen().disable()
+// grassFolder.add(ui.grass, 'area').name('面积(公顷)').listen().disable()
+// grassFolder.add(ui.grass, 'instances').name('实例').listen().disable()
+// grassFolder.add(ui.grass, 'draws').name('提交批次').listen().disable()
+// action(grassFolder, '读取诊断', () => dump(grass ? grass.getDiagnostics() : '草地尚未加载'))
+// grassFolder.close()
+
+const syncWaterUI = () => {
+  if (!water) return
+  const diagnostics = water.getDiagnostics()
+  ui.water.visible = diagnostics.visible
+  ui.water.state = diagnostics.state
+  ui.water.features = diagnostics.features
+  ui.water.heights = diagnostics.minimumHeight === null ? ''
+    : `${diagnostics.minimumHeight.toFixed(2)} / ${diagnostics.maximumHeight.toFixed(2)}`
 }
-async function loadGrass() {
-  if (grass) return grass.readyPromise
-  ui.grass.state = 'loading'
-  grass = createGrassCollection({
-    Cesium, viewer, polygonsUrl: grassPolygonsUrl,
-    height: 3, scale: 0.5
+async function loadWater() {
+  if (water) return water.readyPromise
+  ui.water.state = 'loading'
+  water = createWaterSurfaceCollection({
+    Cesium, viewer, dataUrl: waterPolygonsUrl
   })
-  window.campus.grass = grass
+  window.campus.water = water
   try {
-    await grass.readyPromise
-    syncGrassUI()
-    return grass
+    await water.readyPromise
+    syncWaterUI()
+    return water
   } catch (error) {
-    grass.destroy(); grass = null; window.campus.grass = null
-    ui.grass.state = 'error'
+    water.destroy(); water = null; window.campus.water = null
+    ui.water.state = 'error'
     throw error
   }
 }
-window.campus.loadGrass = loadGrass
-const grassFolder = gui.addFolder('面内程序化草地')
-grassFolder.add(ui.grass, 'visible').name('显示').listen().onChange(value => { grass?.setVisible(value); syncGrassUI() })
-action(grassFolder, '加载草地', () => {
-  window.campus.grassReady = loadGrass().then(() => dump(grass.getDiagnostics())).catch(error => dump(`草地加载失败：${error.message}`))
+window.campus.loadWater = loadWater
+const waterFolder = gui.addFolder('动态水面')
+waterFolder.add(ui.water, 'visible').name('显示').listen().onChange(value => { water?.setVisible(value); syncWaterUI() })
+action(waterFolder, '加载水面', () => {
+  window.campus.waterReady = loadWater().then(() => dump(water.getDiagnostics())).catch(error => dump(`水面加载失败：${error.message}`))
 })
-grassFolder.add(ui.grass, 'state').name('状态').listen().disable()
-grassFolder.add(ui.grass, 'polygons').name('面数').listen().disable()
-grassFolder.add(ui.grass, 'area').name('面积(公顷)').listen().disable()
-grassFolder.add(ui.grass, 'instances').name('实例').listen().disable()
-grassFolder.add(ui.grass, 'draws').name('提交批次').listen().disable()
-action(grassFolder, '读取诊断', () => dump(grass ? grass.getDiagnostics() : '草地尚未加载'))
-grassFolder.close()
+waterFolder.add(ui.water, 'state').name('状态').listen().disable()
+waterFolder.add(ui.water, 'features').name('水面数').listen().disable()
+waterFolder.add(ui.water, 'heights').name('高程范围').listen().disable()
+action(waterFolder, '读取诊断', () => dump(water ? water.getDiagnostics() : '水面尚未加载'))
+waterFolder.close()
+
+const trafficUI = { visible: true, playing: true, speed: 1, state: '未配置路线', vehicles: 0 }
+const syncTrafficUI = () => {
+  if (!traffic) return
+  const diagnostics = traffic.getDiagnostics()
+  Object.assign(trafficUI, { visible: diagnostics.visible, playing: diagnostics.playing,
+    speed: diagnostics.speedMultiplier, state: diagnostics.state, vehicles: diagnostics.vehicles })
+}
+async function loadTraffic(manifestUrl = trafficManifestUrl) {
+  if (traffic) return traffic.readyPromise
+  if (trafficLoading) return trafficLoading
+  if (!manifestUrl) throw new Error('请先提供车流路线与车型清单地址。')
+  if (!campusAssetsLoaded) throw new Error('请等待校园地面与建筑加载完成。')
+  trafficLoading = (async () => {
+    trafficUI.state = '采样道路高程'
+    const url = new URL(manifestUrl, document.baseURI).href
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`车流清单加载失败：HTTP ${response.status}`)
+    const data = await response.json()
+    await contextTilesReady
+    const excluded = [...models, ...contextTiles, trees?.primitive, grass?.primitive, water?.primitive].filter(Boolean)
+    const prepared = await prepareCampusTraffic(Cesium, viewer.scene, data, url, excluded,
+      { isCancelled: () => viewer.isDestroyed() })
+    window.campus.trafficPlacement = prepared.placement
+    traffic = createTrafficSystem({ Cesium, viewer, pipeline, routes: prepared.routes,
+      network: prepared.network, vehicles: prepared.vehicles, show: trafficUI.visible, playing: trafficUI.playing })
+    window.campus.traffic = traffic
+    await traffic.readyPromise
+    traffic.setSpeed(trafficUI.speed)
+    syncTrafficUI()
+    return traffic
+  })()
+  try { return await trafficLoading }
+  catch (error) {
+    traffic?.destroy(); traffic = null; window.campus.traffic = null
+    trafficUI.state = 'error'; throw error
+  } finally { trafficLoading = null }
+}
+window.campus.loadTraffic = loadTraffic
+window.campus.traffic = null
+window.campus.trafficReady = null
+if (trafficManifestUrl) {
+  const trafficFolder = gui.addFolder('道路车流')
+  trafficFolder.add(trafficUI, 'visible').name('显示车辆').listen().onChange(value => { traffic?.setVisible(value); syncTrafficUI() })
+  trafficFolder.add(trafficUI, 'playing').name('播放').listen().onChange(value => { if (value) traffic?.play(); else traffic?.pause(); syncTrafficUI() })
+  trafficFolder.add(trafficUI, 'speed', 0, 3, .25).name('速度倍率').listen().onChange(value => traffic?.setSpeed(value))
+  trafficFolder.add(trafficUI, 'state').name('状态').listen().disable()
+  trafficFolder.add(trafficUI, 'vehicles').name('车辆数').listen().disable()
+  action(trafficFolder, '读取诊断', () => dump(traffic ? traffic.getDiagnostics() : '车流尚未加载'))
+  action(trafficFolder, '道路高程', () => dump(window.campus.trafficPlacement || '尚未采样'))
+  action(trafficFolder, '车流近景', () => lookAtTraffic(125))
+  action(trafficFolder, '车流全景', () => lookAtTraffic(1700, true))
+}
+function lookAtTraffic(range = 125, overview = false) {
+  const car = traffic?.vehicles.find(vehicle => vehicle.state === 'driving' && vehicle.model?.ready)
+  if (!car) return
+  const target = overview ? cameraCenter : car.position
+  viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(-.3, overview ? -.75 : -1.05, range))
+  viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  viewer.scene.requestRender()
+}
+window.campus.lookAtTraffic = lookAtTraffic
 
 const diagnosticsFolder = gui.addFolder('诊断与采样')
 action(diagnosticsFolder, '采样 60 秒', () => measure())
@@ -396,13 +532,15 @@ action(diagnosticsFolder, '几何通道状态', () => dump(pipeline.getGeometryD
 action(diagnosticsFolder, '材质通道状态', () => dump(pipeline.getMaterialDiagnostics()))
 action(diagnosticsFolder, '深度金字塔状态', () => dump(pipeline.getDepthPyramidDiagnostics()))
 action(diagnosticsFolder, 'AO 状态', () => dump(pipeline.getScreenSpaceAODiagnostics()))
-action(diagnosticsFolder, '屏幕反射状态', () => dump(pipeline.getScreenSpaceReflectionDiagnostics()))
-action(diagnosticsFolder, '透明反射状态', () => dump(pipeline.getTransparentReflectionDiagnostics()))
+action(diagnosticsFolder, '环境反射状态', () => dump(pipeline.getEnvironmentReflectionDiagnostics()))
 action(diagnosticsFolder, 'TAA 状态', () => dump(pipeline.getTaaDiagnostics()))
 action(diagnosticsFolder, '调速器状态', () => dump(pipeline.getPerformanceDiagnostics()))
 action(diagnosticsFolder, '环境状态', () => dump(pipeline.environmentRenderer ? pipeline.environmentRenderer.getDiagnostics() : '环境未启用'))
 diagnosticsFolder.close()
-// 面板默认展开「管线 / 环境 / 抗锯齿 / AO / 屏幕反射」五组，其余折叠；
+if (query.get('vegetationCheck') === '1') {
+  import('./vegetation-check.js').then(({ installVegetationCheck }) => installVegetationCheck(window.campus, gui, dump))
+}
+// 面板默认展开「管线 / 环境 / 抗锯齿 / AO / Cube 环境反射」五组，其余折叠；
 // 根容器的位置、圆角与配色在 examples/campus.html 的 .lil-gui.lil-root 里覆盖。
 
 // ---------------------------------------------------------------------------
@@ -445,11 +583,15 @@ viewer.scene.postRender.addEventListener(() => {
 
 try {
   if (previewWhiteModelUrl) {
-    Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 32 })
-      .then(whiteModel => { viewer.scene.primitives.add(whiteModel); contextTiles.push(whiteModel) })
+    contextTilesReady = Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 32 })
+      .then(whiteModel => {
+        if (viewer.isDestroyed()) { whiteModel.destroy(); return }
+        viewer.scene.primitives.add(whiteModel); contextTiles.push(whiteModel)
+      })
       .catch(error => { errors.push(`周边白模加载失败：${error.message}`); status.textContent = errors.at(-1) })
   }
-  for (const asset of BUSINESS_TILESETS) {
+  look(-0.65, 1800)
+  for (const asset of activeTilesets) {
     const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${asset.url}`, {
       maximumScreenSpaceError: 32, shadows: Cesium.ShadowMode.ENABLED
     })
@@ -463,10 +605,28 @@ try {
     viewer.scene.primitives.add(tile)
     tiles.push(tile)
   }
-  const campusBuildings = tiles.find(tile => tile.name === 'SM_NH_Building')
-  pipeline.setCampusOrigin(campusBuildings.boundingSphere.center)
+  pipeline.setCampusOrigin(cameraCenter)
+  if (modelMode === 'glb') {
+    // Fail once, with an actionable message, instead of once per missing GLB.
+    const resolvedGlbBase = await assertCampusGlbBase(
+      glbBaseCandidates.map(candidate => `${candidate.replace(/\/$/, '')}/${glbManifest.models[0].file}`))
+    glbBase = resolvedGlbBase.replace(/\/[^/]*$/, '')
+    window.campus.glbBase = glbBase
+    sharedGlbTextures = await loadCampusGlbs(Cesium, viewer, glbManifest, glbBase, models, (done, total) => {
+      status.textContent = `建筑 GLB 加载中 ${done}/${total}`
+    }, sharedGlbTextures)
+    window.campus.sharedGlbTextures = sharedGlbTextures
+    console.log(glbManifest);
+    const reflectionFiles = new Set(glbManifest.models.filter(asset => asset.environmentReflection).map(asset => asset.file))
+    console.log(reflectionFiles);
+    for (const model of models) {
+      if (reflectionFiles.has(model.id?.file)) pipeline.setEnvironmentReflectionIncluded(model, true)
+    }
+  }
   look(-0.65, 1800)
-  status.textContent = `已加载业务南湖模型 ${tiles.length}/${BUSINESS_TILESETS.length}；原生/增强使用同一时间、相机与资产。`
+  status.textContent = modelMode === 'glb'
+    ? `已加载建筑 GLB ${models.length}/${glbManifest.models.length}，地形 ${tiles.length} 组；原生/增强使用同一时间、相机与资产。`
+    : `已加载原始 3D Tiles ${tiles.length}/${BUSINESS_TILESETS.length}；可与默认 GLB 模式对照。`
   if (treeEnabled) {
     window.campus.treeReady = loadTrees()
     try {
@@ -477,14 +637,38 @@ try {
       status.textContent = errors.at(-1)
     }
   }
-  if (grassEnabled) {
-    window.campus.grassReady = loadGrass()
+  // if (grassEnabled) {
+  //   window.campus.grassReady = loadGrass()
+  //   try {
+  //     await window.campus.grassReady
+  //     const diagnostics = grass.getDiagnostics()
+  //     status.textContent += ` 已生成面内草地 ${diagnostics.instances} 簇 / ${diagnostics.polygons} 个面（${diagnostics.areaHectares} 公顷）。`
+  //   } catch (error) {
+  //     errors.push(`草地加载失败：${error.message}`)
+  //     status.textContent = errors.at(-1)
+  //   }
+  // }
+  if (waterEnabled) {
+    window.campus.waterReady = loadWater()
     try {
-      await window.campus.grassReady
-      const diagnostics = grass.getDiagnostics()
-      status.textContent += ` 已生成面内草地 ${diagnostics.instances} 簇 / ${diagnostics.polygons} 个面（${diagnostics.areaHectares} 公顷）。`
+      await window.campus.waterReady
+      const diagnostics = water.getDiagnostics()
+      status.textContent += ` 已加载动态水面 ${diagnostics.features} 处。`
     } catch (error) {
-      errors.push(`草地加载失败：${error.message}`)
+      errors.push(`水面加载失败：${error.message}`)
+      status.textContent = errors.at(-1)
+    }
+  }
+  campusAssetsLoaded = true
+  if (trafficManifestUrl) {
+    status.textContent += ' 正在准备道路车流…'
+    window.campus.trafficReady = loadTraffic()
+    try {
+      await window.campus.trafficReady
+      status.textContent += ` 已加载车流 ${traffic.getDiagnostics().vehicles} 辆。`
+      lookAtTraffic(350)
+    } catch (error) {
+      errors.push(`车流加载失败：${error.message}`)
       status.textContent = errors.at(-1)
     }
   }
@@ -496,7 +680,7 @@ async function measure() {
     status.textContent = '请将测试窗口置于前台后再开始采样，后台节流数据不能用于性能验收。'
     return
   }
-  if (tiles.length !== BUSINESS_TILESETS.length || !tiles.every(tile => tile.tilesLoaded)) {
+  if (!assetsReady()) {
     status.textContent = '请等当前视角瓦片加载完成后再采样。'
     return
   }
@@ -523,7 +707,6 @@ async function measure() {
   let pyramidValid = true
   let aoValid = true
   let reflectionValid = true
-  let transparentReflectionValid = true
   let environmentValid = true
   let aaValid = true
   let taaValid = true
@@ -550,12 +733,11 @@ async function measure() {
       if (startedEnabled && startedOptions.materialChannelsEnabled && !pipeline.getMaterialDiagnostics().valid) materialValid = false
       if (startedEnabled && startedOptions.depthPyramidEnabled && !pipeline.getDepthPyramidDiagnostics().valid) pyramidValid = false
       if (startedEnabled && startedOptions.screenSpaceAoEnabled && !pipeline.getScreenSpaceAODiagnostics().valid) aoValid = false
-      if (startedEnabled && startedOptions.screenSpaceReflectionEnabled && !pipeline.getScreenSpaceReflectionDiagnostics().valid) reflectionValid = false
-      if (startedEnabled && startedOptions.screenSpaceReflectionEnabled && startedOptions.screenSpaceReflectionTransparent && !pipeline.getTransparentReflectionDiagnostics().valid) transparentReflectionValid = false
+      if (startedEnabled && startedOptions.environmentReflectionEnabled && !pipeline.getEnvironmentReflectionDiagnostics().valid) reflectionValid = false
       if (startedEnabled && startedOptions.environment && (!pipeline.environmentRenderer || !pipeline.environmentRenderer.getDiagnostics().hdr.valid)) environmentValid = false
       if (startedEnabled && startedOptions.antialiasing === 'smaa' && (!pipeline.smaa || pipeline.smaa.getDiagnostics().effective !== 'smaa')) aaValid = false
       if (startedEnabled && startedOptions.antialiasing === 'taa' && (!pipeline.taa || !pipeline.getTaaDiagnostics().valid)) taaValid = false
-      if (!tiles.every(tile => tile.tilesLoaded)) tilesLoadedThroughoutSample = false
+      if (!assetsReady()) tilesLoadedThroughoutSample = false
       if (previous !== undefined) samples.push(now - previous)
       previous = now
       if (start === undefined) start = now
@@ -575,7 +757,7 @@ async function measure() {
   const shadowError = startedOptions.shadowMode === 'custom' && pipeline.customShadow && pipeline.customShadow.stats.error
   const result = { version: Cesium.VERSION, enabled: pipeline.enabled,
     validationScope: 'page-state-only; OS foreground must be verified separately',
-    valid: interruptions.length === 0 && unchanged && bufferUnchanged && geometryValid && materialValid && pyramidValid && aoValid && reflectionValid && transparentReflectionValid && environmentValid && aaValid && taaValid && tilesLoadedThroughoutSample && !shadowError && errors.length === 0 && samples.length > 90,
+    valid: interruptions.length === 0 && unchanged && bufferUnchanged && geometryValid && materialValid && pyramidValid && aoValid && reflectionValid && environmentValid && aaValid && taaValid && tilesLoadedThroughoutSample && !shadowError && errors.length === 0 && samples.length > 90,
     interruptions, configurationUnchanged: unchanged, changedFields: guard.changedFields, bufferUnchanged,
     startedAt, endedAt: Date.now(), rawFrameIntervals,
     options: startedOptions,
@@ -585,8 +767,7 @@ async function measure() {
     materials: { ...pipeline.getMaterialDiagnostics(), validThroughoutSample: materialValid },
     depthPyramid: { ...pipeline.getDepthPyramidDiagnostics(), validThroughoutSample: pyramidValid },
     screenSpaceAO: { ...pipeline.getScreenSpaceAODiagnostics(), validThroughoutSample: aoValid },
-    screenSpaceReflections: { ...pipeline.getScreenSpaceReflectionDiagnostics(), validThroughoutSample: reflectionValid },
-    transparentReflections: { ...pipeline.getTransparentReflectionDiagnostics(), validThroughoutSample: transparentReflectionValid },
+    environmentReflections: { ...pipeline.getEnvironmentReflectionDiagnostics(), validThroughoutSample: reflectionValid },
     singleFrustumSample, tilesLoadedThroughoutSample,
     time: startedTime, environment: pipeline.environmentRenderer ? pipeline.environmentRenderer.getDiagnostics() : null, environmentValidThroughoutSample: environmentValid,
     drawingBuffer: [viewer.canvas.width, viewer.canvas.height], frames: samples.length,
@@ -596,12 +777,10 @@ async function measure() {
       updates: pipeline.customShadow.stats.updates - startingUpdates,
       cacheHits: pipeline.customShadow.stats.cacheHits - startingHits } : null,
     p50: samples[Math.floor(samples.length * 0.5)], p95: samples[Math.floor(samples.length * 0.95)],
-    max: samples[samples.length - 1], tilesLoaded: tiles.every(tile => tile.tilesLoaded), errors: [...errors] }
+    max: samples[samples.length - 1], tilesLoaded: assetsReady(), modelMode, modelCount: models.length, errors: [...errors] }
   window.campus.lastMeasurement = result
   window.campus.measuring = false
   viewer.scene.screenSpaceCameraController.enableInputs = cameraInputs
   setControlsEnabled(true)
   status.textContent = JSON.stringify(result, null, 2)
 }
-
-window.addEventListener('pagehide', () => { grass?.destroy(); trees?.destroy(); pipeline.destroy(); viewer.destroy() }, { once: true })

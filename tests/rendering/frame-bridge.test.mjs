@@ -124,6 +124,23 @@ test('phases are dispatched with frame, view and generation attached, in order',
   assert.deepEqual(seen[0].drawingBuffer, { width: 100, height: 50 })
 })
 
+test('attached Render Graph begins with the main color command frame', () => {
+  const Cesium = fakeCesium()
+  const { scene } = fakeScene()
+  const bridge = createFrameBridge({ Cesium, scene })
+  const events = []
+  const graph = { beginFrame(context) { events.push(context.phase) } }
+  const detach = bridge.attachGraph(graph)
+  bridge.install()
+  scene.updateAndExecuteCommands()
+  scene._view.oit.executeCommands()
+  scene.resolveFramebuffers()
+  assert.deepEqual(events, ['opaqueFrame'])
+  detach()
+  bridge.destroy()
+})
+
+
 test('without OIT the bridge reports the phases it can and says which it cannot', () => {
   const Cesium = fakeCesium()
   const { scene } = fakeScene({ withOit: false })

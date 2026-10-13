@@ -20,27 +20,29 @@ float campus_shadowVisibility(vec3 position, vec3 normal) {
     if (any(lessThan(uv, vec3(0.0))) || any(greaterThan(uv, vec3(1.0)))) return 1.0;
     float slope = 1.0 - abs(dot(n, normalize(CCR_LIGHT_DIRECTION_EC)));
     float bias = (0.03 + texelWorld * 0.2 * slope) / campus_shadowParams.z;
-    // Bilinearly interpolate comparison results, not stored depths. A [1,2,1]
-    // tent convolved with the subtexel weights needs only 4x4 unique texels.
+    // Compare a compact 2x2 footprint. The previous 4x4 tent filter spread
+    // every transition over multiple texels and made campus shadows visibly
+    // soft even with a 4096px map. Bilinear weights still remove a single-
+    // texel step without turning the edge into a wide penumbra.
     vec2 grid = uv.xy / campus_shadowParams.x - 0.5;
     vec2 fraction = fract(grid);
     vec2 base = floor(grid);
-    vec4 weightsX = vec4(1.0 - fraction.x, 2.0 - fraction.x, 1.0 + fraction.x, fraction.x);
-    vec4 weightsY = vec4(1.0 - fraction.y, 2.0 - fraction.y, 1.0 + fraction.y, fraction.y);
     float visibility = 0.0;
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 4; x++) {
+    for (int y = 0; y < 2; y++) {
+        for (int x = 0; x < 2; x++) {
             // NEAREST stores depth at the texel center, not the requested UV.
-            vec2 sampleUV = (base + vec2(float(x), float(y)) - 0.5) * campus_shadowParams.x;
+            vec2 sampleUV = (base + vec2(float(x), float(y)) + 0.5) * campus_shadowParams.x;
             sampleUV = clamp(sampleUV, vec2(0.5 * campus_shadowParams.x), vec2(1.0 - 0.5 * campus_shadowParams.x));
             float stored = texture(campus_shadowDepth, sampleUV).r;
             float receiverDepth = uv.z + dot(depthGradient, sampleUV - uv.xy);
-            visibility += weightsX[x] * weightsY[y] * step(receiverDepth - bias, stored);
+            float weightX = x == 0 ? 1.0 - fraction.x : fraction.x;
+            float weightY = y == 0 ? 1.0 - fraction.y : fraction.y;
+            visibility += weightX * weightY * step(receiverDepth - bias, stored);
         }
     }
-    // Fade the last two texels instead of leaving a hard coverage boundary.
+    // Fade only the final texel at the edge of the map.
     float edge = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
-    return mix(1.0, visibility / 16.0, smoothstep(0.0, 2.0 * campus_shadowParams.x, edge));
+    return mix(1.0, visibility, smoothstep(0.0, campus_shadowParams.x, edge));
 }
 `
 
@@ -90,20 +92,20 @@ float campus_shadowSampleAt(sampler2D campus_shadowDepth, mat4 campus_eyeToShado
     vec2 grid = uv.xy / campus_shadowParams.x - 0.5;
     vec2 fraction = fract(grid);
     vec2 base = floor(grid);
-    vec4 weightsX = vec4(1.0 - fraction.x, 2.0 - fraction.x, 1.0 + fraction.x, fraction.x);
-    vec4 weightsY = vec4(1.0 - fraction.y, 2.0 - fraction.y, 1.0 + fraction.y, fraction.y);
     float visibility = 0.0;
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 4; x++) {
-            vec2 sampleUV = (base + vec2(float(x), float(y)) - 0.5) * campus_shadowParams.x;
+    for (int y = 0; y < 2; y++) {
+        for (int x = 0; x < 2; x++) {
+            vec2 sampleUV = (base + vec2(float(x), float(y)) + 0.5) * campus_shadowParams.x;
             sampleUV = clamp(sampleUV, vec2(0.5 * campus_shadowParams.x), vec2(1.0 - 0.5 * campus_shadowParams.x));
             float stored = texture(campus_shadowDepth, sampleUV).r;
             float receiverDepth = uv.z + dot(depthGradient, sampleUV - uv.xy);
-            visibility += weightsX[x] * weightsY[y] * step(receiverDepth - bias, stored);
+            float weightX = x == 0 ? 1.0 - fraction.x : fraction.x;
+            float weightY = y == 0 ? 1.0 - fraction.y : fraction.y;
+            visibility += weightX * weightY * step(receiverDepth - bias, stored);
         }
     }
     float edge = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
-    return mix(1.0, visibility / 16.0, smoothstep(0.0, 2.0 * campus_shadowParams.x, edge));
+    return mix(1.0, visibility, smoothstep(0.0, campus_shadowParams.x, edge));
 }
 
 float campus_shadowVisibility(vec3 position,vec3 normal) {

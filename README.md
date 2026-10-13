@@ -4,6 +4,8 @@
 
 校园场景入口：`/examples/campus.html`。2026-09-15新增FXAA/SMAA空间质量档、有效MSAA模式及校园画质/开销对比，见 [校园抗锯齿配置](docs/CAMPUS_ANTIALIASING.md)。TAA实现保持不变。
 
+独立车流模块提供 `CCR.createTrafficSystem`：车辆沿闭合路线跟车循环，或按有向路网分支行驶、路口让行，到死胡同销毁并在其他入口安全再生。独立计时，支持播放、暂停、显隐与速度倍率。`/examples/traffic.html` 默认使用用户提供的学校GeoJSON路网，所有道路统一双车道，不使用源WIDTH；原合成岔路为 `?mode=sample`，旧循环为 `?mode=loop`。校园页面通过 `?traffic=<清单URL>` 接入业务路网与车型。接口与验证边界见 [车流系统](docs/TRAFFIC_SYSTEM.md)。
+
 ## 开发与构建
 
 需要 Node.js 22 或以上，与 Cesium 1.143.0 的依赖要求一致。
@@ -39,7 +41,9 @@ const pipeline = CCR.createVisualPipeline({ Cesium, viewer });
 pipeline.setCampusOrigin(sceneOrigin);
 pipeline.setTaa({ enabled: true });
 // 按需开启：pipeline.setScreenSpaceAO({ enabled: true });
-// 按需开启：pipeline.setScreenSpaceReflections({ enabled: true });
+// 按需开启：pipeline.setEnvironmentReflections({ enabled: true, strength: 0.6,
+//   map: '/assets/environment/your-prefiltered-ibl.ktx2' });
+// 只把确实含镜面材质的模型加入：pipeline.setEnvironmentReflectionIncluded(mirrorBuilding, true);
 // 页面销毁：pipeline.destroy(); viewer.destroy();
 </script>
 ```
@@ -52,7 +56,7 @@ Cesium 引擎始终外置。开发时由 npm 依赖提供，浏览器仍需完�
 
 ## 范围与限制
 
-包含太阳阴影、HDR 局部云雾/球壳云、多尺度 HDR Bloom、SSAO/HBAO、PBR/透明 SSR、MRT/Hi-Z、SMAA/TAA、共享相机 UBO、性能调速与诊断。主颜色仍来自原生前向渲染；真实延迟照明、5000 光源、实际遮挡反馈、全球体积雾等尚未实现。
+包含太阳阴影、HDR 局部云雾/球壳云、多尺度 HDR Bloom、SSAO/HBAO、Cube 环境反射、MRT/Hi-Z、SMAA/TAA、共享相机 UBO、性能调速与诊断。主颜色仍来自原生前向渲染；真实延迟照明、5000 光源、实际遮挡反馈、全球体积雾等尚未实现。
 
 2026-09-14 新增功能与验证见 [阶段一更新](docs/STAGE1_ENHANCEMENTS.md)。本地免 token 对比页为 `/examples/stage1.html`。原默认行为保留：AO 默认关闭，AO 算法默认 SSAO；多尺度 Bloom 默认关闭；云层默认 shell。
 

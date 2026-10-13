@@ -1,19 +1,24 @@
 // Optional lighting outputs. No geometry replay and no additional G-buffer slots.
 export default class DeferredReflectionTarget143 {
-  constructor(C,scene){this.C=C;this.scene=scene}
+  constructor(C,scene,device=null){this.C=C;this.scene=scene;this.device=device}
   update(color){
     if(this.color===color&&this.target)return this.target
     this.destroy()
-    const C=this.C,ctx=this.scene.context,t=this.target={},textures=[]
+    const C=this.C,ctx=this.scene.context,t=this.target={},textures=[],resources=[]
     this.color=color
     try{
-      const make=()=>{const texture=new C.Texture({context:ctx,width:color.width,height:color.height,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.HALF_FLOAT,
-        sampler:new C.Sampler({minificationFilter:C.TextureMinificationFilter.NEAREST,magnificationFilter:C.TextureMagnificationFilter.NEAREST})});textures.push(texture);return texture}
-      t.textures=textures;t.reflectionSpecular=make();t.reflectionResponse=make();t.opaqueColor=make()
-      t.lighting=new C.Framebuffer({context:ctx,colorTextures:[color,t.reflectionSpecular,t.reflectionResponse],destroyAttachments:false})
-      t.auxiliary=new C.Framebuffer({context:ctx,colorTextures:[t.reflectionSpecular,t.reflectionResponse],destroyAttachments:false})
-      t.snapshot=new C.Framebuffer({context:ctx,colorTextures:[t.opaqueColor],destroyAttachments:false})
-      t.color=new C.Framebuffer({context:ctx,colorTextures:[color],destroyAttachments:false})
+      const make=()=>{
+        if(this.device){const resource=this.device.createTexture({width:color.width,height:color.height,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.HALF_FLOAT,
+          sampler:new C.Sampler({minificationFilter:C.TextureMinificationFilter.NEAREST,magnificationFilter:C.TextureMagnificationFilter.NEAREST})});resources.push(resource);textures.push(resource.texture);return resource.texture}
+        const texture=new C.Texture({context:ctx,width:color.width,height:color.height,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.HALF_FLOAT,
+          sampler:new C.Sampler({minificationFilter:C.TextureMinificationFilter.NEAREST,magnificationFilter:C.TextureMagnificationFilter.NEAREST})});textures.push(texture);return texture
+      }
+      t.textures=textures;t.resources=resources;t.reflectionSpecular=make();t.reflectionResponse=make();t.opaqueColor=make()
+      const framebuffer=(colorTextures)=>this.device ? (resources.push(this.device.createFramebuffer(colorTextures)),resources.at(-1).framebuffer) : new C.Framebuffer({context:ctx,colorTextures,destroyAttachments:false})
+      t.lighting=framebuffer([color,t.reflectionSpecular,t.reflectionResponse])
+      t.auxiliary=framebuffer([t.reflectionSpecular,t.reflectionResponse])
+      t.snapshot=framebuffer([t.opaqueColor])
+      t.color=framebuffer([color])
       for(const name of ['lighting','auxiliary','snapshot','color'])if(t[name].status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Deferred reflection target incomplete')
       t.clear=new C.ClearCommand({framebuffer:t.auxiliary,color:C.Color.TRANSPARENT})
       t.options={depthTest:{enabled:false},depthMask:false,blending:{enabled:false}}
@@ -31,8 +36,11 @@ export default class DeferredReflectionTarget143 {
     if(t){
       if(t.copy&&!t.copy.shaderProgram.isDestroyed())t.copy.shaderProgram.destroy()
       if(t.options)this.C.RenderState.removeFromCache(t.options)
-      for(const key of ['lighting','auxiliary','snapshot','color'])if(t[key]&&!t[key].isDestroyed())t[key].destroy()
-      for(const texture of t.textures||[])if(!texture.isDestroyed())texture.destroy()
+      if(this.device){for(const resource of t.resources||[])resource.release()}
+      else {
+        for(const key of ['lighting','auxiliary','snapshot','color'])if(t[key]&&!t[key].isDestroyed())t[key].destroy()
+        for(const texture of t.textures||[])if(!texture.isDestroyed())texture.destroy()
+      }
     }
     this.target=null;this.color=null;this.input=null
   }

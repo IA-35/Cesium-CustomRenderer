@@ -19,6 +19,7 @@ export class FixedTreeCollection {
     this.fetchJson = options.fetchJson || fetchJson
     this.cellSize = options.cellSize ?? 80
     this.source = options.source === 'glb' ? 'glb' : 'procedural'
+    this.scale = Number.isFinite(options.scale) && options.scale > 0 ? options.scale : 1
     this.heightOffset = options.heightOffset ?? 0
     this.clampToGround = options.clampToGround !== false
     this.objectsToExclude = options.objectsToExclude || []
@@ -39,7 +40,10 @@ export class FixedTreeCollection {
     const result = validateFixedTreePoints(data, typeMap)
     const origin = C.Cartesian3.fromDegrees(result.origin.longitude, result.origin.latitude, 0)
     this._modelMatrix = C.Transforms.eastNorthUpToFixedFrame(origin)
-    if (!this.clampToGround) return result.points
+    if (!this.clampToGround) {
+      result.points.forEach(point => { point.up = this.heightOffset })
+      return result.points
+    }
     if (typeof this.scene.clampToHeightMostDetailed !== 'function') throw new Error('Scene ground clamping is not supported')
     const source = result.points.map(point => C.Cartesian3.fromDegrees(point.geographicPosition[0], point.geographicPosition[1], 0))
     let clamped
@@ -79,6 +83,7 @@ export class FixedTreeCollection {
       if (this.destroyed) throw new Error('Tree collection destroyed while loading')
       this._prototypeCount = assets.length
       const byId = new Map(assets.map(p=>[p.id,p]))
+      const typeByAsset = new Map(Object.entries(manifest.typeMap).map(([type,id])=>[id,type]))
       const presets = {}
       for (const [index, asset] of assets.entries()) {
         const preset = this._runtime.EzTreePrimitive.loadPreset('Pine Medium')
@@ -90,15 +95,43 @@ export class FixedTreeCollection {
         // Keep canopy coverage while reducing tessellation and leaf-card count.
         preset.leaves.size = 2.8
         preset.leaves.tint = [0x467a35, 0x3b702f, 0x578743][index % 3]
+        if (this.source === 'procedural') {
+          preset.branch.length[0] = 48
+          switch (typeByAsset.get(asset.id)) {
+            case '松柏':
+              preset.branch.length[1] = 10
+              preset.branch.start[1] = 0.06
+              preset.branch.children[0] = 104
+              preset.leaves.count = 26
+              preset.leaves.size = 1.15
+              break
+            case '松树':
+              preset.branch.length[1] = 29
+              preset.branch.start[1] = 0.22
+              preset.branch.children[0] = 76
+              preset.leaves.count = 34
+              preset.leaves.size = 1.7
+              break
+            case '松树01':
+              preset.branch.length[1] = 17
+              preset.branch.start[1] = 0.18
+              preset.branch.children[0] = 60
+              preset.leaves.count = 28
+              preset.leaves.size = 1.4
+              break
+          }
+        }
         presets[asset.id] = preset
       }
       const instances = this._points.map(p=>{
         const asset = byId.get(p.prototypeId)
         if (!asset) throw new Error(`Unknown tree asset: ${p.prototypeId}`)
         const variation = stableTreeVariation(p.id)
+        const baseScale = this.scale * (this.source === 'glb' ? 1 : asset.height / 50)
         return {id:p.id,kind:this.source === 'glb' ? 'externalTree' : 'tree',asset:p.prototypeId,preset:p.prototypeId,
           translation:new this.C.Cartesian3(p.east,p.north,p.up),
-          scale:variation.scale * (this.source === 'glb' ? 1 : asset.height / 50),heading:variation.heading,radius:asset.height}
+          scale:new this.C.Cartesian3(baseScale * variation.crownScale,baseScale * variation.crownScale,baseScale * variation.heightScale),
+          heading:variation.heading,radius:asset.height * this.scale}
       })
       this._runtime.configureEzTree({useWorkers:false,assetBaseUrl:new URL('./eztree/',this.manifestUrl).href})
       this.primitive = new this._runtime.EzTreePrimitive({

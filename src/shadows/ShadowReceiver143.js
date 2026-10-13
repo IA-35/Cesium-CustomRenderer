@@ -1,5 +1,7 @@
 import { receiverSource, casterSources } from './shaderAdapter143.js'
 
+const PRUNE_INTERVAL = 60
+
 export function clippingPlanesInLightSpace(C, mainCamera, lightCamera, planes) {
   const changeOfView = C.Matrix4.multiply(lightCamera.viewMatrix, mainCamera.inverseViewMatrix, new C.Matrix4())
   const transform = C.Matrix4.inverseTranspose(changeOfView, new C.Matrix4())
@@ -21,6 +23,7 @@ export default class ShadowReceiver143 {
     this.receiverUsed = new Map()
     this.castUsed = new Map()
     this.stateUsed = new Map()
+    this.lastPruneFrame = -Infinity
   }
   install() {
     const scene = this.scene
@@ -127,7 +130,10 @@ export default class ShadowReceiver143 {
     for(const [command,record]of this.commands)if(command.pass===this.C.Pass.TRANSLUCENT){this.restoreCommand(command,record);command.dirty=true;this.commands.delete(command)}
   }
   prune() {
-    const cutoff = this.scene.frameState.frameNumber - 120
+    const frame = this.scene.frameState?.frameNumber
+    if (Number.isFinite(frame) && frame - this.lastPruneFrame < PRUNE_INTERVAL) return
+    if (Number.isFinite(frame)) this.lastPruneFrame = frame
+    const cutoff = (Number.isFinite(frame) ? frame : 0) - 120
     for (const [command, record] of this.commands) {
       if (record.lastSeen < cutoff) {
         this.restoreCommand(command, record)

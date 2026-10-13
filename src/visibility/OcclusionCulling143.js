@@ -1,6 +1,7 @@
 import OccluderCache143 from './OccluderCache143.js'
 import {createFrameBridge} from '../pipeline/FrameBridge143.js'
 import {getRenderTargetPool} from '../pipeline/RenderTargetPool143.js'
+import {keepPrimitiveLast} from '../pipeline/PrimitiveOrder143.js'
 
 export function acceptOcclusionResult(state,visible,issued,current){
   if(issued!==current||visible){state.hidden=false;state.misses=0;state.confirmed=issued===current&&visible;return}
@@ -44,7 +45,7 @@ export default class OcclusionCulling143 {
     }
     ctx.draw=this.hook
     this.proxy={update:state=>{if(state.passes.render)state.commandList.unshift({pass:C.Pass.COMPUTE,execute:()=>this.prepare()})},isDestroyed:()=>false,destroy(){}}
-    s.primitives.add(this.proxy);this.offUpdate=s.preUpdate.addEventListener(()=>s.primitives.raiseToTop(this.proxy))
+    s.primitives.add(this.proxy);this.offUpdate=s.preUpdate.addEventListener(()=>keepPrimitiveLast(s.primitives,this.proxy))
     this.bridge=createFrameBridge({Cesium:C,scene:s});this.offResolve=this.bridge.on('resolve',()=>this.query());this.bridge.install()
     this.offPost=s.postRender.addEventListener(()=>{if((this.needsDepth||this.warmup>0)&&this.pollFrames<8){this.pollFrames++;this.warmup=Math.max(0,this.warmup-1);s.requestRender()}})
     this.onLost=()=>{this.reason='Context lost';this.detach()};s.canvas?.addEventListener('webglcontextlost',this.onLost)

@@ -13,7 +13,7 @@ export const defaultFilters = colorGradingPresets.clear
 export const defaults = Object.freeze({
   ...antiAliasingDefaults,
   ...environmentDefaults,
-  ...defaultFilters, shadows: true, shadowMode: 'custom', shadowDebug: false, shadowStatic: false, shadowSize: 4096, shadowCascades: 1, shadowDistance: 4000,
+  ...defaultFilters, shadows: true, shadowMode: 'custom', shadowDebug: false, shadowStatic: false, shadowSize: 4096, shadowCascades: 1, shadowDistance: 4000, shadowUpdateInterval: 2,
   msaaCombine: false,
   renderTargetPoolEnabled: true,
   occlusionCullingEnabled: false,
@@ -26,6 +26,7 @@ export const defaults = Object.freeze({
   lightingMode: 'enhanced', lightingDirect: true, lightingIndirect: true, lightingEmissive: true,
   lightingShadow: true, lightingAo: true, lightingAoStrength: 1, lightingDebugMode: 0,
   screenSpaceAoEnabled: false, screenSpaceAoAlgorithm: 'ssao', screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
+  environmentReflectionEnabled: false, environmentReflectionStrength: 1, environmentReflectionMap: null,
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
   screenSpaceReflectionTransparent: false,
   taaJitterSamples: 8, taaHistoryBlend: 0.03, taaMotionBlend: 0.5, taaVelocityThreshold: 12, taaDepthTolerance: 0.1,
@@ -43,6 +44,7 @@ const ranges = {
   contrast: [0, 3], brightness: [0, 3], exposure: [0.05, 5],
   saturation: [0, 3], hue: [-1, 1], shadowDistance: [100, 20000],
   fogDensity: [0, 0.0005], screenSpaceAoRadius: [0.1, 20], screenSpaceAoStrength: [0, 2], screenSpaceAoBias: [0.02, 0.5],
+  environmentReflectionStrength: [0, 1],
   screenSpaceReflectionDistance: [1, 2000], screenSpaceReflectionThickness: [0.01, 20], screenSpaceReflectionStrength: [0, 1],
   taaHistoryBlend: [0.02, 0.5], taaMotionBlend: [0.1, 1], taaVelocityThreshold: [1, 64], taaDepthTolerance: [0, 0.5],
   lightingAoStrength: [0, 1], lightingDebugMode: [0, 7],
@@ -63,12 +65,18 @@ export function normalizeOptions(input = {}, current = defaults) {
       result[key] = Math.max(ranges[key][0], Math.min(ranges[key][1], input[key]))
     }
   })
-  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo'].forEach(key => {
+  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'environmentReflectionEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo'].forEach(key => {
     if (typeof input[key] === 'boolean') result[key] = input[key]
   })
+  if (Object.prototype.hasOwnProperty.call(input, 'environmentReflectionMap')) {
+    result.environmentReflectionMap = typeof input.environmentReflectionMap === 'string'
+      ? input.environmentReflectionMap.trim() || null
+      : input.environmentReflectionMap === null ? null : result.environmentReflectionMap
+  }
   if (typeof input.renderTargetPoolEnabled==='boolean') result.renderTargetPoolEnabled=input.renderTargetPoolEnabled
   if (typeof input.occlusionCullingEnabled==='boolean') result.occlusionCullingEnabled=input.occlusionCullingEnabled
   if ([1024, 2048, 4096].includes(input.shadowSize)) result.shadowSize = input.shadowSize
+  if (Number.isFinite(input.shadowUpdateInterval)) result.shadowUpdateInterval = Math.max(1, Math.min(4, Math.round(input.shadowUpdateInterval)))
   if (typeof input.hdrBloomEnabled === 'boolean') result.hdrBloomEnabled = input.hdrBloomEnabled
   if (Number.isFinite(input.hdrBloomLevels)) result.hdrBloomLevels = Math.max(2, Math.min(6, Math.round(input.hdrBloomLevels)))
   if ([1, 3, 4].includes(input.shadowCascades)) result.shadowCascades = input.shadowCascades

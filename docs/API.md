@@ -76,9 +76,11 @@ const same = getVisualPipeline(viewer)                              // 按 viewe
 
 ### 1.3 固定点位实例树木
 
-`createFixedTreeCollection` 独立于 `VisualPipeline` 生命周期，使用固定版本 `cesium-ez-tree` 的 `EzTreePrimitive`。默认按三种程序化 Pine 预设显示采集点位，复用上游几何生成、20 字节量化实例属性、共享几何缓冲、空间剔除、分帧上传及缓存。常态 720 个点位由一个 primitive 管理，不再创建每块四个 Cesium Model，也不按距离稀释道路点位。
+`createFixedTreeCollection` 独立于 `VisualPipeline` 生命周期，使用固定版本 `cesium-ez-tree` 的 `EzTreePrimitive`。GLB 与程序化来源都复用上游 20 字节量化实例属性、共享几何缓冲、空间剔除、分帧上传及缓存。常态 720 个点位由一个 primitive 管理，不再创建每块四个 Cesium Model，也不按距离稀释道路点位。
 
-默认程序化树使用一套轻量几何，三种树共六组几何资源，非四级 GLB LOD。`source:'glb'` 为外部模型比较入口，通过同一上游 GLB 通道加载已准备的四级网格；该路径的材质观感和成本尚未达到默认展示要求。输入清单由 `scripts/prepare-fixed-tree-assets.cjs` 生成，运行时程序化模式只读取点位、尺寸和树皮，不请求树 GLB。
+校园示例默认使用 `source:'glb'`，通过 ez-tree 的 GLB 通道加载三种四级 LOD 树模型。`?treeSource=procedural` 可切回轻量程序化 Pine 作为性能对照。输入清单由 `scripts/prepare-fixed-tree-assets.cjs` 生成。
+
+GLB 树按未抖动相机的投影高度选择几何 LOD，默认阈值为 `[180, 80, 12]` 像素并带 15% 滞回。叶片 Alpha cutoff 随 LOD 使用 `[0.35, 0.30, 0.24, 0.18]`，补偿远景 mipmap 和简化几何的覆盖损失；颜色与阴影通道使用同一 cutoff。
 
 已适配 CCR 阴影投射/接收及 Mask 轮廓。树木使用上游前向植被着色器，不是完整 Model PBR/MRT；不能宣称它已接入延迟材质通道或成为 SSR 材质接收面。SMAA 等颜色后处理照常覆盖最终画面。
 
@@ -87,7 +89,7 @@ const trees = CCR.createFixedTreeCollection({
   Cesium,
   viewer,
   manifestUrl: '/assets/vegetation/manifest.json',
-  source: 'procedural', // 默认；不加载树 GLB
+  source: 'glb', // 校园默认；程序化对照使用 'procedural'
   clampToGround: true,
   heightOffset: 0.1,
   // 排除旧树木层，避免新树贴到旧树冠上。
@@ -103,13 +105,17 @@ trees.setVisible(true)
 trees.destroy()
 ```
 
-校园示例默认加载本地程序化树；使用 `?trees=none` 可显式关闭，`?trees=<manifest-url>` 可替换清单。
+校园示例默认加载本地 GLB 树；使用 `?treeSource=procedural` 可切换程序化对照，`?trees=none` 可关闭，`?trees=<manifest-url>` 可替换清单。
 
 诊断的 `instances` 是固定点位总数；`visibleBatches` / `submittedInstances` 表示本帧实际提交的批次与批次内实例（仍可能包含屏外株）。`bufferBytes` / `textureBytes` 只统计集合所持有资源，不能代替整场景显存。
 
 ### 1.4 GeoJSON 面内程序化草地
 
 `createGrassCollection` 读取 `prepare-grass-polygons.cjs` 生成的 WGS84 面数据，按面积调用 `cesium-ez-tree` 的程序化草簇采样和实例 primitive。默认密度为 450 簇/公顷（`0.045/㎡`），最多 10,000 簇；当前 14.0402 公顷数据生成 6,329 簇。
+
+草网格使用宿主目录中的 `grass-10.glb` 与 `grass-17.glb`，按稳定实例 ID 做 50/50 分配。两者相同的 BaseColor WebP 经哈希分桶和逐字节校验后只创建一份 GPU 纹理。源 BaseColor 的 Alpha 全不透明且背景为黑色，因此草专用 shader 使用 RGB 亮度 `0.03` 作为 cutout，并直接使用 atlas RGB，避免黑底和深色实例色相乘。法线/粗糙度贴图当前不上传。
+
+草命令强制 `castShadows=false`、`receiveShadows=false`，不进入 CCR 光照视锥的投射或接收流程；树木阴影策略不受影响。
 
 草地采用固定局部 ENU 高度 `3`，不会调用 `scene.clampToHeightMostDetailed`。面采样每 12 个多边形主动让出一次主线程；资源 ready 只依赖 GLB/纹理完成，不要求初始镜头已经提交可见命令。
 
@@ -130,7 +136,7 @@ grass.setMaximumDistance(600)
 grass.destroy() // 必须先于 viewer.destroy()
 ```
 
-宿主需在面数据相邻位置部署 `eztree/models/grass.glb`。运行 `scripts/prepare-grass-polygons.cjs` 会同时生成 `polygons.json` 并复制该运行时资源。校园示例默认加载草地；使用 `?grass=none` 可显式关闭。
+宿主需在 `polygons.json` 同目录部署 `grass-10.glb`、`grass-17.glb`。校园示例默认加载草地；使用 `?grass=none` 可显式关闭。固定 1280x800 近景中，草开启相较关闭使 GPU P50 从 9.75 ms 增到 12.82 ms，帧间隔 P95 从 18.6 ms 增到 21.7 ms；该结果是同机位 headless Chrome 对照，不是前台 FPS 承诺。
 
 | 入口 | 签名 | 说明 |
 |---|---|---|
@@ -162,7 +168,8 @@ pipeline.setColorGrading({ brightness: 1.08, contrast: 1.1, saturation: 1.05, hu
 // 按需开启的效果
 pipeline.setScreenSpaceAO({ enabled: true, algorithm: 'hbao', radius: 5, strength: 0.6 })
 pipeline.setHdrBloom({ enabled: true, strength: 0.15, threshold: 1, knee: 0.5, levels: 5 })
-pipeline.setScreenSpaceReflections({ enabled: true, distance: 1500, thickness: 1, strength: 1 })
+pipeline.setEnvironmentReflections({ enabled: true, strength: 0.6,
+  map: '/assets/environment/your-prefiltered-ibl.ktx2' })
 
 // 原生对比：一键回退，再开回来
 pipeline.setEnabled(false)
@@ -231,7 +238,7 @@ viewer.destroy()
 | `setDepthPyramid` | `{ enabled }` | `{ enabled }` |
 | `getDepthPyramidDiagnostics` | — | 见 §5.5 |
 
-> 依赖关系自动串联：`screenSpaceAoEnabled` 或 `screenSpaceReflectionEnabled` 会自动请求材质通道与深度金字塔；SSR 的透明开关会自动请求 `opaqueColor` 通道。不需要手动开 `materialChannelsEnabled`。
+> 依赖关系自动串联：`screenSpaceAoEnabled` 会自动请求材质通道与深度金字塔。Cube 环境反射直接使用 Cesium IBL，不请求 MRT、Hi-Z 或场景颜色。
 
 ### 3.5 屏幕空间效果
 
@@ -241,15 +248,16 @@ viewer.destroy()
 | `getScreenSpaceAODiagnostics` | — | 见 §5.3 |
 | `setHdrBloom` | `{ enabled, strength, threshold, knee, levels }` | 生效值 |
 | `getHdrBloomDiagnostics` | — | 见 §5.4 |
-| `setScreenSpaceReflections` | `{ enabled, distance, thickness, strength, transparent }` | 生效值 |
-| `getScreenSpaceReflectionDiagnostics` | — | 见 §5.5 |
-| `getTransparentReflectionDiagnostics` | — | 见 §5.5 |
+| `setEnvironmentReflections` | `{ enabled, strength, map }` | `{ enabled, strength, map, mode: 'cube-map', source: 'static-ktx2', sceneReflections: false }` |
+| `setEnvironmentReflectionIncluded` | `primitive, included=true` | 该模型当前是否参与反射 |
+| `getEnvironmentReflectionDiagnostics` | — | 见 §5.5 |
+| `setScreenSpaceReflections` | `{ enabled, strength }` | 兼容别名；转到 Cube 环境反射 |
 
 ### 3.6 性能调速
 
 | 方法 | 参数 | 返回 |
 |---|---|---|
-| `setPerformance` | `{ enabled, targetFps, targetFrameMs, minScale, sampleWindow, evaluateEvery, settleFrames }` | `getPerformanceDiagnostics()` |
+| `setPerformance` | `{ enabled, targetFps, targetFrameMs, minScale, allowResolutionScaling?, sampleWindow, evaluateEvery, settleFrames }` | `getPerformanceDiagnostics()` |
 | `getPerformanceDiagnostics` | — | `{ enabled, reason, targetFrameMs, targetFps, step, maxStep, label, p95, samples, ... }` |
 
 调速器**默认关闭**，便于确定性测量。改动 `targetFps`/`targetFrameMs`/`minScale`/`sampleWindow`/`evaluateEvery`/`settleFrames` 会销毁并重建实例（这些键只在创建时读取一次）。
@@ -316,11 +324,9 @@ viewer.destroy()
 | | `screenSpaceAoRadius` | `3` | `0.1 – 20` m |
 | | `screenSpaceAoStrength` | `1` | `0 – 2` |
 | | `screenSpaceAoBias` | `0.08` | `0.02 – 0.5` |
-| SSR | `screenSpaceReflectionEnabled` | `false` | 布尔 |
-| | `screenSpaceReflectionDistance` | `150` | `1 – 2000` m |
-| | `screenSpaceReflectionThickness` | `0.5` | `0.01 – 20` m |
-| | `screenSpaceReflectionStrength` | `1` | `0 – 1` |
-| | `screenSpaceReflectionTransparent` | `false` | 布尔 |
+| Cube 环境反射 | `environmentReflectionEnabled` | `false` | 布尔 |
+| | `environmentReflectionStrength` | `1` | `0 – 1` |
+| | `environmentReflectionMap` | `null` | 预过滤 CubeMap KTX2 URL |
 | TAA | `taaJitterSamples` | `8` | `4` / `8` / `16` |
 | | `taaHistoryBlend` | `0.03` | `0.02 – 0.5` |
 | | `taaMotionBlend` | `0.5` | `0.1 – 1` |
@@ -342,7 +348,7 @@ viewer.destroy()
 - **`shadowMode: 'custom'`（默认）**：CCR 自有光源相机、投影选择、深度图与接收 shader。默认单级联 4096²（共 64 MiB 深度附件）；显式 `shadowCascades: 3` 且保留默认 `shadowSize: 4096` 时为 4096² + 2048² + 2048²（96 MiB）；同时设 `shadowSize: 2048` 才是 2048² + 1024² + 1024²（24 MiB）。PBR Model、3D Tiles、Globe 和透明前向共享级联；Globe 保留自己的表面光照语义。
 - 线性/对数混合 split（lambda 0.6），按实际接收范围收紧覆盖；固定半径档位与 texel snapping 稳定，区间末端 10% 混合，阴影距离之外渐隐。每级独立选取画面外 caster，高程参与光空间深度范围。
 - `shadowMode: 'native'` 是显式原生对照选项，不是 custom 失败后的自动回退。原生多级对照可设 `shadowCascades: 4, shadowSize: 2048`；原生单级对照可设 `shadowCascades: 1, shadowSize: 4096`。
-- `shadowStatic: true` 按相机/太阳矩阵和实际命令内容签名复用。命令、shader、uniform、矩阵及资源替换会自动失效；同一纹理或实例缓冲原地改写仍须 `invalidateShadows()`。默认逐帧更新，不能用时间暂停推断资源不变。
+- `shadowStatic: true` 按光源矩阵和实际 caster 内容签名复用；同一纹理或实例缓冲原地改写须 `invalidateShadows()`。自适应更新在相机静止或移动时均最多复用一个显示帧，下一帧重新检查、提交阴影；不会因为相机静止而永久冻结动态 caster。光照、视锥、根图元、caster 命令引用、阴影尺寸或配置变化立即退出复用；每帧新建的 COMPUTE 调度命令不参与 caster 身份比较。原地矩阵/动画/缓冲变化最多延后一帧，要求当帧生效时调用 `invalidateShadows()`。
 
 ### 5.2 环境（雾 / 云 / 天空）
 
@@ -386,18 +392,25 @@ pipeline.setHdrBloom({ enabled: true, strength: 0.15, threshold: 1, knee: 0.5, l
 - 改 `levels` 需要重新启用（`setEnabled(true)` 检测到层数不符会先释放再建）。
 - 诊断键：`{ enabled, supported, failed, error, valid, reason, levels, stats{frames,bypasses}, bytes, scope, requested }`。`bytes` 是去重后的活动纹理逻辑量，不等同进程显存。
 
-### 5.5 屏幕空间反射（SSR）
+### 5.5 Cube 环境反射
 
 ```js
-pipeline.setScreenSpaceReflections({ enabled: true, distance: 1500, thickness: 1, strength: 1 })
-pipeline.setScreenSpaceReflections({ transparent: true })  // 追加透明 PBR 逐层反射
+pipeline.setEnvironmentReflections({
+  enabled: true,
+  strength: 0.6,
+  map: '/assets/environment/your-prefiltered-ibl.ktx2'
+})
+pipeline.getEnvironmentReflectionDiagnostics()
+
+// 模型默认不参与；只把确实含镜面材质的对象加入，传 false 可移除。
+pipeline.setEnvironmentReflectionIncluded(mirrorBuilding, true)
 ```
 
-- 半分辨率 trace（输出 `vec4(hitColor.rgb, confidence)`）+ 全分辨率 resolve。命中后按 `confidence` 替换原生镜面项：`max(original.rgb + confidence * (radiance * response.rgb - nativeSpecular), 0)`；**未命中保留原生 CubeMap 环境反射**。
-- 置信度渐隐规则：屏幕边缘、掠射角、过短投影射线、追踪预算末段、高粗糙度各有一条 smoothstep 衰减；`resolve` 取中心射线与邻域的最小值，**中心射线置信度为 0 时不会从邻域补回**。
-- 参数语义：`distance` 最大追踪距离（`<= 0` 直接 miss）；`thickness` 深度容差，起点偏移 `start = position + normal * max(0.02, min(thickness * 0.25, 0.15))`；`strength`（`<= 0` 整段旁路）；`roughness >= 0.85` 保留原生 cubemap 不追踪。
-- 内部会按需扩充材质 MRT：反射分量（`reflectionSpecular`/`reflectionResponse`）与不透明颜色（透明 SSR 时）；共用相机 UBO（160 B）与每消费者 16 B 的反射参数 UBO —— 当前 SSR + 透明 SSR 合计 **192 B**。
-- 透明反射：按 `scene._environmentState.useOIT` 分 `'oit'` / `'sorted'` 两路，重放 `Pass.TRANSLUCENT` 命令到自有 RGBA32F delta 目标再 resolve。遇复杂模板、非标准混合、禁用深度测试等不兼容命令时**透明反射整帧旁路**。
+- `map` 写入模型/3D Tiles 的 `imageBasedLighting.specularEnvironmentMaps`，必须是包含六个面和粗糙度卷积 mip 链的 KTX2。它与 Blender 的 HDRI 镜面路径等价，不采样当前屏幕内建筑、道路或其他场景颜色。CCR 对相同 map、强度和 diffuse 因子的 GLB 模型共享一个 `ImageBasedLighting` 实例，避免每个模型并发创建相同 URL 的 KTX2 加载；关闭、变更或销毁时恢复模型原有 IBL 所有权。
+- `strength` 只调整 `imageBasedLightingFactor.y`；静态环境图优先于 `DynamicEnvironmentMapManager` 的天空/大气镜面图。关闭、挂起或销毁管线时恢复资产原值，不替换资产原有 `imageBasedLighting` 对象。
+- 不创建 SSR 后处理、透明反射、反射 MRT、场景颜色副本或反射专用 Hi-Z。诊断固定报告 `mode: 'cube-map'`、`sceneReflections: false`。
+- 校园示例随附 `/assets/environment/kiara_6_afternoon_2k_ibl.ktx2`；其他接入方应部署自己的预过滤 KTX2，并传入可访问 URL。
+- 旧 `setScreenSpaceReflections`/`getScreenSpaceReflectionDiagnostics` 保留为兼容入口，但会转到相同的 CubeMap 路径；`distance`、`thickness`、`transparent` 不再生效。
 - 诊断键：SSR 为 `{ enabled, supported, valid, reason, error, failed, stats{frames,bypasses}, bytes, uniformBuffers{camera,reflection}, scope, allocationScope, requested }`；透明反射额外有 `mode: 'oit' | 'sorted'`。
 
 **材质 / 几何 / Hi-Z 诊断**（自动开启后可用）：
@@ -413,7 +426,7 @@ pipeline.setScreenSpaceReflections({ transparent: true })  // 追加透明 PBR �
 - 材质 MRT：`RGBA8 normal/roughness/metallic + RGBA16F emissive/flags + R32F eye-depth + R8 transparency`，另有 `reflectionSpecular`/`reflectionResponse`（RGBA16F）、`opaqueColor`（RGBA16F）、`albedoOcclusion`（RGBA16F）。
 - 深度契约 v2：**`正数 = 已知视空间米数`，`0 = 背景`，`负数 = 未知不透明遮挡`**。消费方必须保留这个区分。
 - 几何通道 v1：RGBA16F，RG 为八面体视空间法线、BA 打包 `depth/1024`；全零表示无效。
-- Hi-Z：每层 RGBA32F，R/G 为区域已知正深度 min/max，B 为完整覆盖标记，A 为位掩码（`1 = 未知不透明`、`2 = 透明覆盖`、`3 = 二者`、`0 = 均无`）。1080p 共 11 层。
+- Hi-Z：每层 RGBA32F，R/G 为区域已知正深度 min/max，B 为完整覆盖标记，A 为位掩码（`1 = 未知不透明`、`2 = 透明覆盖`、`3 = 二者`、`0 = 均无`）。显式 `setDepthPyramid({ enabled: true })` 仍生成完整金字塔（1080p 为 11 层）；仅由 AO 自动请求时只生成基础归约层。内部反射消费者请求多级，不能用自动依赖的裁剪覆盖调用者显式完整请求。
 
 `MATERIAL_FLAGS`（`materialShader143.js`，RGBA16F 附件 A 通道的非归一化整数）：
 
@@ -449,7 +462,7 @@ ALBEDO_VALID 256   STANDARD_PBR_VALID 512
 pipeline.setPerformance({ enabled: true, targetFps: 30, minScale: 0.6 })
 ```
 
-- 依据 P95 帧时间（最近秩分位数）在降级阶梯上单向调整 `resolutionScale`；`shadowMode === 'custom'` 时还会下调 `shadowSize`。
+- 依据 P95 帧时间（最近秩分位数）在降级阶梯上调整质量；默认保持 `resolutionScale` 不变，只下调 `shadowMode === 'custom'` 的 `shadowSize`，避免运行中画面变模糊。只有显式传入 `allowResolutionScaling: true` 才允许降级阶梯修改 `resolutionScale`；禁用调速器会精确还原基线。
 - 阶梯：`baseline(1.00)` → `-10%(0.90)` → `-20%(0.80)` → `-30%(0.70)` → `-40% + shadow ≤ 2048(0.60)` → `-40% + shadow ≤ 1024(0.60)`。
 - 诊断键：`{ enabled, reason, targetFrameMs, targetFps, step, maxStep, label, p95, samples, sampleWindow, evaluations, changes, minScale, baseline, pendingStep }`。
 - `quantile(values, fraction)` 为独立导出的分位数工具（空数组返回 `0`）。
@@ -546,7 +559,7 @@ profiler.destroy()
 | `TransparentReflection143` | `new TransparentReflection143(C, scene, getMaterials, getOptions)` | 额外需要 `opaqueColor` 与 `getOpaqueColorDiagnostics().valid` |
 | `ScreenSpaceGeometry143` | `new ScreenSpaceGeometry143(Cesium, scene)` | 无回调；方法 `setEnabled` / `setDebugMode('off'\|'normal'\|'depth')` / `getTexture()` / `getDiagnostics()` |
 | `MaterialChannels143` | `new MaterialChannels143(C, scene)` | 子通道开关 `setEnabled` / `setDepthPyramidEnabled` / `setReflectionEnabled` / `setOpaqueColorEnabled` / `setAlbedoEnabled`；`getTextures()` / `getDepthPyramidLevels()` |
-| `DepthPyramid143` | `new DepthPyramid143(C, scene)` | `update(sourceTexture, frameNumber, transparencyTexture?)` / `getLevels()` / `invalidate()` / `release()` |
+| `DepthPyramid143` | `new DepthPyramid143(C, scene)` | `setMaxLevel(level?)` / `update(sourceTexture, frameNumber, transparencyTexture?)` / `getLevels()` / `invalidate()` / `release()` |
 | `SmaaPass143` | `new SmaaPass143(C, scene)` | 字段 `readyPromise`；`getDiagnostics().effective` 为 `'smaa' \| 'fxaa' \| 'off'` |
 | `TaaPass143` | `new TaaPass143(C, scene, getOptions)` | `resetHistory()` / `getDiagnostics()`；另导出 `taaBlendWeights(settings)` |
 | `TaaJitter143` / `FrustumJitterBridge143` | `new TaaJitter143(C, scene, { samples })` / `new FrustumJitterBridge143(C, scene, { request })` | `request()` 返回 `{ frustum, pixel, baseX, baseY, xOffset, yOffset }` 或 `null` |
@@ -664,7 +677,7 @@ pipeline.setLighting({ mode: 'enhanced' })
 
 诊断 requested 是请求模式，activeMode/valid 才是本帧结果；reason 说明回退或故障。默认 enhanced 不变。MSAA、多种非透视/分类模式、排序模式的不透明延迟接点及 TAA 组合暂不接管；SSR 延迟组合已由 B03 支持。标准 Model、MASK/法线贴图/实例化/蒙皮及中性 feature 3D Tiles 已验证；未映射材质按对象保留原生。
 
-几何接管或照明失败会恢复本帧已接管的原生颜色并停用延迟模块，reason 保留故障；显式切到 enhanced 再切回 deferred 可重试。所需的传统 AO 材质依赖自动恢复，在后续帧重新有效。运行范围或全兼容对象造成的软回退可以自动恢复接管，无需反复切换 mode。
+几何接管或照明失败会恢复本帧已接管的原生颜色并停用延迟模块，reason 保留故障；显式切到 enhanced 再切回 deferred 可重试。所需的传统 AO 材质依赖自动恢复，在后续帧重新有效。运行范围或全兼容对象造成的软回退可以自动恢复接管，无需反复切换 mode。为避免每模型独立 IBL 纹理把全屏延迟光照放大成大量绘制，延迟几何捕获超过 32 个环境组时会在捕获前记录预算原因并使用 enhanced forward；诊断中的 `lighting.activeMode` 和 `lighting.reason` 反映实际路径。
 
 compact-v1 是独立消费者契约，不能用旧 MaterialChannels 的编码读取。四颜色附件＋独立覆盖共 57 字节/像素，约 112.7 MiB/1080p，不含 Hi-Z/AO。支持矩阵、资源与复现入口见 [B02_COMPLETION.md](B02_COMPLETION.md)。
 
@@ -724,6 +737,23 @@ pipeline.getFrameUniformDiagnostics()
 遮挡查询每帧最多 128 组，连续两次同状态不可见才隐藏。相机、投影、viewport、命令/瓦片/材质 revision 变化当帧恢复；近裁剪面、相机内部、未知变形/动画保持可见。只省去主颜色及对应材质生产，太阳投影、拾取、瓦片加载/LOD 不停止。无有用遮挡体时不查询；requestRender 查询长期 pending 有有限轮询预算。直接几何 buffer 改写导致包围体不再可信，本实例保守停用剔除，确认边界更新后可关闭再开启。
 
 总诊断新增 occlusion/resourcePool/frameUniforms；RenderProfiler 新增 occlusion query 的 GPU scope。GPU 性能数字必须连同固定相机、时间、图像一致性和实际 skipped draws 一起看。复现与资源活跃期见 [B05_RESOURCE_LEDGER.md](B05_RESOURCE_LEDGER.md)。
+
+### 独立车流系统（2026-10-09）
+
+`CCR.createTrafficSystem({ Cesium, viewer, manifestUrl, pipeline })` / `new CCR.TrafficSystem(...)` 创建独立车辆运行模块。`pipeline` 可省略；传入时车辆移动当帧令自定义阴影失效。模块不修改全局时钟，支持闭合 GeoJSON 跟车路线或有向车道路网、岔路选择、路口让行和死胡同销毁/异地安全再生，保留原生 GLB 车辆、独立播放暂停、速度倍率、显隐、诊断与销毁。
+
+```js
+const traffic = CCR.createTrafficSystem({ Cesium, viewer, pipeline, manifestUrl: '/traffic/traffic.json' })
+await traffic.readyPromise
+traffic.setSpeed(1.5)
+traffic.pause()
+traffic.play()
+traffic.setVisible(true)
+traffic.getDiagnostics()
+traffic.destroy() // 必须早于 viewer.destroy()
+```
+
+数据 schema、路网拓扑与禁转、初始化贴地、模型尺寸/朝向、加载与销毁契约以及性能边界见 [TRAFFIC_SYSTEM.md](TRAFFIC_SYSTEM.md)。可直接传 `routes` 或 `network`，连同 `vehicles` 替代清单 URL；入口只导出模块，不在 VisualPipeline 中自动创建车流。免外部资产演示 `/examples/traffic.html`，校园接入 `?traffic=<清单URL>`。
 
 ### 选中轮廓与阴影提交优化（2026-09-18）
 

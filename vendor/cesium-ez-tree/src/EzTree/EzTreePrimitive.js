@@ -525,6 +525,9 @@ function createCommand(options) {
     u_alphaCutoff: function () {
       return alphaCutoff;
     },
+    u_alphaFromColor: function () {
+      return options.alphaFromColor === true;
+    },
     u_roundedLeafNormals: function () {
       return roundedLeafNormals ? 1 : 0;
     },
@@ -542,6 +545,7 @@ function createCommand(options) {
     },
   };
 
+  const shadowFlags = shadowFlagsForCutout(cutoutType, primitive.castShadows);
   const command = new DrawCommand({
     boundingVolume: boundingSphere ?? primitive._boundingSphere,
     modelMatrix: primitive.modelMatrix,
@@ -556,8 +560,8 @@ function createCommand(options) {
     owner: primitive,
     cull: true,
     occlude: true,
-    castShadows: primitive.castShadows,
-    receiveShadows: primitive.castShadows,
+    castShadows: shadowFlags.castShadows,
+    receiveShadows: shadowFlags.receiveShadows,
   });
 
   return {
@@ -573,6 +577,11 @@ function createCommand(options) {
   };
 }
 
+function shadowFlagsForCutout(cutoutType, enabled) {
+  if (cutoutType === CUTOUT_GRASS) return { castShadows: false, receiveShadows: false };
+  return { castShadows: enabled === true, receiveShadows: enabled === true };
+}
+
 function createCommandRecord(options) {
   return {
     geometryLod: options.geometryLod,
@@ -586,6 +595,7 @@ function createCommandRecord(options) {
     assetColorTexture: options.assetColorTexture,
     cutoutType: options.cutoutType,
     alphaCutoff: options.alphaCutoff,
+    alphaFromColor: options.alphaFromColor,
     roundedLeafNormals: options.roundedLeafNormals ?? false,
     boundingSphere: options.boundingSphere,
     instanceCount: options.instances.length,
@@ -766,6 +776,7 @@ function ensureCommandRecordResources(
     assetColorTexture: record.assetColorTexture,
     cutoutType: record.cutoutType,
     alphaCutoff: record.alphaCutoff,
+    alphaFromColor: record.alphaFromColor,
     roundedLeafNormals: record.roundedLeafNormals,
     maximumDistance: record.maximumDistance,
     boundingSphere: record.boundingSphere,
@@ -1263,7 +1274,9 @@ function groupGrassAssets(instances, assets) {
     if (!defined(asset)) throw new Error(`Unknown grass asset: ${instance.asset}`);
     let group = groups.get(asset.id);
     if (!defined(group)) {
-      group = { asset: asset, instances: [], alphaCutoff: 0.35 };
+      // These assets have opaque alpha and black RGB background. The shader
+      // derives coverage from RGB brightness, so this cutoff is intentionally low.
+      group = { asset: asset, instances: [], alphaCutoff: asset.alphaFromColor === false ? 0.35 : 0.03 };
       groups.set(asset.id, group);
     }
     group.instances.push(instance);
@@ -1317,6 +1330,13 @@ function pushGltfAssetRecord(resources, asset, path, wind) {
   return record;
 }
 
+const externalTreeLeafCutoffs = Object.freeze([0.35, 0.30, 0.24, 0.18]);
+
+function externalTreeAlphaCutoff(materialCutoff, lod, hasColorTexture) {
+  if (!hasColorTexture || !Number.isInteger(lod) || lod < 0 || lod > 3) return materialCutoff;
+  return Math.min(materialCutoff, externalTreeLeafCutoffs[lod]);
+}
+
 function addGltfAssetCommandRecords(options) {
   const {
     primitive,
@@ -1359,9 +1379,16 @@ function addGltfAssetCommandRecords(options) {
           materialColor,
           new Color(),
         );
-    const commandAlphaCutoff =
+    let commandAlphaCutoff =
       alphaCutoff ??
       (assetPrimitive.alphaMode === "MASK" ? assetPrimitive.alphaCutoff : 0.0);
+    if (external) {
+      commandAlphaCutoff = externalTreeAlphaCutoff(
+        commandAlphaCutoff,
+        assetPrimitive.lod,
+        defined(assetPrimitive.colorTexture),
+      );
+    }
 
     cellGroups.forEach(function (cellGroup) {
       let lodGroup;
@@ -1385,7 +1412,8 @@ function addGltfAssetCommandRecords(options) {
           assetColorTexture: assetPrimitive.colorTexture,
           cutoutType: cutoutType,
           alphaCutoff: commandAlphaCutoff,
-          roundedLeafNormals: false,
+          alphaFromColor: options.alphaFromColor,
+          roundedLeafNormals: assetPrimitive.roundedLeafNormals === true,
           maximumDistance: maximumDistance,
           boundingSphere: computeBoundingSphere(primitive, cellGroup.instances),
           lodNearDistance: lodNearDistance,
@@ -1422,6 +1450,7 @@ function addGroundAssetRecords(primitive, context, resources) {
         baseColor: Color.WHITE,
         cutoutType: CUTOUT_GRASS,
         alphaCutoff: group.alphaCutoff,
+        alphaFromColor: group.asset.alphaFromColor !== false,
         maximumDistance: primitive.maximumGrassDistance,
         lodNearDistance: primitive.grassLodNearDistance,
         lodFarDistance: primitive.grassLodFarDistance,
@@ -1794,7 +1823,7 @@ function EzTreePrimitive(options) {
   this.treePresets = options.treePresets ?? {};
   this.castShadows = options.castShadows ?? false;
   this._externalLodGroups = new Map();
-  this._externalThresholds = options.geometryLodThresholds ?? [180, 80, 28];
+  this._externalThresholds = options.geometryLodThresholds ?? [180, 80, 12];
   this.show = options.show ?? true;
   this.modelMatrix = Matrix4.clone(options.modelMatrix ?? Matrix4.IDENTITY);
   this.debugShowBoundingVolume = options.debugShowBoundingVolume ?? false;
@@ -2279,4 +2308,4 @@ EzTreePrimitive.TreePreset = TreePreset;
 EzTreePrimitive.loadPreset = loadPreset;
 
 export default EzTreePrimitive;
-export { groupGrassAssets };
+export { externalTreeAlphaCutoff, groupGrassAssets, shadowFlagsForCutout };

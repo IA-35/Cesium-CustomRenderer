@@ -7,6 +7,7 @@ in float v_windWeight;
 
 uniform float u_cutoutType;
 uniform float u_alphaCutoff;
+uniform bool u_alphaFromColor;
 uniform sampler2D u_barkColorTexture;
 uniform vec2 u_barkTextureScale;
 uniform bool u_useBarkTexture;
@@ -49,7 +50,9 @@ void main()
     vec4 assetTexel = vec4(1.0);
     if (u_useAssetColorTexture) {
         assetTexel = texture(u_assetColorTexture, v_st);
-        mask = assetTexel.a;
+        mask = u_alphaFromColor
+            ? max(assetTexel.r, max(assetTexel.g, assetTexel.b))
+            : assetTexel.a;
     } else if (u_cutoutType > 2.5) {
         mask = ezTree_flowerMask(v_st);
     } else if (u_cutoutType > 1.5) {
@@ -74,7 +77,7 @@ void main()
             v_st.x * u_barkTextureScale.x,
             v_st.y / max(u_barkTextureScale.y, 0.001)
         );
-        albedo *= texture(u_barkColorTexture, barkSt).rgb;
+        albedo *= czm_srgbToLinear(texture(u_barkColorTexture, barkSt).rgb);
     }
 
     vec3 normalEC = normalize(
@@ -92,6 +95,10 @@ void main()
     }
     color += albedo * 0.08 * v_windWeight;
 
+    // Match Cesium Model: HDR targets store linear light; SDR targets store sRGB.
+#ifndef HDR
+    color = czm_linearToSrgb(color);
+#endif
     out_FragColor = vec4(color, v_color.a);
 }
 `;

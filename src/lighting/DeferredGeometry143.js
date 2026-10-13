@@ -2,6 +2,12 @@ import { materialSources } from '../channels/materialShader143.js'
 import { invalidMaterialSources, transparencySources } from '../channels/MaterialChannels143.js'
 import { materialTargetSupport } from '../channels/MaterialTarget143.js'
 import DepthPyramid143 from '../channels/DepthPyramid143.js'
+import {keepPrimitiveLast} from '../pipeline/PrimitiveOrder143.js'
+
+// One fullscreen lighting draw is issued for every distinct model environment
+// texture. Beyond this budget the deferred path costs more than native enhanced
+// lighting, even when the models occupy only a small part of the viewport.
+const MAX_DEFERRED_LIGHTING_GROUPS = 32
 
 // Compact layout v1: four color outputs. Group IDs occupy bits 10..23 of FLOAT
 // emissiveFlags.a; the low ten bits retain the existing material flags contract.
@@ -32,6 +38,24 @@ export default class DeferredGeometry143 {
     this.depthPyramid = new DepthPyramid143(C, scene)
   }
 
+  declareGraph(graph) {
+    this.graph = graph
+    this.graphTarget = {
+      normalRoughMetal: graph.importResource('deferred.gbuffer.normalRoughMetal'),
+      emissiveFlags: graph.importResource('deferred.gbuffer.emissiveFlags'),
+      eyeDepth: graph.importResource('deferred.gbuffer.eyeDepth'),
+      albedoOcclusion: graph.importResource('deferred.gbuffer.albedoOcclusion'),
+      transparency: graph.importResource('deferred.gbuffer.transparency')
+    }
+    this.bindGraphTargets()
+    return this.graphTarget
+  }
+
+  bindGraphTargets() {
+    if (!this.graph || !this.graphTarget || !this.target) return
+    for (const name of Object.keys(this.graphTarget)) this.graph.bindExternal(this.graphTarget[name], this.target[name])
+  }
+
   setEnabled(value) {
     if (this.enabled === value) return
     this.enabled = value
@@ -39,7 +63,8 @@ export default class DeferredGeometry143 {
     const token = { active: true }, context = this.scene.context, previous = context.draw, self = this
     this.token = token; this.previous = previous
     this.hook = function(command, passState, ...args) {
-      if (!token.active || self.busy || !self.canCapture(command, passState)) {
+      const item = self.owner.renderItemFor?.(command), submitted = item?.command || command
+      if (!token.active || self.busy || !self.canCapture(submitted, passState)) {
         return previous.call(this, command, passState, ...args)
       }
       if(self.owner.shouldCull(command))return
@@ -64,7 +89,7 @@ export default class DeferredGeometry143 {
       if (state.passes.render) state.commandList.push({ pass: this.C.Pass.COMPUTE, execute: () => this.prepare() })
     }, isDestroyed: () => false, destroy() {} }
     this.scene.primitives.add(this.proxy)
-    this.offUpdate = this.scene.preUpdate.addEventListener(() => this.scene.primitives.raiseToTop(this.proxy))
+    this.offUpdate = this.scene.preUpdate.addEventListener(() => keepPrimitiveLast(this.scene.primitives, this.proxy))
   }
 
   scopeReason() {
@@ -107,7 +132,6 @@ export default class DeferredGeometry143 {
       }
     }
     try {
-      this.allocate()
       // Compile before removing any native colors. Unknown/depth-dependent shaders
       // that cannot be invalidated safely force native rendering for this frame.
       const saved = ctx._gl.getParameter(ctx._gl.CURRENT_PROGRAM)
@@ -122,10 +146,19 @@ export default class DeferredGeometry143 {
               const record=this.programFor(command)
               record._program._bind();record._invalid?._bind();record._recovery?._bind()
               if(record.supported)this.owner.environmentGroup(command)
+              if (this.owner.groups.length > MAX_DEFERRED_LIGHTING_GROUPS) {
+                this.reason = `Deferred lighting group budget exceeded (${this.owner.groups.length}>${MAX_DEFERRED_LIGHTING_GROUPS})`
+                this.owner.setGeometryAvailable(false)
+                this.releaseTarget()
+                return
+              }
             }
           }
         }
       } finally { ctx._gl.useProgram(saved) }
+      // Budget fallback must precede allocation. Otherwise rejected frames create
+      // and destroy the entire compact MRT (57 bytes/pixel) on every render.
+      this.allocate()
       this.target.clear.execute(ctx)
       this.target.clearCoverage.execute(ctx)
       for (const manager of [s._view.globeDepth?.colorFramebufferManager,s._view.sceneFramebuffer?._colorFramebuffer]) {
@@ -140,27 +173,31 @@ export default class DeferredGeometry143 {
   }
 
   allocate() {
-    const C=this.C,ctx=this.scene.context,w=this.scene.drawingBufferWidth,h=this.scene.drawingBufferHeight
+    const C=this.C,ctx=this.scene.context,w=this.scene.drawingBufferWidth,h=this.scene.drawingBufferHeight,device=this.owner.rhi
     if(this.target?.width===w&&this.target?.height===h)return
     this.releaseTarget()
-    const textures=[]
+    const textures=[],resources=[]
     try {
       const sampler=new C.Sampler({minificationFilter:C.TextureMinificationFilter.NEAREST,magnificationFilter:C.TextureMagnificationFilter.NEAREST})
-      const texture=(format,type)=>{const t=new C.Texture({context:ctx,width:w,height:h,pixelFormat:format,pixelDatatype:type,sampler});textures.push(t);return t}
+      const texture=(format,type)=>{
+        if(device){const resource=device.createTexture({width:w,height:h,pixelFormat:format,pixelDatatype:type,sampler});resources.push(resource);textures.push(resource.texture);return resource.texture}
+        const t=new C.Texture({context:ctx,width:w,height:h,pixelFormat:format,pixelDatatype:type,sampler});textures.push(t);return t
+      }
       const normalRoughMetal=texture(C.PixelFormat.RGBA,C.PixelDatatype.FLOAT)
       const emissiveFlags=texture(C.PixelFormat.RGBA,C.PixelDatatype.FLOAT)
       const eyeDepth=texture(C.PixelFormat.RGBA,C.PixelDatatype.FLOAT)
       const albedoOcclusion=texture(C.PixelFormat.RGBA,C.PixelDatatype.HALF_FLOAT)
       const transparency=texture(C.PixelFormat.RED,C.PixelDatatype.UNSIGNED_BYTE)
       const colors=[normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion]
-      this.target={width:w,height:h,normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency,colors,textures}
-      this.target.framebuffer=new C.Framebuffer({context:ctx,colorTextures:colors,destroyAttachments:false})
-      this.target.coverageFramebuffer=new C.Framebuffer({context:ctx,colorTextures:[transparency],destroyAttachments:false})
+      const framebuffer=device ? (resources.push(device.createFramebuffer(colors)),resources.at(-1).framebuffer) : new C.Framebuffer({context:ctx,colorTextures:colors,destroyAttachments:false})
+      const coverageFramebuffer=device ? (resources.push(device.createFramebuffer([transparency])),resources.at(-1).framebuffer) : new C.Framebuffer({context:ctx,colorTextures:[transparency],destroyAttachments:false})
+      this.target={width:w,height:h,normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency,colors,textures,resources,framebuffer,coverageFramebuffer}
+      this.bindGraphTargets()
       if(this.target.framebuffer.status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Compact MRT incomplete')
       this.target.clear=new C.ClearCommand({framebuffer:this.target.framebuffer,color:C.Color.TRANSPARENT})
       this.target.clearCoverage=new C.ClearCommand({framebuffer:this.target.coverageFramebuffer,color:C.Color.TRANSPARENT})
     } catch(error) {
-      if(this.target)this.releaseTarget();else for(const t of textures)t.destroy()
+      if(this.target)this.releaseTarget();else if(device)for(const resource of resources)resource.release();else for(const t of textures)t.destroy()
       throw error
     }
   }
@@ -300,7 +337,10 @@ export default class DeferredGeometry143 {
       }
     } finally {this.busy=false;us.viewport=viewport;us.updatePass(pass)}
     const options=this.owner.getOptions()
-    if(options.screenSpaceAoEnabled||options.depthPyramidEnabled||options.screenSpaceReflectionEnabled)this.depthPyramid.update(this.target.eyeDepth,this.frame,this.target.transparency)
+    if(options.screenSpaceAoEnabled||options.depthPyramidEnabled||options.screenSpaceReflectionEnabled){
+      this.depthPyramid.setMaxLevel?.(options.depthPyramidEnabled ? undefined : options.screenSpaceReflectionEnabled ? 5 : 0)
+      this.depthPyramid.update(this.target.eyeDepth,this.frame,this.target.transparency)
+    }
     else this.depthPyramid.release()
     for(const [key,r]of this.programs)if(r.frame<this.frame-120){r._program.destroy();r._invalid?.destroy();r._recovery?.destroy();this.programs.delete(key)}
     for(const [key,r]of this.states)if(r.frame<this.frame-120){this.C.RenderState.removeFromCache(r.options);this.states.delete(key)}
@@ -361,9 +401,12 @@ export default class DeferredGeometry143 {
     for(const r of this.aliases.values())if(!r.material.isDestroyed())r.material.destroy()
     this.aliases.clear()
     if(this.target){
-      if(this.target.framebuffer&&!this.target.framebuffer.isDestroyed())this.target.framebuffer.destroy()
-      if(this.target.coverageFramebuffer&&!this.target.coverageFramebuffer.isDestroyed())this.target.coverageFramebuffer.destroy()
-      for(const t of this.target.textures)if(!t.isDestroyed())t.destroy()
+      if(this.target.resources)for(const resource of this.target.resources)resource.release()
+      else {
+        if(this.target.framebuffer&&!this.target.framebuffer.isDestroyed())this.target.framebuffer.destroy()
+        if(this.target.coverageFramebuffer&&!this.target.coverageFramebuffer.isDestroyed())this.target.coverageFramebuffer.destroy()
+        for(const t of this.target.textures)if(!t.isDestroyed())t.destroy()
+      }
       this.target=null
     }
     this.depthPyramid.release()

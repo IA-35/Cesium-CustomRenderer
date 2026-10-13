@@ -1,0 +1,460 @@
+{
+  "status": "Diagnostic and copy-only prototype; not production acceptance",
+  "sourceFiles": 104,
+  "verified": 104,
+  "inputBytes": 217760540,
+  "outputBytes": 148812760,
+  "triangles": 6869559,
+  "primitivesBefore": 592,
+  "primitivesAfter": 243,
+  "baseline": {
+    "engine": "7e225c5a45a00dbd5fca8e417c6a2c1ac1e848ab8591c05272d7a26b82813162",
+    "sdk": "974dd46c86a8546bd2dea645be88d41452ee575c724acf376bbadcb10a1d5de5",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "options": {
+      "antialiasing": "fxaa",
+      "spatialAaQuality": "balanced",
+      "msaaSamples": 1,
+      "resolutionMode": "native",
+      "resolutionScale": 1,
+      "environment": true,
+      "environmentPreset": "clear",
+      "environmentQuality": "balanced",
+      "skyLightIntensity": 3.2,
+      "sunIntensity": 2.2,
+      "clouds": true,
+      "cloudCoverage": null,
+      "cloudModel": "auto",
+      "cloudGeometry": "shell",
+      "volumetricFog": true,
+      "sunScattering": true,
+      "environmentAnimation": false,
+      "fogBaseHeight": 20,
+      "fogHeightFalloff": null,
+      "cloudBaseHeight": null,
+      "cloudThickness": null,
+      "contrast": 1.1,
+      "brightness": 1.08,
+      "exposure": 1.6,
+      "saturation": 1.05,
+      "hue": 0,
+      "shadows": true,
+      "shadowMode": "custom",
+      "shadowDebug": false,
+      "shadowStatic": false,
+      "shadowSize": 4096,
+      "shadowCascades": 1,
+      "shadowDistance": 4000,
+      "msaaCombine": false,
+      "renderTargetPoolEnabled": true,
+      "occlusionCullingEnabled": false,
+      "ambientOcclusion": false,
+      "fog": true,
+      "fogDensity": 0.000025,
+      "bloom": false,
+      "hdrBloomEnabled": false,
+      "hdrBloomStrength": 0.15,
+      "hdrBloomThreshold": 1,
+      "hdrBloomKnee": 0.5,
+      "hdrBloomLevels": 5,
+      "geometryEnabled": false,
+      "geometryDebugMode": "off",
+      "materialChannelsEnabled": false,
+      "albedoEnabled": false,
+      "depthPyramidEnabled": false,
+      "lightingMode": "enhanced",
+      "lightingDirect": true,
+      "lightingIndirect": true,
+      "lightingEmissive": true,
+      "lightingShadow": true,
+      "lightingAo": true,
+      "lightingAoStrength": 1,
+      "lightingDebugMode": 0,
+      "screenSpaceAoEnabled": false,
+      "screenSpaceAoAlgorithm": "ssao",
+      "screenSpaceAoRadius": 3,
+      "screenSpaceAoStrength": 1,
+      "screenSpaceAoBias": 0.08,
+      "screenSpaceReflectionEnabled": false,
+      "screenSpaceReflectionDistance": 150,
+      "screenSpaceReflectionThickness": 0.5,
+      "screenSpaceReflectionStrength": 1,
+      "screenSpaceReflectionTransparent": false,
+      "taaJitterSamples": 8,
+      "taaHistoryBlend": 0.03,
+      "taaMotionBlend": 0.5,
+      "taaVelocityThreshold": 12,
+      "taaDepthTolerance": 0.1,
+      "toneMappingCurve": "aces",
+      "tiltShiftEnabled": false,
+      "tiltShiftFocus": 0.35,
+      "tiltShiftWidth": 0.12,
+      "tiltShiftRadius": 6,
+      "tiltShiftStrength": 1,
+      "blurEnabled": false,
+      "blurRadius": 4,
+      "blurStrength": 1,
+      "depthOfFieldEnabled": false,
+      "depthOfFieldFocus": 50,
+      "depthOfFieldRange": 30,
+      "depthOfFieldRadius": 5,
+      "depthOfFieldStrength": 1,
+      "chromaticAberrationEnabled": false,
+      "chromaticAberrationStrength": 0,
+      "sunFlareEnabled": false,
+      "sunFlareStrength": 0.6,
+      "lightShaftEnabled": false,
+      "lightShaftStrength": 0.7,
+      "lightShaftSamples": 32
+    },
+    "assetLogicalBytes": 882824035,
+    "layeredLogicalBytes": 608754941,
+    "cases": [
+      {
+        "mode": "all",
+        "cpu": {
+          "n": 180,
+          "p50": 18.099999994039536,
+          "p95": 22.099999994039536,
+          "mean": 18.772777777413527
+        },
+        "gpu": {
+          "n": 180,
+          "p50": 14.911072,
+          "p95": 16.887808,
+          "mean": 15.288703466666664
+        },
+        "interval": {
+          "n": 179,
+          "p50": 19.5,
+          "p95": 24.099999994039536,
+          "mean": 20.248044692687483
+        },
+        "draws": {
+          "n": 180,
+          "p50": 1843,
+          "p95": 1862,
+          "mean": 1837.1333333333334
+        },
+        "triangles": {
+          "n": 180,
+          "p50": 51356297,
+          "p95": 51367611,
+          "mean": 51338615.88333333
+        },
+        "modelMs": {
+          "n": 180,
+          "p50": 0.7000000327825546,
+          "p95": 1.1000000089406967,
+          "mean": 0.7461111115084754
+        },
+        "fps": 49.387484825196324
+      },
+      {
+        "mode": "all-repeat",
+        "cpu": {
+          "n": 180,
+          "p50": 17.700000002980232,
+          "p95": 22,
+          "mean": 18.081666666683223
+        },
+        "gpu": {
+          "n": 180,
+          "p50": 14.644224,
+          "p95": 16.437152,
+          "mean": 14.908766933333332
+        },
+        "interval": {
+          "n": 179,
+          "p50": 18.899999991059303,
+          "p95": 23.600000008940697,
+          "mean": 19.411173184324245
+        },
+        "draws": {
+          "n": 180,
+          "p50": 1853,
+          "p95": 1864,
+          "mean": 1849.4333333333334
+        },
+        "triangles": {
+          "n": 180,
+          "p50": 51361503,
+          "p95": 51368808,
+          "mean": 51345186.166666664
+        },
+        "modelMs": {
+          "n": 180,
+          "p50": 0.699999988079071,
+          "p95": 1.0999999940395355,
+          "mean": 0.6849999996523063
+        },
+        "fps": 51.516721349308426
+      }
+    ],
+    "errors": []
+  },
+  "candidate": {
+    "engine": "7e225c5a45a00dbd5fca8e417c6a2c1ac1e848ab8591c05272d7a26b82813162",
+    "sdk": "974dd46c86a8546bd2dea645be88d41452ee575c724acf376bbadcb10a1d5de5",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "options": {
+      "antialiasing": "fxaa",
+      "spatialAaQuality": "balanced",
+      "msaaSamples": 1,
+      "resolutionMode": "native",
+      "resolutionScale": 1,
+      "environment": true,
+      "environmentPreset": "clear",
+      "environmentQuality": "balanced",
+      "skyLightIntensity": 3.2,
+      "sunIntensity": 2.2,
+      "clouds": true,
+      "cloudCoverage": null,
+      "cloudModel": "auto",
+      "cloudGeometry": "shell",
+      "volumetricFog": true,
+      "sunScattering": true,
+      "environmentAnimation": false,
+      "fogBaseHeight": 20,
+      "fogHeightFalloff": null,
+      "cloudBaseHeight": null,
+      "cloudThickness": null,
+      "contrast": 1.1,
+      "brightness": 1.08,
+      "exposure": 1.6,
+      "saturation": 1.05,
+      "hue": 0,
+      "shadows": true,
+      "shadowMode": "custom",
+      "shadowDebug": false,
+      "shadowStatic": false,
+      "shadowSize": 4096,
+      "shadowCascades": 1,
+      "shadowDistance": 4000,
+      "msaaCombine": false,
+      "renderTargetPoolEnabled": true,
+      "occlusionCullingEnabled": false,
+      "ambientOcclusion": false,
+      "fog": true,
+      "fogDensity": 0.000025,
+      "bloom": false,
+      "hdrBloomEnabled": false,
+      "hdrBloomStrength": 0.15,
+      "hdrBloomThreshold": 1,
+      "hdrBloomKnee": 0.5,
+      "hdrBloomLevels": 5,
+      "geometryEnabled": false,
+      "geometryDebugMode": "off",
+      "materialChannelsEnabled": false,
+      "albedoEnabled": false,
+      "depthPyramidEnabled": false,
+      "lightingMode": "enhanced",
+      "lightingDirect": true,
+      "lightingIndirect": true,
+      "lightingEmissive": true,
+      "lightingShadow": true,
+      "lightingAo": true,
+      "lightingAoStrength": 1,
+      "lightingDebugMode": 0,
+      "screenSpaceAoEnabled": false,
+      "screenSpaceAoAlgorithm": "ssao",
+      "screenSpaceAoRadius": 3,
+      "screenSpaceAoStrength": 1,
+      "screenSpaceAoBias": 0.08,
+      "screenSpaceReflectionEnabled": false,
+      "screenSpaceReflectionDistance": 150,
+      "screenSpaceReflectionThickness": 0.5,
+      "screenSpaceReflectionStrength": 1,
+      "screenSpaceReflectionTransparent": false,
+      "taaJitterSamples": 8,
+      "taaHistoryBlend": 0.03,
+      "taaMotionBlend": 0.5,
+      "taaVelocityThreshold": 12,
+      "taaDepthTolerance": 0.1,
+      "toneMappingCurve": "aces",
+      "tiltShiftEnabled": false,
+      "tiltShiftFocus": 0.35,
+      "tiltShiftWidth": 0.12,
+      "tiltShiftRadius": 6,
+      "tiltShiftStrength": 1,
+      "blurEnabled": false,
+      "blurRadius": 4,
+      "blurStrength": 1,
+      "depthOfFieldEnabled": false,
+      "depthOfFieldFocus": 50,
+      "depthOfFieldRange": 30,
+      "depthOfFieldRadius": 5,
+      "depthOfFieldStrength": 1,
+      "chromaticAberrationEnabled": false,
+      "chromaticAberrationStrength": 0,
+      "sunFlareEnabled": false,
+      "sunFlareStrength": 0.6,
+      "lightShaftEnabled": false,
+      "lightShaftStrength": 0.7,
+      "lightShaftSamples": 32
+    },
+    "assetLogicalBytes": 931199912,
+    "layeredLogicalBytes": 657130818,
+    "cases": [
+      {
+        "mode": "all",
+        "cpu": {
+          "n": 180,
+          "p50": 12.899999991059303,
+          "p95": 15.299999997019768,
+          "mean": 13.372777777330743
+        },
+        "gpu": {
+          "n": 180,
+          "p50": 12.638208,
+          "p95": 14.45888,
+          "mean": 13.117374044444443
+        },
+        "interval": {
+          "n": 179,
+          "p50": 17.299999997019768,
+          "p95": 17.700000002980232,
+          "mean": 17.631284916201118
+        },
+        "draws": {
+          "n": 180,
+          "p50": 1161,
+          "p95": 1175,
+          "mean": 1162.3222222222223
+        },
+        "triangles": {
+          "n": 180,
+          "p50": 51365858,
+          "p95": 51373442,
+          "mean": 51366398.244444445
+        },
+        "modelMs": {
+          "n": 180,
+          "p50": 0.20000001788139343,
+          "p95": 0.5,
+          "mean": 0.2450000005463759
+        },
+        "fps": 56.71736375158428
+      },
+      {
+        "mode": "all-repeat",
+        "cpu": {
+          "n": 180,
+          "p50": 12.5,
+          "p95": 14.599999994039536,
+          "mean": 12.568888888259728
+        },
+        "gpu": {
+          "n": 180,
+          "p50": 12.532736,
+          "p95": 13.386432,
+          "mean": 12.621945600000002
+        },
+        "interval": {
+          "n": 179,
+          "p50": 17.299999997019768,
+          "p95": 17.599999994039536,
+          "mean": 17.29050279329609
+        },
+        "draws": {
+          "n": 180,
+          "p50": 1161,
+          "p95": 1175,
+          "mean": 1162.25
+        },
+        "triangles": {
+          "n": 180,
+          "p50": 51365995,
+          "p95": 51373886,
+          "mean": 51366449.994444445
+        },
+        "modelMs": {
+          "n": 180,
+          "p50": 0.20000000298023224,
+          "p95": 0.4000000059604645,
+          "mean": 0.2188888880941603
+        },
+        "fps": 57.83521809369952
+      }
+    ],
+    "errors": []
+  },
+  "pickedBuildings": [
+    {
+      "name": "东大风味食堂",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "第八宿舍",
+      "source": "主体/NoLod_0.glb",
+      "floor": "主体"
+    },
+    {
+      "name": "学生城食堂",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "1楼",
+      "source": "1F/NoLod_0.glb",
+      "floor": "1F"
+    },
+    {
+      "name": "实验楼二期分层",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "5楼室外主体",
+      "source": "5F/NoLod_0.glb",
+      "floor": "5F"
+    },
+    {
+      "name": "综合楼分层",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "综合楼11F",
+      "source": "11F/NoLod_0.glb",
+      "floor": "11F"
+    },
+    {
+      "name": "逸夫教学楼分层",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "逸夫楼室外1F",
+      "source": "1F/NoLod_3.glb",
+      "floor": "1F"
+    },
+    {
+      "name": "学生二食堂",
+      "id": "3416a75f4cea9109507cacd8e2f2aefc",
+      "featureName": "主体",
+      "source": "主体/NoLod_2.glb",
+      "floor": "主体"
+    },
+    {
+      "name": "学生一食堂",
+      "id": "3416a75f4cea9109507cacd8e2f2aefc",
+      "featureName": "第二食堂",
+      "source": "主体/NoLod_0.glb",
+      "floor": "主体"
+    },
+    {
+      "name": "实验楼一期分层",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "实验楼一期1F",
+      "source": "1F/NoLod_1.glb",
+      "floor": "1F"
+    },
+    {
+      "name": "中心食堂",
+      "id": "d67d8ab4f4c10bf22aa353e27879133c",
+      "featureName": "中心食堂顶",
+      "source": "3F/NoLod_0.glb",
+      "floor": "3F"
+    }
+  ],
+  "limitations": [
+    "API fixtures, not authenticated full business acceptance",
+    "1280x720 RTX3070, target laptop untested",
+    "Asset logical bytes are not process RAM or dedicated VRAM",
+    "Higher asset logical residency; not a memory solution",
+    "No floor expansion or resource switching integrated",
+    "Cross-launch screenshots inspected, no strict image parity gate passed"
+  ],
+  "invalidRuns": [
+    "overview-prototype: no loaded overview content, excluded",
+    "overview-valid: browser closed before completion, excluded",
+    "baseline: no-trees sampled before restored resources settled, excluded"
+  ]
+}

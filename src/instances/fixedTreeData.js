@@ -34,13 +34,16 @@ function fnv1a(value) {
     hash ^= value.charCodeAt(index)
     hash = Math.imul(hash, 0x01000193)
   }
-  return hash >>> 0
+  // Avalanche sequential object identifiers before mapping them to an angle.
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b)
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35)
+  return (hash ^ (hash >>> 16)) >>> 0
 }
 
 export function stableTreeVariation(id) {
   const hash = fnv1a(id)
   const heading = (hash / 0x100000000) * Math.PI * 2
-  const scaleHash = fnv1a(`${id}:scale`)
-  const scale = 0.92 + (scaleHash / 0xffffffff) * 0.16
-  return { heading, scale }
+  const heightScale = 0.82 + (fnv1a(`${id}:height`) / 0xffffffff) * 0.36
+  const crownScale = 0.84 + (fnv1a(`${id}:crown`) / 0xffffffff) * 0.36
+  return { heading, scale: heightScale, heightScale, crownScale }
 }

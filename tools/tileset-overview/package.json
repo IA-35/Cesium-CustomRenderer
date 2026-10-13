@@ -1,0 +1,13 @@
+{
+  "name": "ccr-tileset-overview",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test overview.test.mjs" },
+  "dependencies": {
+    "@gltf-transform/core": "4.4.2",
+    "@gltf-transform/extensions": "4.4.2",
+    "@gltf-transform/functions": "4.4.2",
+    "draco3dgltf": "1.5.7",
+    "meshoptimizer": "1.0.1"
+  }
+}

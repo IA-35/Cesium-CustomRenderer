@@ -1,11 +1,12 @@
 ﻿import test from 'node:test'
 import assert from 'node:assert/strict'
-import { receiverSource, casterSources } from '../../src/shadows/shaderAdapter143.js'
+import { receiverSource, casterSources, pcf } from '../../src/shadows/shaderAdapter143.js'
 import ShadowCache from '../../src/shadows/ShadowCache.js'
 import LightFrustum from '../../src/shadows/LightFrustum.js'
 import { createRequire } from 'node:module'
 import selectLightTiles from '../../src/shadows/CasterCommands143.js'
 import ShadowReceiver143, { clippingPlanesInLightSpace } from '../../src/shadows/ShadowReceiver143.js'
+import DirectionalShadowPass from '../../src/shadows/DirectionalShadowPass.js'
 
 const C = { Pass: { GLOBE: 2 }, ShaderSource: class {
   constructor(options) { Object.assign(this, options) }
@@ -133,6 +134,50 @@ test('light camera updates never invoke interactive setView/picking during rende
     drawingBufferHeight: 600, mode: C.SceneMode.SCENE3D })
   light.camera.setView = () => { throw new Error('setView may re-enter Scene picking') }
   assert.doesNotThrow(() => light.update(C.Cartesian3.fromDegrees(123, 41), C.Cartesian3.UNIT_Z, 2000, 2048))
+})
+
+test('adaptive shadow reuse ignores scheduling commands and never skips consecutive frames', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const root = {}
+  const scene = { primitives: { length: 1, _primitives: [root] } }
+  const camera = {
+    viewMatrix: engine.Matrix4.clone(engine.Matrix4.IDENTITY),
+    positionWC: new engine.Cartesian3(0, 0, 1),
+    frustum: { near: 1, far: 4000, fovy: 1, aspectRatio: 1, xOffset: 0, yOffset: 0 }
+  }
+  const options = { shadowCascades: 1, shadowSize: 2048, shadowDistance: 4000, shadowUpdateInterval: 3 }
+  const pass = Object.create(DirectionalShadowPass.prototype)
+  const caster = { castShadows: true, shaderProgram: {}, pass: engine.Pass.OPAQUE }
+  Object.assign(pass, {
+    C: engine, scene, ready: true, forceShadowUpdate: false, lastCameraView: engine.Matrix4.clone(camera.viewMatrix),
+    lastLightDirection: engine.Cartesian3.clone(engine.Cartesian3.UNIT_Z), lastCommandCount: 1, lastCommandRefs: [caster],
+    lastPrimitiveCount: 1, lastPrimitiveRefs: [root], lastFrustumKey: pass.cameraFrustumKey(camera),
+    lastShadowOptionsKey: pass.shadowOptionsKey(options), lastShadowFrame: 10, shadowFrameCounter: 10,
+    levels: [{ target: { size: 2048 } }]
+  })
+  const list = () => [caster, { pass: engine.Pass.COMPUTE }]
+  assert.equal(pass.getFrameNumber({ frameNumber: 11 }), 11, 'Cesium passes a FrameState directly')
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 11 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true)
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 12 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true,
+    'configured shadow interval may reuse an additional display frame')
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 13 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false,
+    'stationary camera must still refresh mutable caster contents')
+  camera.viewMatrix = engine.Matrix4.fromTranslation(new engine.Cartesian3(1, 0, 0))
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 11 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true)
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 12 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true)
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 13 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false)
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 11 }, camera, [{ ...caster }], engine.Cartesian3.UNIT_Z, options), false)
+  pass.rememberShadowFrame({ frameNumber: 12 }, camera, list(), engine.Cartesian3.UNIT_Z, options)
+  assert.deepEqual(pass.lastCommandRefs, [caster])
+  assert.equal(pass.lastShadowFrame, 12)
+  pass.forceShadowUpdate = true
+  assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 13 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false)
+})
+
+test('shadow receiver uses a compact 2x2 PCF footprint for sharp edges', () => {
+  assert.match(pcf, /for \(int y = 0; y < 2; y\+\+\)/)
+  assert.match(pcf, /for \(int x = 0; x < 2; x\+\+\)/)
+  assert.doesNotMatch(pcf, /visibility \/ 16\.0/)
 })
 
 test('a fixed campus anchor does not drift when the sun rotates', () => {

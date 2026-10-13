@@ -15,13 +15,15 @@ const viewer = new Cesium.Viewer('scene');
 const pipeline = CCR.createVisualPipeline({ Cesium, viewer });
 pipeline.setCampusOrigin(Cesium.Cartesian3.fromDegrees(123.42, 41.77, 0));
 pipeline.setTaa({ enabled: true });
-// 可选：pipeline.setScreenSpaceReflections({ enabled: true });
+// 可选：pipeline.setEnvironmentReflections({ enabled: true, strength: 0.6,
+//   map: '/assets/environment/your-prefiltered-ibl.ktx2' });
+// 只加入含镜面材质的模型：pipeline.setEnvironmentReflectionIncluded(mirrorBuilding, true);
 // 可选：pipeline.setScreenSpaceAO({ enabled: true });
 // 页面销毁前：pipeline.destroy(); viewer.destroy();
 </script>
 ```
 
-必须部署 Cesium 1.143.0 完整发行目录，包括 Assets、Workers、Widgets 等所需资源；本产物不内嵌第二套引擎。两张 SMAA 查找表已嵌入 JS，不再依赖外部 `rendering/smaa` 目录。默认 SMAA，TAA/SSR/AO 等可选功能通过统一 pipeline 接口启用。
+必须部署 Cesium 1.143.0 完整发行目录，包括 Assets、Workers、Widgets 等所需资源；本产物不内嵌第二套引擎。两张 SMAA 查找表已嵌入 JS，不再依赖外部 `rendering/smaa` 目录。静态 Cube 环境反射使用调用方通过 `map` 提供的预过滤 KTX2，该文件也必须部署。默认 SMAA，TAA/Cube 环境反射/AO 等可选功能通过统一 pipeline 接口启用。
 
 `example.html` 提供无登录、无框架的最小演示：通过 HTTP 服务打开，可用 `?cesium=/your/Cesium/` 指定 Cesium 发行目录；默认指向 `node_modules/cesium/Build/Cesium/`，配合本工程的 `scripts/dev-server.cjs` 可直接运行。
 
@@ -35,7 +37,7 @@ pipeline.setTaa({ enabled: true });
 
 另有 `?lon=&lat=&height=` 指定白模的城市视点。示例不内置个人 token；调用方应使用适合部署域名和资产范围的凭据。
 
-包含：太阳阴影、HDR 区域云雾、调色、SMAA/FXAA/MSAA/TAA、材质 MRT/Hi-Z、SSAO/HBAO、多尺度 HDR Bloom、球壳云、PBR/透明 SSR、相机 UBO、性能诊断与调速器。`LightUniforms143` 是分页灯光数据组件，不代表 5000 灯渲染已实现。
+包含：太阳阴影、HDR 区域云雾、调色、SMAA/FXAA/MSAA/TAA、材质 MRT/Hi-Z、SSAO/HBAO、多尺度 HDR Bloom、球壳云、Cube 环境反射、相机 UBO、性能诊断与调速器。`LightUniforms143` 是分页灯光数据组件，不代表 5000 灯渲染已实现。
 
 本产物不是完整地图业务 SDK，不包含框架页面、业务 API、模型/影像、POI/交互工具。需由宿主提供 `Cesium.Viewer` 与数据。勿在同一个 Viewer 上重复安装本 SDK，或同时用另一份源码模块创建管线。
 
@@ -55,12 +57,13 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 
 ## 固定点位实例树木（2026-09-18）
 
-UMD 同时导出 `createFixedTreeCollection`，内部复用 `cesium-ez-tree` 的生成器、实例 primitive 与资源调度。默认用三种轻量程序化松树保留所有 WGS84 固定点位，几何共享；已接入 CCR 自定义阴影。点位清单和 `eztree/bark/pine_color_1k.jpg` 由宿主部署，程序化模式不加载树 GLB。GLB 比较模式显式设置 `source:'glb'`；树木前向材质暂不属于完整 PBR/MRT 范围。第三方许可和适配说明随构建产物保留。
+UMD 同时导出 `createFixedTreeCollection`，内部复用 `cesium-ez-tree` 的生成器、实例 primitive 与资源调度。校园默认加载三种四级 LOD GLB 树并保留所有 WGS84 固定点位；`source:'procedural'` 可切换轻量程序化松树对照。树木前向材质暂不属于完整 PBR/MRT 范围。第三方许可和适配说明随构建产物保留。
 
 ```js
 const trees = CCR.createFixedTreeCollection({
   Cesium, viewer,
   manifestUrl: '/vegetation/manifest.json',
+  source: 'glb',
   clampToGround: true,
   objectsToExclude: [oldTreeTileset]
 });

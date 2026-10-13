@@ -1,13 +1,13 @@
 # 帧预算调速器（Cesium 1.143）
 
-`PerformanceGovernor143` 在运行时把帧间隔压在目标预算内，默认目标 30 FPS（33.3ms）。它**只降不升**：启用时快照当前配置为基线，所有降级都以基线为准，禁用时精确还原。默认不启用，`VisualPipeline` 保持确定性，便于基准测量；业务侧 `MainMapView` 在创建管线后显式开启。
+`PerformanceGovernor143` 在运行时把帧间隔压在目标预算内，默认目标 30 FPS（33.3ms）。它**只降不升**：启用时快照当前配置为基线，所有降级都以基线为准，禁用时精确还原。默认保持原生分辨率，只调整阴影质量；若业务明确接受画面变软，才传入 `allowResolutionScaling: true`。默认不启用，`VisualPipeline` 保持确定性，便于基准测量。
 
 ```js
 const pipeline = getVisualPipeline(viewer)
-pipeline.setPerformance({ enabled: true, targetFps: 30 })
+pipeline.setPerformance({ enabled: true, targetFps: 30 }) // 保持原生分辨率
 pipeline.getPerformanceDiagnostics()
 pipeline.setPerformance({ enabled: false })   // 精确还原基线
-pipeline.setPerformance({ enabled: true, targetFps: 60, minScale: 0.5 }) // 调参键会重建实例
+pipeline.setPerformance({ enabled: true, targetFps: 60, minScale: 0.5, allowResolutionScaling: true }) // 明确允许降分辨率；调参键会重建实例
 ```
 
 ## 为什么是分辨率优先
@@ -50,4 +50,4 @@ pipeline.setPerformance({ enabled: true, targetFps: 60, minScale: 0.5 }) // 调�
 
 ## 基准测量约束
 
-调速器会改变 `resolutionScale`，从而改变 drawingBuffer。基准采样期间必须保持关闭——否则预览页的逐帧配置/缓冲一致性检查会判为无效。`baseline` 模式不会自动启用它。
+只有传入 `allowResolutionScaling: true` 时调速器才会改变 `resolutionScale` 和 drawingBuffer。基准采样期间必须保持关闭——否则预览页的逐帧配置/缓冲一致性检查会判为无效。`baseline` 模式不会自动启用它。

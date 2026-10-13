@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import VisualPipeline from '../../src/VisualPipeline.js'
 import { normalizeOptions } from '../../src/presets.js'
@@ -14,7 +14,7 @@ function fixture() {
   }
   const scene = { light: {}, globe: { enableLighting: false }, postProcessStages: stages,
     context: { webgl2: false }, requestRender() {}, highDynamicRange: false,
-    primitives: { add() { assert.fail('unsupported Hi-Z must not add a primitive') } },
+    primitives: { add() { assert.fail('CubeMap reflection must not add a Hi-Z primitive') } },
     shadowMap: { size: 1024, maximumDistance: 1000, softShadows: false, enabled: false, _lightCamera: {} } }
   const viewer = { scene, resolutionScale: 0.75, useBrowserRecommendedResolution: false, isDestroyed: () => false }
   Object.defineProperty(viewer, 'shadowMap', { get: () => scene.shadowMap })
@@ -32,197 +32,114 @@ function fixture() {
   return { viewer, Cesium, stages, owned, options: { shadowMode: 'native', environment: false } }
 }
 
-const defaults = { enabled: false, distance: 150, thickness: 0.5, strength: 1, transparent: false }
-
-function attachOwners(pipeline) {
-  const calls = []
-  const materials = { enabled: false, depthPyramidEnabled: false, reflectionEnabled: false,
-    setDepthPyramidEnabled(value) { this.depthPyramidEnabled = value; calls.push(['depth', value]) },
-    setReflectionEnabled(value) { this.reflectionEnabled = value; calls.push(['attachments', value]) },
-    setEnabled(value) { this.enabled = value; calls.push(['materials', value]) },
-    getDiagnostics() { return { enabled: this.enabled, valid: this.enabled } },
-    getDepthPyramidDiagnostics() { return { enabled: this.enabled && this.depthPyramidEnabled, valid: this.enabled && this.depthPyramidEnabled } },
-    getReflectionDiagnostics() { return { enabled: this.enabled && this.reflectionEnabled, valid: this.enabled && this.reflectionEnabled } },
-    destroy() { calls.push(['destroy-materials']) } }
-  const consumer = name => ({ enabled: false,
-    setEnabled(value) { this.enabled = value; calls.push([name, value]) },
-    getDiagnostics() { return { enabled: this.enabled, valid: this.enabled } },
-    destroy() { this.enabled = false; calls.push([`destroy-${name}`]) } })
-  pipeline.materialChannels = materials
-  pipeline.screenSpaceAO = consumer('ao')
-  pipeline.screenSpaceReflections = consumer('ssr')
-  return { materials, ao: pipeline.screenSpaceAO, ssr: pipeline.screenSpaceReflections, calls }
+function attachEnvironment(pipeline, modelCount = 2) {
+  const calls = [], included = new Set(), state = { enabled: false, strength: 1, map: null }
+  pipeline.environmentRenderer = {
+    lighting: {
+      setReflection(settings) { Object.assign(state, settings); calls.push({ ...settings }) },
+      setReflectionIncluded(primitive, value) { value ? included.add(primitive) : included.delete(primitive); return included.has(primitive) },
+      getReflectionDiagnostics() { return { ...state, valid: state.enabled && !!state.map && modelCount > 0,
+        mode: 'cube-map', source: state.map ? 'static-ktx2' : 'none', sceneReflections: false,
+        modelCount, readyCount: 0,
+        reason: state.enabled && state.map && modelCount ? null : state.enabled ? 'No static environment map configured' : 'Not requested' } }
+    },
+    setEnabled() {}, destroy() { calls.push({ destroy: true }) }
+  }
+  return { calls, state, included }
 }
 
-test('SSR defaults allocate no owners and expose diagnostics and the public class', () => {
+test('reflection defaults allocate no SSR owners and expose CubeMap diagnostics', () => {
   const f = fixture(), pipeline = new VisualPipeline(f)
+  assert.equal(pipeline.getOptions().environmentReflectionEnabled, false)
   assert.equal(pipeline.getOptions().screenSpaceReflectionEnabled, false)
   assert.equal(pipeline.screenSpaceReflections, undefined)
+  assert.equal(pipeline.transparentReflections, undefined)
   assert.equal(pipeline.materialChannels, undefined)
   assert.equal(f.owned.length, 1)
-  assert.deepEqual(pipeline.getScreenSpaceReflectionDiagnostics(), {
-    enabled: false, valid: false, reason: 'Not requested', requested: defaults
+  assert.deepEqual(pipeline.getEnvironmentReflectionDiagnostics(), {
+    enabled: false, valid: false, mode: 'cube-map', source: 'none', sceneReflections: false,
+    map: null, strength: 1, modelCount: 0, readyCount: 0, reason: 'Not requested',
+    requested: { enabled: false, strength: 1, map: null }
   })
-  assert.deepEqual(pipeline.getRenderDiagnostics().screenSpaceReflections, pipeline.getScreenSpaceReflectionDiagnostics())
+  assert.deepEqual(pipeline.getRenderDiagnostics().environmentReflections, pipeline.getEnvironmentReflectionDiagnostics())
   assert.equal(typeof rendering.ScreenSpaceReflection143, 'function')
   pipeline.destroy()
 })
 
-test('SSR settings normalize booleans and finite ranges without mutating input', () => {
-  const input = { screenSpaceReflectionEnabled: true, screenSpaceReflectionDistance: 500,
-    screenSpaceReflectionThickness: 2, screenSpaceReflectionStrength: 0.5 }
-  const current = normalizeOptions(input)
-  assert.equal(current.screenSpaceReflectionEnabled, true)
-  assert.equal(current.screenSpaceReflectionDistance, 500)
-  for (const invalid of [null, {}, { screenSpaceReflectionEnabled: 'true', screenSpaceReflectionDistance: Infinity,
-    screenSpaceReflectionThickness: NaN, screenSpaceReflectionStrength: '1' }]) assert.deepEqual(normalizeOptions(invalid, current), current)
-  const low = normalizeOptions({ screenSpaceReflectionDistance: 0, screenSpaceReflectionThickness: 0, screenSpaceReflectionStrength: -1 })
-  assert.equal(low.screenSpaceReflectionDistance, 1)
-  assert.equal(low.screenSpaceReflectionThickness, 0.01)
-  assert.equal(low.screenSpaceReflectionStrength, 0)
-  const high = normalizeOptions({ screenSpaceReflectionDistance: 3000, screenSpaceReflectionThickness: 30, screenSpaceReflectionStrength: 2 })
-  assert.equal(high.screenSpaceReflectionDistance, 2000)
-  assert.equal(high.screenSpaceReflectionThickness, 20)
-  assert.equal(high.screenSpaceReflectionStrength, 1)
-  assert.deepEqual(input, { screenSpaceReflectionEnabled: true, screenSpaceReflectionDistance: 500,
-    screenSpaceReflectionThickness: 2, screenSpaceReflectionStrength: 0.5 })
+test('environment reflection options normalize strict booleans and bounded strength', () => {
+  const current = normalizeOptions({ environmentReflectionEnabled: true, environmentReflectionStrength: 0.4,
+    environmentReflectionMap: '/assets/environment/campus.ktx2' })
+  assert.equal(current.environmentReflectionEnabled, true)
+  assert.equal(current.environmentReflectionStrength, 0.4)
+  assert.equal(current.environmentReflectionMap, '/assets/environment/campus.ktx2')
+  assert.equal(normalizeOptions({ environmentReflectionEnabled: 'true', environmentReflectionStrength: Infinity }, current).environmentReflectionEnabled, true)
+  assert.equal(normalizeOptions({ environmentReflectionStrength: -1 }).environmentReflectionStrength, 0)
+  assert.equal(normalizeOptions({ environmentReflectionStrength: 2 }).environmentReflectionStrength, 1)
+  assert.equal(normalizeOptions({ environmentReflectionMap: '' }, current).environmentReflectionMap, null)
 })
 
-test('SSR partial updates preserve foreign scene state and never touch AO or AA', () => {
+test('environment reflection uses CubeMap IBL without SSR, Hi-Z or material attachments', () => {
+  const pipeline = new VisualPipeline(fixture()), { calls } = attachEnvironment(pipeline)
+  assert.deepEqual(pipeline.setEnvironmentReflections({ enabled: true, strength: 0.45,
+    map: '/assets/environment/campus.ktx2' }), {
+    enabled: true, strength: 0.45, map: '/assets/environment/campus.ktx2',
+    mode: 'cube-map', source: 'static-ktx2', sceneReflections: false
+  })
+  assert.deepEqual(calls, [{ enabled: true, strength: 0.45, map: '/assets/environment/campus.ktx2' }])
+  assert.equal(pipeline.screenSpaceReflections, undefined)
+  assert.equal(pipeline.transparentReflections, undefined)
+  assert.equal(pipeline.materialChannels, undefined)
+  assert.equal(pipeline.getOptions().screenSpaceReflectionEnabled, false)
+  assert.equal(pipeline.getOptions().screenSpaceReflectionTransparent, false)
+  assert.equal(pipeline.getEnvironmentReflectionDiagnostics().valid, true)
+  pipeline.destroy()
+})
+
+test('only explicitly included primitives receive environment reflections through the public pipeline', () => {
+  const pipeline = new VisualPipeline(fixture()), { included } = attachEnvironment(pipeline)
+  const library = { name: 'library.glb' }
+  assert.equal(pipeline.setEnvironmentReflectionIncluded(library), true)
+  assert.equal(included.has(library), true)
+  assert.equal(pipeline.setEnvironmentReflectionIncluded(library, false), false)
+  assert.equal(included.has(library), false)
+  pipeline.destroy()
+})
+
+test('legacy SSR setter migrates to CubeMap and ignores scene sampling settings', () => {
   const f = fixture(), pipeline = new VisualPipeline(f), original = pipeline.getOptions()
   const light = { owner: 'weather' }
   f.viewer.scene.light = light
-  f.viewer.scene.msaaSamples = 2
   f.stages.exposure = 0.7
-  f.stages.ambientOcclusion.enabled = true
-  f.viewer.resize = () => assert.fail('SSR-only updates must not resize')
-  const expected = { enabled: false, distance: 300, thickness: 2, strength: 0.4, transparent: false }
-  assert.deepEqual(pipeline.setScreenSpaceReflections({ ...expected, exposure: 3, screenSpaceAoEnabled: true }), expected)
-  for (const input of [null, {}, { enabled: 1, distance: Infinity, thickness: '2', strength: NaN }]) {
-    assert.deepEqual(pipeline.setScreenSpaceReflections(input), expected)
-  }
+  attachEnvironment(pipeline)
+  assert.deepEqual(pipeline.setScreenSpaceReflections({ enabled: true, strength: 0.3,
+    distance: 900, thickness: 4, transparent: true }), {
+    enabled: true, strength: 0.3, map: null, mode: 'cube-map', source: 'none', sceneReflections: false
+  })
+  assert.equal(pipeline.getOptions().screenSpaceReflectionEnabled, false)
+  assert.equal(pipeline.getOptions().screenSpaceReflectionTransparent, false)
+  assert.equal(pipeline.getOptions().screenSpaceReflectionDistance, original.screenSpaceReflectionDistance)
+  assert.equal(pipeline.getOptions().screenSpaceReflectionThickness, original.screenSpaceReflectionThickness)
   assert.equal(pipeline.materialChannels, undefined)
-  assert.equal(pipeline.screenSpaceReflections, undefined)
-  const { ao } = attachOwners(pipeline)
-  pipeline.setScreenSpaceReflections({ enabled: true })
-  pipeline.setScreenSpaceReflections({ distance: 400 })
-  pipeline.setScreenSpaceReflections({ enabled: false })
-  assert.equal(ao.enabled, false)
   assert.equal(f.viewer.scene.light, light)
-  assert.equal(f.viewer.scene.msaaSamples, 2)
   assert.equal(f.stages.exposure, 0.7)
-  assert.equal(f.stages.ambientOcclusion.enabled, true)
-  const after = pipeline.getOptions()
-  for (const key of Object.keys(original).filter(key => !key.startsWith('screenSpaceReflection'))) assert.equal(after[key], original[key])
-  pipeline.destroy()
-  assert.equal(f.stages.ambientOcclusion.enabled, true)
-})
-
-test('SSR configures material, Hi-Z and reflection attachments before the consumer', () => {
-  const pipeline = new VisualPipeline(fixture()), { calls, materials, ssr } = attachOwners(pipeline)
-  assert.deepEqual(pipeline.setScreenSpaceReflections({ enabled: true }), { ...defaults, enabled: true })
-  assert.deepEqual(calls, [['depth', true], ['attachments', true], ['materials', true], ['ssr', true]])
-  assert.equal(pipeline.getMaterialDiagnostics().enabled, true)
-  assert.equal(pipeline.getDepthPyramidDiagnostics().enabled, true)
-  assert.deepEqual(pipeline.getMaterialDiagnostics().requested, { enabled: false })
-  assert.deepEqual(pipeline.getDepthPyramidDiagnostics().requested, { enabled: false })
-  pipeline.setMaterialChannels({ enabled: false })
-  pipeline.setDepthPyramid({ enabled: false })
-  assert.equal(materials.enabled, true)
-  assert.equal(materials.depthPyramidEnabled, true)
-  assert.equal(materials.reflectionEnabled, true)
-  calls.length = 0
-  pipeline.setScreenSpaceReflections({ enabled: false })
-  assert.deepEqual(calls, [['ssr', false], ['depth', false], ['attachments', false], ['materials', false]])
-  assert.equal(ssr.enabled, false)
+  assert.equal(pipeline.getScreenSpaceReflectionDiagnostics().sceneReflections, false)
   pipeline.destroy()
 })
 
-test('mixed AO and SSR consumers retain shared dependencies until the last request releases them', () => {
-  const pipeline = new VisualPipeline(fixture()), { materials, ao, ssr } = attachOwners(pipeline)
-  pipeline.setScreenSpaceAO({ enabled: true })
-  assert.equal(materials.reflectionEnabled, false)
-  pipeline.setScreenSpaceReflections({ enabled: true })
-  pipeline.setScreenSpaceAO({ enabled: false })
-  assert.equal(ssr.enabled, true)
-  assert.equal(materials.enabled, true)
-  assert.equal(materials.depthPyramidEnabled, true)
-  assert.equal(materials.reflectionEnabled, true)
-  pipeline.setScreenSpaceAO({ enabled: true })
-  pipeline.setScreenSpaceReflections({ enabled: false })
-  assert.equal(ao.enabled, true)
-  assert.equal(materials.enabled, true)
-  assert.equal(materials.depthPyramidEnabled, true)
-  assert.equal(materials.reflectionEnabled, false)
-  pipeline.setScreenSpaceAO({ enabled: false })
-  assert.equal(materials.enabled, false)
-  pipeline.setDepthPyramid({ enabled: true })
-  pipeline.setScreenSpaceReflections({ enabled: true })
-  pipeline.setScreenSpaceReflections({ enabled: false })
-  assert.equal(materials.enabled, true)
-  assert.equal(materials.depthPyramidEnabled, true)
-  pipeline.setMaterialChannels({ enabled: true })
-  pipeline.setDepthPyramid({ enabled: false })
-  assert.equal(materials.enabled, true)
-  pipeline.destroy()
-})
-
-test('SSR defers allocation while disabled or nested suspended and resumes latest settings', () => {
-  const pipeline = new VisualPipeline(fixture())
+test('CubeMap reflection follows pipeline disable, suspension, resume and cleanup', () => {
+  const pipeline = new VisualPipeline(fixture()), { calls, state } = attachEnvironment(pipeline)
   pipeline.setEnabled(false)
-  pipeline.setScreenSpaceReflections({ enabled: true, distance: 400 })
-  assert.equal(pipeline.materialChannels, undefined)
-  assert.equal(pipeline.screenSpaceReflections, undefined)
-  assert.equal(pipeline.getScreenSpaceReflectionDiagnostics().reason, 'Pipeline disabled')
-  assert.equal(pipeline.getMaterialDiagnostics().reason, 'Pipeline disabled')
-  assert.equal(pipeline.getDepthPyramidDiagnostics().reason, 'Pipeline disabled')
-  pipeline.suspend('weather')
-  pipeline.suspend('analysis')
+  pipeline.setEnvironmentReflections({ enabled: true, strength: 0.4 })
+  assert.equal(state.enabled, false)
+  assert.equal(pipeline.getEnvironmentReflectionDiagnostics().reason, 'Pipeline disabled')
   pipeline.setEnabled(true)
-  assert.equal(pipeline.getScreenSpaceReflectionDiagnostics().reason, 'Suspended')
-  pipeline.resume('weather')
-  assert.equal(pipeline.screenSpaceReflections, undefined)
-  pipeline.setScreenSpaceReflections({ strength: 0.4 })
-  const { ssr } = attachOwners(pipeline)
-  pipeline.resume('analysis')
-  assert.equal(ssr.enabled, true)
-  assert.deepEqual(pipeline.getScreenSpaceReflectionDiagnostics().requested, { enabled: true, distance: 400, thickness: 0.5, strength: 0.4, transparent: false })
-  pipeline.setOptions({ antialiasing: 'off' })
-  assert.equal(ssr.enabled, true)
-  pipeline.destroy()
-})
-
-test('SSR and AO stop before dependencies during restore and destruction', () => {
-  const pipeline = new VisualPipeline(fixture()), { calls, ssr } = attachOwners(pipeline)
-  pipeline.setScreenSpaceAO({ enabled: true })
-  pipeline.setScreenSpaceReflections({ enabled: true })
-  calls.length = 0
+  assert.equal(state.enabled, true)
   pipeline.suspend('weather')
-  assert.deepEqual(calls, [['ssr', false], ['ao', false], ['materials', false]])
+  assert.equal(state.enabled, false)
+  assert.equal(pipeline.getEnvironmentReflectionDiagnostics().reason, 'Suspended')
   pipeline.resume('weather')
-  assert.equal(ssr.enabled, true)
-  pipeline.setEnabled(false)
-  assert.equal(pipeline.getScreenSpaceReflectionDiagnostics().reason, 'Pipeline disabled')
-  pipeline.setEnabled(true)
+  assert.equal(state.enabled, true)
   pipeline.destroy()
-  pipeline.destroy()
-  assert.equal(calls.filter(([name]) => name === 'destroy-ssr').length, 1)
-  assert.ok(calls.findIndex(([name]) => name === 'destroy-ssr') < calls.findIndex(([name]) => name === 'destroy-materials'))
-  assert.equal(pipeline.getScreenSpaceReflectionDiagnostics().reason, 'Destroyed')
-  const count = calls.length
-  assert.deepEqual(pipeline.setScreenSpaceReflections({ enabled: false }), { ...defaults, enabled: true })
-  assert.equal(calls.length, count)
-})
-
-test('unsupported SSR preserves request diagnostics and the pipeline without GPU allocations', () => {
-  const f = fixture(), pipeline = new VisualPipeline({ ...f, options: { ...f.options, screenSpaceReflectionEnabled: true } })
-  const diagnostics = pipeline.getScreenSpaceReflectionDiagnostics()
-  assert.equal(diagnostics.valid, false)
-  assert.equal(diagnostics.enabled, false)
-  assert.match(diagnostics.reason, /webgl2/i)
-  assert.deepEqual(diagnostics.requested, { ...defaults, enabled: true })
-  assert.equal(pipeline.color.enabled, true)
-  assert.equal(f.owned.length, 1)
-  assert.equal(pipeline.geometry, undefined)
-  pipeline.destroy()
+  assert.equal(calls.filter(call => call.destroy).length, 1)
+  assert.equal(pipeline.getEnvironmentReflectionDiagnostics().reason, 'Destroyed')
 })

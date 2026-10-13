@@ -33,6 +33,82 @@ test('core lighting never changes IBL factors based on an asset filename', () =>
   for (const asset of assets) asset.destroy()
 })
 
+test('cube reflection binds a static prefiltered map and restores native IBL ownership', () => {
+  const { scene, lighting } = fixture()
+  const model = scene.primitives.add(tileset())
+  const ibl = model.imageBasedLighting
+  const manager = model.environmentMapManager
+  ibl.imageBasedLightingFactor = new C.Cartesian2(0.45, 0.7)
+  ibl.specularEnvironmentMaps = 'original-environment.ktx2'
+  manager.enabled = false
+  manager.position = new C.Cartesian3(1, 2, 3)
+  lighting.setReflectionIncluded(model, true)
+  lighting.setReflection({ enabled: true, strength: 0.35, map: '/assets/environment/campus.ktx2' })
+  assert.equal(model.imageBasedLighting, ibl)
+  assert.deepEqual(ibl.imageBasedLightingFactor, new C.Cartesian2(0.45, 0.35))
+  assert.equal(ibl.specularEnvironmentMaps, '/assets/environment/campus.ktx2')
+  assert.equal(manager.enabled, false)
+  assert.deepEqual(manager.position, new C.Cartesian3(1, 2, 3))
+  assert.deepEqual(lighting.getReflectionDiagnostics(), {
+    enabled: true, valid: true, mode: 'cube-map', source: 'static-ktx2', sceneReflections: false,
+    map: '/assets/environment/campus.ktx2', strength: 0.35, modelCount: 1, readyCount: 0, reason: null
+  })
+  lighting.setReflection({ enabled: false })
+  assert.deepEqual(ibl.imageBasedLightingFactor, new C.Cartesian2(0.45, 0.7))
+  assert.equal(ibl.specularEnvironmentMaps, 'original-environment.ktx2')
+  assert.equal(manager.enabled, false)
+  lighting.destroy(); model.destroy()
+})
+
+test('static reflection is opt-in and affects only explicitly included primitives', () => {
+  const { scene, lighting } = fixture()
+  const terrain = scene.primitives.add(tileset())
+  const building = scene.primitives.add(tileset())
+  terrain.imageBasedLighting.imageBasedLightingFactor = new C.Cartesian2(0.8, 0.25)
+  lighting.setReflectionIncluded(building, true)
+  lighting.setReflection({ enabled: true, strength: 0.9, map: '/assets/environment/campus.ktx2' })
+  assert.equal(terrain.imageBasedLighting.specularEnvironmentMaps, undefined)
+  assert.deepEqual(terrain.imageBasedLighting.imageBasedLightingFactor, new C.Cartesian2(0.8, 0.25))
+  assert.equal(building.imageBasedLighting.specularEnvironmentMaps, '/assets/environment/campus.ktx2')
+  assert.equal(lighting.getReflectionDiagnostics().modelCount, 1)
+  assert.equal(lighting.setReflectionIncluded(terrain, true), true)
+  assert.equal(terrain.imageBasedLighting.specularEnvironmentMaps, '/assets/environment/campus.ktx2')
+  assert.equal(lighting.getReflectionDiagnostics().modelCount, 2)
+  assert.equal(lighting.setReflectionIncluded(terrain, false), false)
+  assert.equal(terrain.imageBasedLighting.specularEnvironmentMaps, undefined)
+  assert.deepEqual(terrain.imageBasedLighting.imageBasedLightingFactor, new C.Cartesian2(0.8, 0.25))
+  lighting.destroy(); terrain.destroy(); building.destroy()
+})
+
+test('included GLB models share one static ImageBasedLighting object per map and strength', () => {
+  const { scene, lighting } = fixture()
+  const first = Object.create(C.Model.prototype)
+  const second = Object.create(C.Model.prototype)
+  const makeModel = model => {
+    model._imageBasedLighting = new C.ImageBasedLighting()
+    model._shouldDestroyImageBasedLighting = true
+    model._destroyed = false
+    model.resetDrawCommands = () => {}
+    model.isDestroyed = () => false
+    scene.primitives.add(model)
+    return model
+  }
+  makeModel(first); makeModel(second)
+  const firstOriginal = first.imageBasedLighting
+  const secondOriginal = second.imageBasedLighting
+  lighting.setReflectionIncluded(first, true)
+  lighting.setReflectionIncluded(second, true)
+  lighting.setReflection({ enabled: true, strength: 0.65, map: '/assets/environment/98_ibl.ktx2' })
+  assert.equal(first.imageBasedLighting, second.imageBasedLighting)
+  assert.equal(lighting.sharedReflectionIbls.size, 1)
+  assert.equal(first.imageBasedLighting.specularEnvironmentMaps, '/assets/environment/98_ibl.ktx2')
+  lighting.setReflection({ enabled: false })
+  assert.equal(first.imageBasedLighting, firstOriginal)
+  assert.equal(second.imageBasedLighting, secondOriginal)
+  assert.equal(lighting.sharedReflectionIbls.size, 0)
+  lighting.destroy()
+})
+
 test('daylight hides the star background and night and cleanup restore its original visibility', () => {
   const { scene, lighting } = fixture()
   scene.skyBox = { show: true }
@@ -136,6 +212,28 @@ test('refreshes environment only on changed configuration and restores on remova
   assert.equal(manager.maximumSecondsDifference, 3600)
   assert.equal(manager.position, undefined)
   lighting.destroy(); model.destroy()
+})
+
+test('does not rescan a stable primitive tree on every environment update', () => {
+  const { scene, lighting } = fixture()
+  const model = scene.primitives.add(tileset())
+  const originalGet = scene.primitives.get.bind(scene.primitives)
+  let visits = 0
+  scene.primitives.get = index => { visits++; return originalGet(index) }
+  try {
+    lighting.setEnabled(true)
+    lighting.apply(settings)
+    visits = 0
+    for (let index = 0; index < 20; index++) lighting.apply(settings)
+    assert.equal(visits, 0)
+    const model2 = scene.primitives.add(tileset())
+    lighting.apply(settings)
+    assert.ok(visits > 0)
+    model2.destroy()
+  } finally {
+    lighting.destroy()
+    model.destroy()
+  }
 })
 
 test('external scene and manager changes retain ownership through apply and cleanup', () => {

@@ -165,7 +165,7 @@ test('albedo defaults off and its dedicated setter creates only the material pro
   pipeline.destroy()
 })
 
-test('albedo request survives suspension and releases independently from explicit material, AO and SSR consumers', () => {
+test('albedo request survives suspension and releases independently from explicit material, AO and CubeMap reflection', () => {
   const f = fixture(), pipeline = new VisualPipeline(f), calls = []
   const owner = { enabled: false, depthPyramidEnabled: false, reflectionEnabled: false, opaqueColorEnabled: false, albedoEnabled: false,
     setDepthPyramidEnabled(value) { this.depthPyramidEnabled = value; calls.push(['depth', value]) },
@@ -179,8 +179,10 @@ test('albedo request survives suspension and releases independently from explici
     destroy() {} }
   pipeline.materialChannels = owner
   pipeline.screenSpaceAO = { setEnabled() {}, destroy() {}, getDiagnostics() { return { valid: true } } }
-  pipeline.screenSpaceReflections = { setEnabled() {}, destroy() {}, getDiagnostics() { return { valid: true } } }
-  pipeline.transparentReflections = { setEnabled() {}, destroy() {}, getDiagnostics() { return { valid: true } } }
+  pipeline.environmentRenderer = { setEnabled() {}, destroy() {}, lighting: {
+    setReflection() {}, getReflectionDiagnostics() { return { enabled: true, valid: true,
+      mode: 'cube-map', sceneReflections: false, strength: 1, managerCount: 1, reason: null } }
+  } }
   pipeline.suspend('weather')
   pipeline.setAlbedo({ enabled: true })
   pipeline.setMaterialChannels({ enabled: true })
@@ -189,15 +191,15 @@ test('albedo request survives suspension and releases independently from explici
   assert.equal(owner.albedoEnabled, true)
   assert.equal(owner.depthPyramidEnabled, false)
   pipeline.setScreenSpaceAO({ enabled: true })
-  pipeline.setScreenSpaceReflections({ enabled: true, transparent: true })
+  pipeline.setEnvironmentReflections({ enabled: true })
   pipeline.setAlbedo({ enabled: false })
   assert.equal(owner.albedoEnabled, false)
   assert.equal(owner.enabled, true)
   assert.equal(owner.depthPyramidEnabled, true)
-  assert.equal(owner.reflectionEnabled, true)
-  assert.equal(owner.opaqueColorEnabled, true)
+  assert.equal(owner.reflectionEnabled, false)
+  assert.equal(owner.opaqueColorEnabled, false)
   pipeline.setScreenSpaceAO({ enabled: false })
-  pipeline.setScreenSpaceReflections({ enabled: false })
+  pipeline.setEnvironmentReflections({ enabled: false })
   assert.equal(owner.enabled, true)
   assert.equal(owner.depthPyramidEnabled, false)
   assert.equal(owner.reflectionEnabled, false)

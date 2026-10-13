@@ -60,7 +60,9 @@ Diagnostics expose `grassAssets: 2` and `sharedColorTextures: 1`. Texture byte a
 
 ## Material Contract
 
-Both variants render through the existing ez-tree grass shader and use the shared BaseColor alpha as a cutout mask. The command uses `alphaCutoff: 0.35` for both variants, regardless of the source BLEND/OPAQUE declarations. This avoids opaque black cards and prevents order-dependent translucent grass.
+Both variants render through the existing ez-tree grass shader. Runtime inspection found their BaseColor alpha is entirely opaque while black background is stored in RGB, so the accepted implementation derives coverage from the maximum RGB component and uses `alphaCutoff: 0.03`. The grass-specific branch uses atlas RGB directly and does not multiply the upstream dark random grass tint. This avoids opaque black cards and preserves visible green blades.
+
+Grass commands always use `castShadows: false` and `receiveShadows: false`; the generic tree/rock shadow policy remains unchanged.
 
 The BaseColor texture is converted from sRGB by the existing shader path and multiplied by per-instance color variation. Normal and roughness maps remain unused and unallocated until the vegetation shader gains explicit support for those channels.
 
@@ -78,7 +80,7 @@ Unit tests must prove:
 - Both asset IDs reach `EzTreePrimitive`; the `grass-10` scale correction is applied only to that variant.
 - Two GLBs with identical BaseColor bytes resolve to one canonical image/texture record and one destruction.
 - Different image bytes never share a texture even if a hash bucket collides.
-- Both source alpha modes result in `alphaCutoff: 0.35` commands.
+- Both source alpha modes result in RGB-derived cutout with `alphaCutoff: 0.03` commands.
 - Fixed height 3, default density, default campus loading and the no-clamp contract remain unchanged.
 
 Browser verification uses the default `examples/campus.html` URL. It must reach `ready` with no page, console or HTTP errors; diagnostics must report two grass assets and one shared color texture. Close and overview screenshots must show both variants, and grass visibility must create a nonzero pixel difference.

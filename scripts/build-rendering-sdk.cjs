@@ -70,6 +70,7 @@ compiler.run((error, stats) => {
   for (const name of ['LICENSE', 'NOTICE.md', 'CCR_PATCHES.md']) {
     fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\ncesium-ez-tree / ' + name + '\n' + fs.readFileSync(path.join(root, 'vendor/cesium-ez-tree', name), 'utf8'))
   }
+  fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nwebgpu-cesium / NOTICE\n' + fs.readFileSync(path.join(root, 'vendor/webgpu-cesium-NOTICE.md'), 'utf8'))
   fs.copyFileSync(path.join(root, 'docs/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
   const hashes = {}
   const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {

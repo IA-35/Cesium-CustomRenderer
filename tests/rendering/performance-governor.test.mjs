@@ -37,7 +37,7 @@ function drive(listeners, clockControl, frames, interval) {
 
 function governor(pipeline, clockControl, overrides = {}) {
   return new PerformanceGovernor143(pipeline, { targetFps: 30, sampleWindow: 8, evaluateEvery: 4,
-    settleFrames: 2, now: clockControl.now, ...overrides })
+    settleFrames: 2, now: clockControl.now, allowResolutionScaling: true, ...overrides })
 }
 
 test('quantile uses nearest rank and tolerates empty windows', () => {
@@ -45,6 +45,18 @@ test('quantile uses nearest rank and tolerates empty windows', () => {
   assert.equal(quantile([10], 0.5), 10)
   assert.equal(quantile([5, 1, 4, 2, 3], 0.95), 5)
   assert.equal(quantile([5, 1, 4, 2, 3], 0.5), 3)
+})
+
+test('resolution scaling is opt-in so the default governor never blurs the scene', () => {
+  const h = host(), time = clock()
+  const g = new PerformanceGovernor143(h.pipeline, { targetFps: 30, sampleWindow: 8, evaluateEvery: 4,
+    settleFrames: 2, now: time.now })
+  g.setEnabled(true)
+  drive(h.listeners, time, 200, 50)
+  assert.equal(h.state.resolutionScale, 1)
+  assert.equal(g.getDiagnostics().allowResolutionScaling, false)
+  assert.ok(h.state.shadowSize <= 4096)
+  g.destroy()
 })
 
 test('sustained over-budget frames step resolution down before capping the shadow map', () => {

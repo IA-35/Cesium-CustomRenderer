@@ -1,7 +1,8 @@
 // Runtime frame-budget governor for the 1.143 visual pipeline.
 //
-// The governor trades resolution first (cheapest visual loss in a fill-bound 3D
-// scene) and only then caps the shadow map. It never raises quality above the
+// The governor keeps the user's native resolution by default and caps the shadow
+// map first. Resolution scaling is an explicit opt-in because it changes image
+// sharpness and is surprising when enabled implicitly. It never raises quality above the
 // configuration the user chose: the baseline is snapshotted on enable and every
 // reduction is expressed relative to it, so disabling the governor restores the
 // original options exactly.
@@ -42,6 +43,7 @@ export default class PerformanceGovernor143 {
     this.evaluateEvery = Math.max(4, input.evaluateEvery || 30)
     this.settleFrames = Math.max(0, input.settleFrames === undefined ? 30 : input.settleFrames)
     this.minScale = clamp(Number.isFinite(input.minScale) ? input.minScale : 0.6, 0.5, 1)
+    this.allowResolutionScaling = input.allowResolutionScaling === true
     this.degradeThreshold = Number.isFinite(input.degradeThreshold) ? input.degradeThreshold : 1.15
     this.recoverThreshold = Number.isFinite(input.recoverThreshold) ? input.recoverThreshold : 0.8
     this.recoverStreakRequired = Math.max(1, input.recoverStreakRequired || 3)
@@ -222,7 +224,9 @@ export default class PerformanceGovernor143 {
     const plan = REDUCTION_PLAN[step]
     const baseline = this.baseline
     const baselineScale = baseline ? baseline.resolutionScale : 1
-    const targetScale = clamp(baselineScale * plan.scaleFactor, this.minScale, baselineScale)
+    const targetScale = this.allowResolutionScaling
+      ? clamp(baselineScale * plan.scaleFactor, this.minScale, baselineScale)
+      : baselineScale
     // Shadow occupancy is a function of the step, not sticky: recovering past a cap
     // must hand the baseline size back, not keep the reduced one.
     const shadowEligible = !!baseline && baseline.hasShadow && baseline.shadowMode === 'custom'
@@ -258,6 +262,7 @@ export default class PerformanceGovernor143 {
     return {
       enabled: this.enabled,
       reason: this.reason,
+      allowResolutionScaling: this.allowResolutionScaling,
       targetFrameMs: this.targetFrameMs,
       targetFps: 1000 / this.targetFrameMs,
       step: this.step,

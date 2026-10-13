@@ -24,6 +24,12 @@ const argv = process.argv.slice(2)
 const argOf = name => { const i = argv.indexOf(name); return i === -1 ? null : argv[i + 1] }
 const port = Number(argOf('--port') || process.env.PORT || 8766)
 const root = path.resolve(argOf('--root') || path.join(__dirname, '..'))
+// Local example dataset explicitly supplied for the campus GLB comparison. The default
+// points at the CCR_NH_Optimized_20260920 release staged under assets/ (materials are
+// corrected inside the assets, so no runtime metalness patch is needed). Override with
+// CCR_CAMPUS_GLB_DIR to serve a different directory, e.g. the original source export.
+const campusGlbRoot = path.resolve(process.env.CCR_CAMPUS_GLB_DIR
+  || path.join(root, 'assets', 'campus-glb-release'))
 
 const SMAA_URL_PREFIX = '/node_modules/cesium/Build/rendering/smaa/'
 const SMAA_DIR = path.join(root, 'public', 'rendering', 'smaa')
@@ -80,6 +86,13 @@ function serveFile(request, response, filePath, directoryUrl) {
 const server = http.createServer((request, response) => {
   const parsed = url.parse(request.url)
   const pathname = parsed.pathname || '/'
+
+  if (pathname.startsWith('/campus-mobile-glb/')) {
+    const name = pathname.slice('/campus-mobile-glb/'.length)
+    if (!/^[a-z0-9_]+\.glb$/i.test(name)) { send(response, 404, {}, 'Not found'); return }
+    serveFile(request, response, path.join(campusGlbRoot, name))
+    return
+  }
 
   // Example credentials belong to this server process, never to source or generated bundles.
   if (pathname === '/examples/runtime-config.js') {

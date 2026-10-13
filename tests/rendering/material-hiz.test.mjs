@@ -32,16 +32,21 @@ test('material Hi-Z includes transparency only while reflection is actually enab
   const owner = new MaterialChannels143(C, scene), calls = []
   owner._scopeReason = () => null
   owner.depthPyramidEnabled = true
-  owner.depthPyramid = { invalidate() {}, update(...args) { calls.push(args) }, release() {}, destroy() {} }
+  const limits = []
+  owner.depthPyramid = { invalidate() {}, setMaxLevel(value) { limits.push(value) }, update(...args) { calls.push(args) }, release() {}, destroy() {} }
   owner.target = { width: 8, height: 8, eyeDepth: {}, transparency: {}, destroy() {},
     passState: { viewport: new C.BoundingRectangle(0, 0, 8, 8) }, clearAll: { execute() {} }, clearDepth: { execute() {} } }
   owner._render()
   assert.deepEqual(calls[0], [owner.target.eyeDepth, 1, null])
+  assert.equal(limits[0], undefined, 'explicit Hi-Z consumers retain the complete pyramid')
+  owner.setDepthPyramidEnabled(true, 0)
   owner.reflectionEnabled = true
   owner._render()
   assert.deepEqual(calls[1], [owner.target.eyeDepth, 1, owner.target.transparency])
+  assert.equal(limits[1], 5, 'reflection requires more than the AO base level')
   owner.reflectionEnabled = false
   owner._render()
   assert.deepEqual(calls[2], [owner.target.eyeDepth, 1, null])
+  assert.equal(limits[2], 0)
   owner.destroy()
 })

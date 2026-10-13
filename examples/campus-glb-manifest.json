@@ -1,0 +1,396 @@
+{
+  "baseUrl": "http://localhost:8083/DongdaModel_PBR/SM_NH/",
+  "statistics": {
+    "files": 70,
+    "primitiveCount": 477,
+    "triangleCount": 904633,
+    "bytes": 79752176
+  },
+  "models": [
+    {
+      "file": "analysis_testing_center.glb",
+      "name": "分析测试中心",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "annex.glb",
+      "name": "配楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "annex_001.glb",
+      "name": "配楼.001",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "annex_002.glb",
+      "name": "配楼.002",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "annex_003.glb",
+      "name": "配楼.003",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_JZXG.glb",
+      "name": "建筑学管",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "badminton_center.glb",
+      "name": "羽毛球馆",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_DYYC.glb",
+      "name": "第一浴池",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "bathhouse_2.glb",
+      "name": "第二浴池",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "central_cafeteria.glb",
+      "name": "中心食堂",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "ceramics_powder_metallurgy_institute.glb",
+      "name": "陶瓷与粉末冶金研究所",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_HXG.glb",
+      "name": "化学馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_TMGCSYZX.glb",
+      "name": "土木与工程实验中心",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_TMGCJXL.glb",
+      "name": "土木工程教学楼",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_ZHL.glb",
+      "name": "综合楼",
+      "environmentReflection": true,
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_ZHSYL02.glb",
+      "name": "综合实验楼二期",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_JSZX.glb",
+      "name": "计算中心",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "computing_center_annex.glb",
+      "name": "计算中心配楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "computing_center_misc_building.glb",
+      "name": "计算中心杂楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "computing_center_testing_building.glb",
+      "name": "计算中心测试楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_DCJXG.glb",
+      "name": "大成教学馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "digital_center.glb",
+      "name": "数字什么中心",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_XSSS08.glb",
+      "name": "学生第八宿舍",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_EMP.glb",
+      "name": "EMP实验室",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_EMPJXL.glb",
+      "name": "EMP实验室教学楼",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "engineering_training_center.glb",
+      "name": "工程训练中心",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_GDYYZX.glb",
+      "name": "歌德语言中心",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "hanqing_auditorium.glb",
+      "name": "汉卿会堂",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_XXXG.glb",
+      "name": "信息学馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "instability_control_laboratory.glb",
+      "name": "演示失稳与控制实验室",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "international_academic_exchange_center.glb",
+      "name": "国际学术交流中心",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "international_student_apartment_2.glb",
+      "name": "留学生第二公寓",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_LXSSS01.glb",
+      "name": "留学生第一宿舍",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_GTL.glb",
+      "name": "钢铁楼",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_JJSYS.glb",
+      "name": "重点金属材料实验室",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "kindergarten.glb",
+      "name": "幼儿园",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_ZHSYL01.glb",
+      "name": "综合实验楼一期",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "liaoning_postdoctoral_apartment.glb",
+      "name": "辽宁博士后公寓",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "library.glb",
+      "name": "图书馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_LCCTYG.glb",
+      "name": "刘长春体育馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "liu_changchun_gymnasium_annex.glb",
+      "name": "刘长春体育馆配楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_CLX.glb",
+      "name": "材料科学与工程学院",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "mechanical_electrical_building_result_data.glb",
+      "name": "机电学管_成果数据",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_JXGCZDHXY.glb",
+      "name": "机械工程与自动化学院",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "SM_NH_YJL.glb",
+      "name": "冶金楼",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "nanhu_building_under_construction.glb",
+      "name": "南湖在建建筑",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_SZGTSYS.glb",
+      "name": "数字钢铁全国终点实验室",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "national_university_science_park.glb",
+      "name": "国家大学科技园",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "power_management_office.glb",
+      "name": "供用电管理科",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "rare_metallurgy_building.glb",
+      "name": "稀冶楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_KXG.glb",
+      "name": "科学馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "stadium.glb",
+      "name": "体育场",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_XSST01.glb",
+      "name": "学生第一食堂",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "student_cafeteria_1.glb",
+      "name": "学生第二食堂",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "student_dormitory_10.glb",
+      "name": "学生第十宿舍",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "student_dormitory_10_001.glb",
+      "name": "学生第十宿舍旁配楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "student_dormitory_2.glb",
+      "name": "学生第二宿舍",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_XSSS3A.glb",
+      "name": "学生第三宿舍",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "student_dormitory_3_001.glb",
+      "name": "学生第三宿舍.001",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_XSSS3C.glb",
+      "name": "学生第三宿舍c",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "student_dormitory_5.glb",
+      "name": "学生第五宿舍",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "student_dormitory_7.glb",
+      "name": "学生第七宿舍",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "student_dormitory_building_7.glb",
+      "name": "学生第七宿舍楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "surrounding_annex_4.glb",
+      "name": "周边配楼4",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "surrounding_annex_4_001.glb",
+      "name": "周边配楼4.001",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "surrounding_annex_4_002.glb",
+      "name": "周边配楼4.002",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "surrounding_annex_4_003.glb",
+      "name": "周边配楼4.003",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "SM_NH_YYG.glb",
+      "name": "游泳馆",
+      "dielectricMaterials": [],
+      "environmentReflection": true
+    },
+    {
+      "file": "yifu_teaching_building.glb",
+      "name": "逸夫教学楼",
+      "dielectricMaterials": []
+    },
+    {
+      "file": "yingcai_college.glb",
+      "name": "英才学院",
+      "dielectricMaterials": []
+    }
+  ],
+  "headingDegrees": 90,
+  "origin": {
+    "longitude": 123.410315,
+    "latitude": 41.761969,
+    "height": 0
+  }
+}

@@ -221,7 +221,7 @@ export default class EnvironmentRenderer {
 
   getDiagnostics() {
     const texture = this.stages && !this.stages.raymarchStage.isDestroyed() && this.stages.raymarchStage.outputTexture
-    return { enabled: this.enabled, lighting: this.lighting.getDiagnostics(), hdr: this.hdr.getDiagnostics(),
+    return { enabled: this.enabled, lighting: this.lighting.getDiagnostics(), reflection: this.lighting.getReflectionDiagnostics(), hdr: this.hdr.getDiagnostics(),
       preset: this.state.environmentPreset, quality: this.state.environmentQuality, sunAltitude: this.sunLocal.z,
       withinRegion: this.withinRegion, volumeRadius: 100000,
       cloudGeometry: this.state.cloudGeometry, cloudScope: this.state.cloudGeometry === 'shell' ? 'ellipsoid-normalized shell; single-frustum depth' : 'local ENU',

@@ -16,19 +16,31 @@ import { LENS_EFFECT_DEFAULTS } from './stages/lensEffects143.js'
 import DeferredLighting143 from './lighting/DeferredLighting143.js'
 import TransparentForward143 from './pipeline/TransparentForward143.js'
 import {peekRenderTargetPool} from './pipeline/RenderTargetPool143.js'
+import RenderGraph143 from './pipeline/RenderGraph143.js'
+import { attachHdrGraph } from './environment/HdrCoordinator143.js'
 import OcclusionCulling143 from './visibility/OcclusionCulling143.js'
-import ScreenSpaceReflection143 from './reflections/ScreenSpaceReflection143.js'
-import TransparentReflection143 from './reflections/TransparentReflection143.js'
 import { installOitCompatibility143 } from './reflections/OitCompatibility143.js'
 import PerformanceGovernor143 from './performance/PerformanceGovernor143.js'
 import { selectMsaaSamples, renderResolution, readMsaaAttachments, resolveMsaaPolicy } from './antialiasing/settings143.js'
 import { capabilityDiagnostics } from './diagnostics/capabilityMatrix143.js'
+import WebGLDevice143 from './rhi/WebGLDevice143.js'
+import { resolveRendererCapabilities143 } from './diagnostics/CapabilityResolver143.js'
+import CesiumSceneAdapter143 from './scene/CesiumSceneAdapter143.js'
 import SelectedIdPass143 from './selection/SelectedIdPass143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
 const contextLossOwner = Symbol('context loss requires Viewer rebuild')
 export const getVisualPipeline = viewer => pipelines.get(viewer)
+
+function withoutSceneReflections(options, input = {}) {
+  const patch = { screenSpaceReflectionEnabled: false, screenSpaceReflectionTransparent: false }
+  if (options.screenSpaceReflectionEnabled) {
+    if (typeof input.environmentReflectionEnabled !== 'boolean') patch.environmentReflectionEnabled = true
+    if (!Number.isFinite(input.environmentReflectionStrength)) patch.environmentReflectionStrength = options.screenSpaceReflectionStrength
+  }
+  return normalizeOptions(patch, options)
+}
 
 export default class VisualPipeline {
   constructor({ Cesium, viewer, options = {} }) {
@@ -38,11 +50,15 @@ export default class VisualPipeline {
     if (pipelines.has(viewer)) throw new Error('Viewer already has a VisualPipeline')
     this.Cesium = Cesium
     this.viewer = viewer
-    this.options = normalizeOptions(options)
+    this.options = withoutSceneReflections(normalizeOptions(options), options)
     this.enabled = false
     this.destroyed = false
     this.suspensions = new Set()
     this.changes = []
+    this.renderGraph = new RenderGraph143({ label: 'CCR/VisualPipeline' })
+    this.rhi = viewer.scene.context ? new WebGLDevice143(Cesium, viewer.scene) : null
+    this.sceneAdapter = new CesiumSceneAdapter143(Cesium, viewer.scene)
+    this.detachRenderGraph = attachHdrGraph(viewer.scene, this.renderGraph)
     this.color = createColorGrading(Cesium, () => this.options, () => this.enabled && !this.suspensions.size)
     const stages = viewer.scene.postProcessStages
     this.color.enabled = false
@@ -88,6 +104,7 @@ export default class VisualPipeline {
     if (this.hdrBloom) this.hdrBloom.setEnabled(false)
     if (this.transparentReflections) this.transparentReflections.setEnabled(false)
     if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(false)
+    this.environmentRenderer?.lighting?.setReflection({ enabled: false })
     if (this.screenSpaceAO) this.screenSpaceAO.setEnabled(false)
     if (this.materialChannels) this.materialChannels.setEnabled(false)
     if (this.geometry) this.geometry.setEnabled(false)
@@ -170,7 +187,7 @@ export default class VisualPipeline {
     // Temporal AA resolves the HDR chain itself, so it is mutually exclusive with both
     // multisampling and the spatial post-process stage above.
     if (o.antialiasing === 'taa' && s.context && s.context.webgl2) {
-      if (!this.taa) this.taa = new TaaPass143(C, s, () => this.options)
+      if (!this.taa) this.taa = new TaaPass143(C, s, () => this.options, this.rhi)
       this.taa.setEnabled(true)
     } else if (this.taa) this.taa.setEnabled(false)
     this.write(v, 'resolutionScale', o.resolutionScale)
@@ -178,20 +195,20 @@ export default class VisualPipeline {
     if (v.canvas && v.canvas.style) this.write(v.canvas.style, 'imageRendering', 'auto')
     if (v.resize) v.resize()
     this.color.enabled = true
-    if (o.environment) {
-      if (!this.environmentRenderer) this.environmentRenderer = new EnvironmentRenderer(C, v, () => this.options, () => this.customShadow)
+    if (o.environment || o.environmentReflectionEnabled) {
+      this.ensureEnvironmentRenderer()
       if (this.campusOrigin && !this.environmentRenderer.origin) this.environmentRenderer.setOrigin(this.campusOrigin)
-      this.environmentRenderer.setEnabled(true)
+      this.environmentRenderer.setEnabled(o.environment)
     } else if (this.environmentRenderer) this.environmentRenderer.setEnabled(false)
     this.applyGeometry()
     this.applyLighting()
     this.applyOcclusionCulling()
     this.applyMaterialChannels()
-    this.applyScreenSpaceReflections()
-    this.applyTransparentReflections()
+    this.applyEnvironmentReflections()
     this.applyScreenSpaceAO()
     this.applyHdrBloom()
     this.applyLensEffects()
+    this.rebuildRenderGraph()
     s.requestRender()
   }
 
@@ -211,6 +228,8 @@ export default class VisualPipeline {
       this.deferredLighting = new DeferredLighting143({
         Cesium: this.Cesium,
         scene: this.viewer.scene,
+         graph: this.renderGraph,
+         rhi: this.rhi,
         getOptions: () => this.options,
         prepareAo: color => {
           if (!this.screenSpaceAO?.enabled) return null
@@ -219,7 +238,7 @@ export default class VisualPipeline {
         },
         getShadowVisibility: () => this._deferredShadowVisibility(),
         onGeometryAvailability: () => this.applyMaterialChannels(),
-        prepareReflections: color => this.screenSpaceReflections?.enabled ? this.screenSpaceReflections.prepareOpaque(this.viewer.scene.context,color) : color,
+        prepareReflections: color => color,
         shouldCull: command => {
           if(!this.occlusionCulling?.shouldCull(command))return false
           this.occlusionCulling.recordSkip(command);return true
@@ -237,6 +256,9 @@ export default class VisualPipeline {
         ao: o.lightingAo !== false,
       })
       this.deferredLighting.setEnabled(requested)
+       this.detachDeferredGraph?.()
+       this.detachDeferredGraph = requested && this.deferredLighting.bridge?.attachGraph
+         ? this.deferredLighting.bridge.attachGraph(this.renderGraph) : undefined
     }
     this.applyTransparentForward(requested)
   }
@@ -260,6 +282,8 @@ export default class VisualPipeline {
       this.transparentForward = new TransparentForward143({
         Cesium: this.Cesium,
         scene: this.viewer.scene,
+         graph: this.renderGraph,
+         rhi: this.rhi,
         getShadowVisibility: () => this._deferredShadowVisibility(),
         getOptions: () => this.options,
         // Must NOT be getLightingDiagnostics(): that getter itself reports the transparent-forward
@@ -315,6 +339,41 @@ export default class VisualPipeline {
     }
   }
 
+  rebuildRenderGraph() {
+    if (!this.renderGraph) return null
+    const graph = this.renderGraph
+    graph.reset()
+    const scene = this.viewer.scene
+    const screen = graph.importResource('cesium.screenColor', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f' })
+    const history = this.taa?.declareGraph(graph)?.colorA || graph.importResource('taa.history', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f' })
+    const deferredRequested = this.options.lightingMode === 'deferred'
+    const deferredActive = !!(deferredRequested && this.deferredLighting && !this.deferredLighting.failed)
+    const transparentActive = !!(deferredActive && this.transparentForward && !this.transparentForward.failed)
+    const taaActive = this.options.antialiasing === 'taa' && !!this.taa && !this.taa.failed
+
+    if (deferredActive) {
+      const gbuffer = this.deferredLighting.materials.declareGraph(this.renderGraph)
+      graph.addPass('deferred.geometry', pass => Object.values(gbuffer).forEach(resource => pass.write(resource)), null, { phase: 'deferred' })
+      graph.addPass('deferred.lighting', pass => { Object.values(gbuffer).forEach(resource => pass.read(resource)); pass.write(screen) }, null, { phase: 'deferred' })
+      if (transparentActive) graph.addPass('transparent.forward', pass => { pass.read(screen); pass.write(screen) }, null, { phase: 'transparent' })
+    } else {
+      graph.addPass('native.forward', pass => pass.write(screen), null, { phase: 'native' })
+    }
+    if (taaActive) {
+      const resolved = graph.createResource('taa.resolved', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f' })
+      graph.addPass('taa.resolve', pass => { pass.read(screen); pass.read(history); pass.write(resolved) }, null, { phase: 'taa' })
+      graph.addPass('taa.present', pass => { pass.read(resolved); pass.write(screen) }, null, { phase: 'present' })
+    } else graph.addPass('present', pass => pass.read(screen), null, { phase: 'present', sideEffect: true })
+    const pooledCaches = [this.screenSpaceAO?.pooled, this.hdrBloom?.pooled].filter(Boolean)
+    for (const cache of pooledCaches) cache.declareGraph(graph)
+    return graph.describe()
+  }
+
+  getRenderGraphDiagnostics() {
+    if (!this.renderGraph) return { passes: [], resources: [], aliases: [], culled: [] }
+    try { return { ...this.renderGraph.describe(), mermaid: this.renderGraph.toMermaid() } } catch (error) { return { passes: [], resources: [], aliases: [], culled: [], error: error.message || String(error) } }
+  }
+
   setCampusOrigin(origin) {
     if (this.destroyed || !origin) return
     this.campusOrigin = this.Cesium.Cartesian3.clone(origin)
@@ -358,7 +417,8 @@ export default class VisualPipeline {
       this.materialChannels.shouldCull=command=>!!this.occlusionCulling?.shouldCull(command)
     }
     if (this.materialChannels) {
-      if (this.materialChannels.setDepthPyramidEnabled) this.materialChannels.setDepthPyramidEnabled(depthPyramidEnabled)
+      if (this.materialChannels.setDepthPyramidEnabled) this.materialChannels.setDepthPyramidEnabled(depthPyramidEnabled,
+        this.options.depthPyramidEnabled ? undefined : this.options.screenSpaceReflectionEnabled ? 5 : 0)
       if (this.materialChannels.setReflectionEnabled) this.materialChannels.setReflectionEnabled(this.options.screenSpaceReflectionEnabled)
       if (this.materialChannels.setOpaqueColorEnabled) this.materialChannels.setOpaqueColorEnabled(this.options.screenSpaceReflectionEnabled && this.options.screenSpaceReflectionTransparent)
       if (this.materialChannels.setAlbedoEnabled) this.materialChannels.setAlbedoEnabled(this.options.albedoEnabled)
@@ -466,20 +526,26 @@ export default class VisualPipeline {
       }
     }
   }
-  applyScreenSpaceReflections() {
-    if (this.destroyed || !this.enabled || this.suspensions.size) return
-    if (this.options.screenSpaceReflectionEnabled && !this.screenSpaceReflections) {
-      this.screenSpaceReflections = new ScreenSpaceReflection143(this.Cesium, this.viewer.scene, () => this.getActiveMaterialChannels(), () => this.options)
+  ensureEnvironmentRenderer() {
+    if (!this.environmentRenderer) {
+      this.environmentRenderer = new EnvironmentRenderer(this.Cesium, this.viewer, () => this.options, () => this.customShadow)
+      if (this.campusOrigin) this.environmentRenderer.setOrigin(this.campusOrigin)
     }
-    if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(this.options.screenSpaceReflectionEnabled)
+    return this.environmentRenderer
+  }
+  applyEnvironmentReflections() {
+    if (this.screenSpaceReflections) this.screenSpaceReflections.setEnabled(false)
+    if (this.transparentReflections) this.transparentReflections.setEnabled(false)
+    const active = !this.destroyed && this.enabled && !this.suspensions.size && this.options.environmentReflectionEnabled
+    const renderer = active ? this.ensureEnvironmentRenderer() : this.environmentRenderer
+    renderer?.lighting?.setReflection({ enabled: active, strength: this.options.environmentReflectionStrength,
+      map: this.options.environmentReflectionMap })
+  }
+  applyScreenSpaceReflections() {
+    this.applyEnvironmentReflections()
   }
   applyTransparentReflections() {
-    if (this.destroyed || !this.enabled || this.suspensions.size) return
-    const enabled = this.options.screenSpaceReflectionEnabled && this.options.screenSpaceReflectionTransparent
-    if (enabled && !this.transparentReflections) {
-      this.transparentReflections = new TransparentReflection143(this.Cesium, this.viewer.scene, () => this.getActiveMaterialChannels(), () => this.options)
-    }
-    if (this.transparentReflections) this.transparentReflections.setEnabled(enabled)
+    if (this.transparentReflections) this.transparentReflections.setEnabled(false)
   }
   setColorGrading(options) {
     this.setOptions(normalizeColorGrading(options, this.getColorGrading()))
@@ -624,33 +690,46 @@ export default class VisualPipeline {
     return { ...actual, ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
   }
   setScreenSpaceReflections(settings = {}) {
-    if (!this.destroyed) {
-      const input = settings || {}
-      this.options = normalizeOptions({ screenSpaceReflectionEnabled: input.enabled, screenSpaceReflectionDistance: input.distance,
-        screenSpaceReflectionThickness: input.thickness, screenSpaceReflectionStrength: input.strength,
-        screenSpaceReflectionTransparent: input.transparent }, this.options)
-      const transparentEnabled = this.options.screenSpaceReflectionEnabled && this.options.screenSpaceReflectionTransparent
-      if (!transparentEnabled) this.applyTransparentReflections()
-      if (!this.options.screenSpaceReflectionEnabled) this.applyScreenSpaceReflections()
-      this.applyMaterialChannels()
-      if (this.options.screenSpaceReflectionEnabled) this.applyScreenSpaceReflections()
-      if (transparentEnabled) this.applyTransparentReflections()
-    }
-    const o = this.options
-    return { enabled: o.screenSpaceReflectionEnabled, distance: o.screenSpaceReflectionDistance,
-      thickness: o.screenSpaceReflectionThickness, strength: o.screenSpaceReflectionStrength, transparent: o.screenSpaceReflectionTransparent }
+    return this.setEnvironmentReflections(settings)
   }
   getScreenSpaceReflectionDiagnostics() {
+    return this.getEnvironmentReflectionDiagnostics()
+  }
+  setEnvironmentReflections(settings = {}) {
+    if (!this.destroyed) {
+      const input = settings || {}
+      this.options = normalizeOptions({ environmentReflectionEnabled: input.enabled,
+        environmentReflectionStrength: input.strength, environmentReflectionMap: input.map,
+        screenSpaceReflectionEnabled: false,
+        screenSpaceReflectionTransparent: false }, this.options)
+      this.applyEnvironmentReflections()
+      this.applyMaterialChannels()
+    }
     const o = this.options
-    const requested = { enabled: o.screenSpaceReflectionEnabled, distance: o.screenSpaceReflectionDistance,
-      thickness: o.screenSpaceReflectionThickness, strength: o.screenSpaceReflectionStrength, transparent: o.screenSpaceReflectionTransparent }
+    return { enabled: o.environmentReflectionEnabled, strength: o.environmentReflectionStrength,
+      map: o.environmentReflectionMap, mode: 'cube-map',
+      source: o.environmentReflectionMap ? 'static-ktx2' : 'none', sceneReflections: false }
+  }
+  setEnvironmentReflectionIncluded(primitive, included = true) {
+    if (this.destroyed || !primitive) return false
+    return this.ensureEnvironmentRenderer().lighting.setReflectionIncluded(primitive, included)
+  }
+  getEnvironmentReflectionDiagnostics() {
+    const o = this.options
+    const requested = { enabled: o.environmentReflectionEnabled, strength: o.environmentReflectionStrength,
+      map: o.environmentReflectionMap }
     let reason = null
     if (this.destroyed) reason = 'Destroyed'
     else if (!requested.enabled) reason = 'Not requested'
     else if (this.suspensions.size) reason = 'Suspended'
     else if (!this.enabled) reason = 'Pipeline disabled'
-    const actual = this.screenSpaceReflections ? this.screenSpaceReflections.getDiagnostics() : { enabled: false, valid: false }
-    return { ...actual, ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
+    const actual = this.environmentRenderer?.lighting?.getReflectionDiagnostics?.() || {
+      enabled: false, valid: false, mode: 'cube-map', source: o.environmentReflectionMap ? 'static-ktx2' : 'none',
+      sceneReflections: false, map: o.environmentReflectionMap,
+      strength: o.environmentReflectionStrength, modelCount: 0, readyCount: 0, reason: 'Not requested'
+    }
+    return { ...actual, mode: 'cube-map', sceneReflections: false,
+      ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
   }
   /**
    * B11: capability matrix probed from the live scene.
@@ -670,8 +749,8 @@ export default class VisualPipeline {
       ? { maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), maxColorAttachments: gl.getParameter(gl.MAX_COLOR_ATTACHMENTS) }
       : {}
     // 材质布局按当前实际请求的附件数计算（与 MaterialTarget143 同一规则）。
-    const reflection = !!(this.options.screenSpaceReflectionEnabled)
-    const opaqueColor = reflection && !!this.options.screenSpaceReflectionTransparent
+    const reflection = false
+    const opaqueColor = false
     const albedo = !!this.options.albedoEnabled
     const attachmentsNeeded = 4 + (reflection ? 2 : 0) + (opaqueColor ? 1 : 0) + (albedo ? 1 : 0)
     const oit = s && s._view && s._view.oit
@@ -719,14 +798,14 @@ export default class VisualPipeline {
       opaqueLoop,
       // 透明闭环：B03 的透明前向处于启用状态且未失败。
       transparentLoop: !!(transparentForward && transparentForward.enabled === true && transparentForward.failed !== true),
-      ssr: !!(this.screenSpaceReflections && this.screenSpaceReflections.getDiagnostics().valid),
+      ssr: false,
       msaa: this.msaa ? this.msaa.selected <= 1 || this.msaa.combined === true : true
     }
   }
   getCapabilityDiagnostics() {
     const probe = this.destroyed ? { generation: 0 } : this.probeCapabilities()
     const coverage = this.destroyed ? {} : this.probeCoverage()
-    return capabilityDiagnostics(probe, this.options, coverage)
+    return resolveRendererCapabilities143(probe, this.options, coverage)
   }
   getRenderDiagnostics() {
     const fxaa = this.viewer.scene.postProcessStages.fxaa.enabled
@@ -743,24 +822,19 @@ export default class VisualPipeline {
       albedo: this.getAlbedoDiagnostics(),
       selectionId: this.selectedIdPass?.getDiagnostics() || { active: false, reason: 'WebGL2 unavailable' },
       lighting: this.getLightingDiagnostics(),
+       renderGraph: this.getRenderGraphDiagnostics(), rhi: this.rhi?.getDiagnostics() || { live: 0, destroyed: true }, sceneAdapter: { active: !!this.sceneAdapter, generation: this.sceneAdapter?.generation || 0 },
       occlusion: this.getOcclusionDiagnostics(), resourcePool: this.getResourcePoolDiagnostics(), frameUniforms: this.getFrameUniformDiagnostics(),
       taa: this.getTaaDiagnostics(),
       depthPyramid: this.getDepthPyramidDiagnostics(), screenSpaceAO: this.getScreenSpaceAODiagnostics(), hdrBloom: this.getHdrBloomDiagnostics(),
       lensEffects: this.getLensEffectsDiagnostics(),
+      environmentReflections: this.getEnvironmentReflectionDiagnostics(),
       screenSpaceReflections: this.getScreenSpaceReflectionDiagnostics(), transparentReflections: this.getTransparentReflectionDiagnostics(),
       capability: this.getCapabilityDiagnostics(),
       performance: this.getPerformanceDiagnostics() }
   }
   getTransparentReflectionDiagnostics() {
-    const requested = { enabled: this.options.screenSpaceReflectionTransparent }
-    let reason = null
-    if (this.destroyed) reason = 'Destroyed'
-    else if (!requested.enabled) reason = 'Not requested'
-    else if (!this.options.screenSpaceReflectionEnabled) reason = 'Screen-space reflections disabled'
-    else if (this.suspensions.size) reason = 'Suspended'
-    else if (!this.enabled) reason = 'Pipeline disabled'
-    const actual = this.transparentReflections ? this.transparentReflections.getDiagnostics() : { enabled: false, valid: false }
-    return { ...actual, ...(reason ? { enabled: false, valid: false, reason } : {}), requested }
+    return { enabled: false, valid: false, mode: 'cube-map', sceneReflections: false,
+      reason: 'Transparent scene reflections disabled', requested: { enabled: false } }
   }
   invalidateShadows() {
     if (this.customShadow && !this.destroyed) this.customShadow.invalidate()
@@ -844,7 +918,7 @@ export default class VisualPipeline {
 
   setOptions(options) {
     if (this.destroyed) return this.getOptions()
-    const next = normalizeOptions(options, this.options)
+    const next = withoutSceneReflections(normalizeOptions(options, this.options), options)
     if (['toneMappingCurve', ...Object.keys(LENS_EFFECT_DEFAULTS)].some(key => next[key] !== this.options[key])) {
       this.lensEffects?.setEnabled(false)
     }
@@ -893,10 +967,13 @@ export default class VisualPipeline {
       this.viewer.scene.requestRender()
     }
     pipelines.delete(this.viewer)
-    this.selectedIdPass?.destroy()
+    this.detachRenderGraph?.()
+    this.detachRenderGraph = undefined
     this.occlusionCulling?.destroy()
     // Deferred lighting owns a frame bridge, so it must be torn down before the scene is.
     if (this.transparentForward) this.transparentForward.destroy()
+    this.detachDeferredGraph?.()
+    this.detachDeferredGraph = undefined
     if (this.deferredLighting) this.deferredLighting.destroy()
     if (this.transparentReflections) this.transparentReflections.destroy()
     if (this.screenSpaceReflections) this.screenSpaceReflections.destroy()
@@ -916,6 +993,8 @@ export default class VisualPipeline {
     if (this.shadowMap && !this.shadowMap.isDestroyed()) this.shadowMap.destroy()
     if (this.releaseOitCompatibility) this.releaseOitCompatibility()
     this.releaseOitCompatibility = undefined
+    this.rhi?.destroy()
+    this.rhi = null
     this.suspensions.clear()
     this.destroyed = true
   }

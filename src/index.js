@@ -17,6 +17,8 @@ export { resolveMsaaPolicy, isPostProcessAntiAliasing, postProcessAntiAliasingMo
 export { default as PerformanceGovernor143, quantile } from './performance/PerformanceGovernor143.js'
 export { default as FixedTreeCollection, createFixedTreeCollection } from './instances/FixedTreeCollection.js'
 export { default as GrassCollection, createGrassCollection } from './instances/GrassCollection.js'
+export { default as WaterSurfaceCollection, createWaterSurfaceCollection } from './instances/WaterSurfaceCollection.js'
+export { default as TrafficSystem, createTrafficSystem } from './traffic/TrafficSystem.js'
 export { validateFixedTreePoints, stableTreeVariation } from './instances/fixedTreeData.js'
 export { projectedTreePixels, selectTreeLod, DEFAULT_TREE_LOD_THRESHOLDS } from './instances/lodSelector.js'
 export { MATERIAL_FLAGS } from './channels/materialShader143.js'
@@ -24,4 +26,12 @@ export { defaultFilters, normalizeOptions, normalizeColorGrading, colorGradingCo
 // B01: frame execution bridge. A low-level building block whose first real consumer is B02's deferred
 // lighting, so it is exported but deliberately not wired into any VisualPipeline option yet.
 export { createFrameBridge, FRAME_BRIDGE_PHASES } from './pipeline/FrameBridge143.js'
+export { attachHdrGraph } from './environment/HdrCoordinator143.js'
+export { default as RenderGraph143, createRenderGraph143 } from './pipeline/RenderGraph143.js'
+export { createFrameState143, isColorFrame143 } from './core/FrameState143.js'
+export { createRenderItem143, compareRenderItems143, sortRenderItems143 } from './renderer/RenderItem143.js'
+export { default as RenderItemQueue143 } from './renderer/RenderItemQueue143.js'
+export { default as WebGLDevice143 } from './rhi/WebGLDevice143.js'
+export { default as CesiumSceneAdapter143 } from './scene/CesiumSceneAdapter143.js'
+export { resolveRendererCapabilities143 } from './diagnostics/CapabilityResolver143.js'
 export const createVisualPipeline = options => new VisualPipeline(options)

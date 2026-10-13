@@ -1,4 +1,7 @@
 // Cesium 1.143 experimental OIT bridge; scene management and picking remain native.
+import { createFrameState143 } from '../core/FrameState143.js'
+import { createRenderItem143 } from '../renderer/RenderItem143.js'
+import RenderItemQueue143 from '../renderer/RenderItemQueue143.js'
 // Per-frustum events observe accumulation. Final opaque replacement is before OIT composition.
 // Sorted transparency has no opaque write boundary and is explicitly observation-only.
 const VERSION = /^1\.143(?:\.0)?$/
@@ -11,7 +14,8 @@ function halfFloat(bits) {
 export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   if (!C || !scene) throw new Error('createFrameBridge requires { Cesium, scene }')
   if (!VERSION.test(C.VERSION)) throw new Error('FrameBridge143 requires Cesium 1.143')
-  const callbacks = new Set(), commandCallbacks = new Set(), viewIds = new WeakMap()
+  const callbacks = new Set(), commandCallbacks = new Set(), itemCallbacks = new Set(), graphs = new Set(), viewIds = new WeakMap()
+  const itemQueue = new RenderItemQueue143()
   let viewCount = 0, installation, activeContext, enabled = true
   const state = { installed: false, destroyed: false, generation: 0, frameGeneration: 0,
     frameNumber: undefined, scratch: {}, errors: [], uploadProgram: undefined }
@@ -32,7 +36,8 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     }
     if (view && !viewIds.has(view)) viewIds.set(view, viewCount++)
     const id = view ? viewIds.get(view) : -1, current = scene.context.uniformState?.currentFrustum
-    return { phase, scene, view, frameNumber, frameGeneration: state.frameGeneration,
+    const frameState = createFrameState143(scene, { generation: state.frameGeneration })
+    return { phase, frameState, scene, view, frameNumber, frameGeneration: state.frameGeneration,
       generation: state.generation, sceneId: scene.id || 'scene-0',
       viewId: (scene.id || 'scene-0') + ':' + id, callIndex: id,
       frustum: current ? { near: current.x, far: current.y } : null,
@@ -43,6 +48,7 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   function dispatch(phase) {
     if (!state.installed || !enabled || !isRender()) return
     const context = contextFor(phase), previous = activeContext
+    if (phase === 'opaqueFrame') { itemQueue.begin(context.frameState); for (const graph of graphs) graph.beginFrame(context) }
     stats.callbacks[phase]++; activeContext = context
     try {
       for (const record of [...callbacks].sort((a,b) => a.priority - b.priority)) {
@@ -124,6 +130,13 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   function dispatchCommand(command) {
     if (!state.installed || !enabled || state.destroyed || !isRender()) return
     const generation=state.generation
+    const item = createRenderItem143(command, { frameState: activeContext?.frameState, pass: command.pass === C.Pass?.TRANSLUCENT ? 'transparent.forward' : 'native.forward' })
+    itemQueue.submit(item)
+    for (const record of [...itemCallbacks].sort((a,b) => a.priority - b.priority)) {
+      if (!record.active || !record.enabled) continue
+      try { record.fn(item, activeContext) }
+      catch (error) { record.enabled = false; state.errors.push(String(error?.message || error)); state.errors = state.errors.slice(-8) }
+    }
     for (const record of [...commandCallbacks].sort((a,b) => a.priority - b.priority)) {
       if (!state.installed || !enabled || state.destroyed || generation !== state.generation) break
       if (!record.active || !record.enabled) continue
@@ -178,6 +191,13 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     const record = { fn, priority: options.priority ?? priority, enabled: options.enabled !== false, active: true }
     commandCallbacks.add(record)
     return () => { record.active = false; commandCallbacks.delete(record) }
+  }
+  function onRenderItem(fn, options = {}) {
+    assertAlive()
+    if (typeof fn !== 'function') throw new Error('onRenderItem requires a function')
+    const record = { fn, priority: options.priority ?? priority, enabled: options.enabled !== false, active: true }
+    itemCallbacks.add(record)
+    return () => { record.active = false; itemCallbacks.delete(record) }
   }
   function findOpaqueTargets() {
     if (!scene._environmentState?.useOIT) return []
@@ -277,8 +297,9 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
       return { supported: true, value, mode: target.mode, samples: target.samples }
     })
   }
+  function getRenderItems(pass) { return itemQueue.snapshot(pass) }
   function getDiagnostics() {
-    return { ...stats, callbacks: { ...stats.callbacks }, installed: state.installed,
+    return { ...stats, items: itemQueue.getDiagnostics(), callbacks: { ...stats.callbacks }, installed: state.installed,
       destroyed: state.destroyed, generation: state.generation, frameGeneration: state.frameGeneration,
       enabled, tokens: callbacks.size, errors: state.errors.slice(),
       oitPatched: !!installation && !!scene._view?.oit && installation.oits.has(scene._view.oit),
@@ -290,11 +311,16 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
         'Per-frustum OIT events are observations; final MSAA/multi-frustum replacement belongs at OIT compose.',
         'readOpaqueColor is a synchronous diagnostic read, not a production lighting input.'] }
   }
+  function attachGraph(graph) {
+    if (!graph || typeof graph.beginFrame !== 'function') throw new Error('FrameBridge143 attachGraph requires a Render Graph')
+    graphs.add(graph)
+    return () => graphs.delete(graph)
+  }
   function destroy() {
     if (state.destroyed) return
-    uninstall(); releaseGpu(); callbacks.clear(); commandCallbacks.clear(); state.destroyed = true
+    uninstall(); releaseGpu(); callbacks.clear(); commandCallbacks.clear(); itemCallbacks.clear(); graphs.clear(); itemQueue.clear(); state.destroyed = true
   }
-  const api = { install, uninstall, on, onCommand, getDiagnostics, findOpaqueTargets, readOpaqueColor, uploadOpaqueColor, destroy,
+  const api = { install, uninstall, on, onCommand, onRenderItem, getRenderItems, attachGraph, getDiagnostics, findOpaqueTargets, readOpaqueColor, uploadOpaqueColor, destroy,
     setEnabled(value) { assertAlive(); enabled = !!value },
     get installed() { return state.installed }, get scene() { return scene }, get state() { return state } }
   return api

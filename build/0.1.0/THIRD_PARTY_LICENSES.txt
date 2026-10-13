@@ -148,6 +148,27 @@ Original LICENSE and NOTICE.md are retained. The src directory is upstream sourc
 - CCR shadow flags, receiver marker and light-view command selection retain alpha-tested silhouettes, including available offscreen cells. Wind is disabled for the fixed-tree integration.
 - Generated runtime.js is rebuilt from these sources; it must not be edited manually.
 
-The campus default is now the upstream procedural Pine generator with three seeded presets, reduced branch tessellation/leaf-card budgets and original bark texture. A `treePresets` option permits caller-provided upstream preset objects. Instance density is held at 1.0 for both branch and leaf records; all surveyed points remain. This default has one lightweight geometry level, not four GLB levels. External GLB remains an explicit comparison path; its dark leaf appearance has not been accepted for default use.
+The campus example selects the external four-level tree GLBs by default; the upstream procedural Pine generator remains available with `treeSource=procedural`. A `treePresets` option permits caller-provided upstream preset objects. Instance density is held at 1.0 for both branch and leaf records; all surveyed points remain.
+
+GrassCollection uses host assets `grass-10.glb` and `grass-17.glb`, groups instances by stable asset ID, shares byte-identical BaseColor records, derives cutout from RGB because their alpha is opaque, and forces grass commands to neither cast nor receive shadows.
 
 This remains a forward vegetation shader, not the full Cesium Model PBR material pipeline. Native/CCR appearance, frame time, model/resource counts and actual tree/shadow pixel evidence must be verified before claiming integration success.
+
+2026-09-20 lightweight campus revision:
+- Official dgreenheck/ez-tree geometry is prepared offline from the pinned source in `vendor/ez-tree-generator`; no Three.js browser runtime is added. Existing GLB loading, instancing and spatial LOD are reused.
+- Per-material `extras.roundedLeafNormals` is forwarded for official needle geometry. Asset colors use linear lighting and convert back to sRGB only for SDR output.
+- Grass definitions distinguish alpha-channel cutout from the legacy RGB-derived mask. The six-triangle grayscale grass uses alpha and an explicit green tint.
+- The campus uses short grass with per-polygon height samples, close-range density LOD, and no additional green ground plane. Legacy assets remain selectable with `?vegetation=legacy`.
+
+
+webgpu-cesium / NOTICE
+webgpu-cesium RenderGraph adaptation
+Copyright 2026 webgpu-cesium contributors
+
+This project adapts the Render Graph declaration, dependency analysis, topological ordering,
+transient lifetime and alias-slot algorithms from:
+https://github.com/Xiaobai-grow/webgpu-cesium/blob/main/packages/renderer/src/graph/RenderGraph.ts
+
+The original project is licensed under the Apache License, Version 2.0.
+The current adapter removes WebGPU execution and integrates with the Cesium WebGL2
+RenderTargetPool143 implementation.

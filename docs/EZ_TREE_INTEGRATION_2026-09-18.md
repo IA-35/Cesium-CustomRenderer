@@ -1,6 +1,6 @@
 # cesium-ez-tree 校园接入结果
 
-2026-09-18：按用户要求停止自建多 Model 植被集合；用户随后允许用 ez-tree 程序化树替代 GLB，校园默认已采用程序化 Pine。
+2026-09-20：停止自建多 Model 植被集合，统一使用 ez-tree primitive。校园默认采用三种四级 LOD GLB 树；程序化 Pine 保留为 `treeSource=procedural` 性能对照。
 
 ## 当前实现
 
@@ -9,8 +9,9 @@
 - 删除了上一轮自行拼装 instanced glTF / Blob URL / 132 个 Cesium Model 的路径。FixedTreeCollection 仅负责业务点位与上游 primitive 适配。
 - 720 个采集点位，3 个类型；地面使用场景采样，失败明确报错。默认一个 primitive、84 个 80 米空间批次、六组共享几何；树干/叶片的实例保留比例均为 1，不为提速删点。
 - 三种不同 seed 的 Pine 预设，按已有树高缩放。减少枝条径向/纵向细分与叶片数量，同时增大叶片卡片以保留树冠。使用上游 pine 树皮，叶片由其程序化遮罩生成，颜色为绿色。
-- 默认程序化树为一个轻量几何档，不冒充四级 GLB LOD。`treeSource=glb` 仅用于对照；该路径仍有偏暗叶片与较高网格成本，未作为默认合格展示。
+- 默认 GLB 树包含四级几何 LOD；程序化树为一个轻量几何档，不冒充四级 LOD。两者都保留 720 个固定点位。
 - 上游深度/颜色保留相同 Alpha cutout；增加 CCR 阴影投射与接收适配、主视图外树木的光照视锥补选。风暂关闭。
+- GLB 叶片远景覆盖修复：LOD0/1/2/3 cutoff 为 0.35/0.30/0.24/0.18，LOD3 投影阈值由 28 像素降为 12 像素。强制 LOD3 验收仍保留 52,077 个树冠像素；自然高空视角为 55 个 LOD2、29 个 LOD3 批次。
 - 程序化材质为上游前向植被光照，不是完整 Model PBR/MRT，不能宣称已纳入延迟材质或 SSR 材质接收面。
 
 ## 复现
@@ -20,7 +21,7 @@ npm run build
 node scripts/dev-server.cjs --port 8878
 ```
 
-直接打开 `http://127.0.0.1:8878/examples/campus.html` 即默认加载程序化树与草地；`?trees=none` 可关闭树木，`?treeSource=glb` 仅用于 GLB 对照。
+直接打开 `http://127.0.0.1:8878/examples/campus.html` 即默认加载 GLB 树与草地；`?trees=none` 可关闭树木，`?treeSource=procedural` 可切换程序化对照。
 示例沿用业务服务 `http://localhost:8083/Dongda`，`SM_NH_Shu` 保持用户禁用状态。
 
 `npm run build` / `npm test` 自动构建以 Cesium 1.143 为外部依赖的 ez-tree 工厂。程序化运行时只取 `assets/vegetation/manifest.json`、`points.json` 和 `eztree/bark/pine_color_1k.jpg`；不请求树 GLB。
@@ -33,7 +34,7 @@ node scripts/dev-server.cjs --port 8878
 
 `scripts/check-tree-performance.cjs <phase>`：固定 1912×956、相同时间/镜头/CCR 参数，启用/隐藏/再启用树木，每次预热 30 帧、采样 180 帧。
 
-| 同机位观测 | 旧多 Model GLB | ez-tree GLB 对照 | ez-tree 程序化默认 |
+| 同机位观测 | 旧多 Model GLB | ez-tree GLB 默认 | ez-tree 程序化对照 |
 | --- | ---: | ---: | ---: |
 | 树木 Model 数 | 132 | 0 | 0 |
 | 树木 primitive 数 | 132 Model | 1 | 1 |

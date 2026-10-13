@@ -1,7 +1,7 @@
 {
   "name": "cesium-custom-renderer",
   "version": "0.1.0",
-  "description": "Cesium 1.143 自定义渲染管线独立工程：太阳阴影、HDR 环境与体积云、SSAO、PBR/透明 SSR、材质 MRT 与 Hi-Z、SMAA/TAA、相机 UBO、性能调速与诊断",
+  "description": "Cesium 1.143 自定义渲染管线独立工程：太阳阴影、HDR 环境与体积云、SSAO、Cube 环境反射、材质 MRT 与 Hi-Z、SMAA/TAA、相机 UBO、性能调速与诊断",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -19,6 +19,8 @@
     "vendor/cesium-ez-tree/CCR_PATCHES.md",
     "vendor/cesium-ez-tree/assets/bark",
     "vendor/cesium-ez-tree/assets/models/grass.glb",
+    "vendor/webgpu-cesium-NOTICE.md",
+    "assets/environment",
     "public/rendering/smaa",
     "README.md"
   ],
@@ -45,9 +47,13 @@
     "@turf/projection": "^7.4.0",
     "babel-loader": "^9.1.3",
     "lil-gui": "^0.21.0",
+    "proj4": "2.22.0",
+    "three": "0.169.0",
     "webpack": "^5.90.0"
   },
   "scripts": {
+    "prepare:vegetation": "node scripts/prepare-lightweight-vegetation.cjs",
+    "prepare:water": "node scripts/prepare-water-polygons.cjs",
     "pretest": "node scripts/build-eztree-runtime.cjs",
     "prepack": "npm run build",
     "test": "node --test tests/rendering/*.test.mjs",

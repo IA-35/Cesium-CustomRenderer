@@ -2,6 +2,7 @@ import MaterialTarget143, { materialTargetSupport } from './MaterialTarget143.js
 import { materialSources } from './materialShader143.js'
 import { primitiveReflectionSources, globeWaterSources, primitiveReflectionDiagnostics } from '../reflections/PrimitiveReflection143.js'
 import DepthPyramid143 from './DepthPyramid143.js'
+import {keepPrimitiveLast} from '../pipeline/PrimitiveOrder143.js'
 
 class TransparencyScopeError extends Error {}
 
@@ -157,7 +158,7 @@ export default class MaterialChannels143 {
       this.proxy = { update: state => this._update(state), isDestroyed: () => this.destroyed, destroy() {} }
       this.scene.primitives.add(this.proxy)
       this.removePreUpdate = this.scene.preUpdate.addEventListener(() => {
-        if (this.enabled) this.scene.primitives.raiseToTop(this.proxy)
+        if (this.enabled) keepPrimitiveLast(this.scene.primitives, this.proxy)
       })
     }
     this.scene.requestRender()
@@ -312,6 +313,7 @@ export default class MaterialChannels143 {
       this.stats.frames++
       if (this.depthPyramidEnabled) {
         if (!this.depthPyramid) this.depthPyramid = new DepthPyramid143(C, scene)
+        this.depthPyramid.setMaxLevel?.(this.depthPyramidMaxLevel === undefined ? undefined : this.reflectionEnabled ? 5 : this.depthPyramidMaxLevel)
         this.depthPyramid.update(this.target.eyeDepth, this.outputFrame, this.reflectionEnabled ? this.target.transparency : null)
       }
       this._prune()
@@ -372,8 +374,9 @@ export default class MaterialChannels143 {
       primitiveReflection: primitiveReflectionDiagnostics() }
   }
 
-  setDepthPyramidEnabled(value) {
+  setDepthPyramidEnabled(value, maxLevel) {
     if (this.destroyed) return
+    this.depthPyramidMaxLevel = maxLevel
     this.depthPyramidEnabled = value === true
     if (!this.depthPyramidEnabled && this.depthPyramid) this.depthPyramid.release()
     if (!this._sceneDestroyed()) this.scene.requestRender()

@@ -1,0 +1,121 @@
+{
+  "sourceFeatures": 56,
+  "sourceVertices": 448,
+  "sourceLengthMetres": 13981.804238481305,
+  "precisionGridMetres": 0.01,
+  "subCentimetreRoads": 0,
+  "nodedRoads": 126,
+  "originalNodes": 92,
+  "junctionMergeThresholdMetres": 20,
+  "junctionClusters": [
+    {
+      "nodes": [
+        7,
+        16
+      ],
+      "hub": 7
+    },
+    {
+      "nodes": [
+        14,
+        36
+      ],
+      "hub": 14
+    },
+    {
+      "nodes": [
+        15,
+        37
+      ],
+      "hub": 15
+    },
+    {
+      "nodes": [
+        34,
+        49
+      ],
+      "hub": 34
+    },
+    {
+      "nodes": [
+        63,
+        72
+      ],
+      "hub": 63
+    },
+    {
+      "nodes": [
+        78,
+        84
+      ],
+      "hub": 78
+    },
+    {
+      "nodes": [
+        82,
+        89
+      ],
+      "hub": 82
+    }
+  ],
+  "internalConnectorRoads": [
+    16,
+    37,
+    39,
+    60,
+    90,
+    111,
+    119
+  ],
+  "shortTerminalRoadsNotDriven": [
+    51
+  ],
+  "driveableRoads": 118,
+  "directedLanes": 236,
+  "entryLanes": 22,
+  "narrowSharedRoads": 0,
+  "roadWidthMetres": 6.0,
+  "laneWidthMetres": 3.0,
+  "widthPolicy": "All roads have two lanes per user instruction; source WIDTH is ignored",
+  "componentsNodeCounts": [
+    90,
+    2
+  ],
+  "sourceFeaturesAttributed": 56,
+  "sourceWidthCounts": {
+    "4": 15,
+    "3.5": 6,
+    "4.5": 5,
+    "5.5": 5,
+    "3": 9,
+    "5": 4,
+    "2": 3,
+    "2.5": 9
+  },
+  "assumptions": [
+    "WGS84 longitude/latitude; source has no CRS declaration",
+    "Two 3-metre lanes on every road; source WIDTH ignored",
+    "All intersections treated as same-level; no bridge/layer metadata supplied",
+    "Flat ellipsoid-height preview only; no measured heights supplied",
+    "No one-way restrictions supplied; paired directions generated",
+    "Nearby junctions join along original short connector paths; source road drawing preserved"
+  ],
+  "sourceFile": "G:\\BaiduNetdiskDownload\\车流路网 (2).json",
+  "sourceSha256": "84a41f959e604c7024a07f0bf6975b13d32fa389b11f0a7b0dbd0ddedcf12145",
+  "validation": {
+    "nodes": 84,
+    "lanes": 236,
+    "entries": 22,
+    "initializationMs": 1029.7747,
+    "spawned": 0,
+    "despawned": 0,
+    "waiting": 0,
+    "spawning": 0,
+    "following": 0,
+    "junctionWaiting": 0,
+    "reservations": 0,
+    "spawnReservations": 0,
+    "activeCorridors": 0,
+    "blockedCorridors": 0
+  }
+}

@@ -84,6 +84,18 @@ test('native atmospheric fog remains on the compatibility path',()=>{
  d.destroy()
 })
 
+test('direct-only models share one deferred lighting group despite distinct local frames',()=>{
+ const d=new DeferredLighting143({Cesium:C,scene:scene()})
+ d.ensureProgram=()=>{}
+ const command=matrix=>({shaderProgram:{fragmentShaderSource:{defines:['LIGHTING_PBR']}},
+   uniformMap:{model_iblReferenceFrameMatrix:()=>matrix}})
+ const first=d.environmentGroup(command(C.Matrix3.IDENTITY))
+ const second=d.environmentGroup(command(C.Matrix3.fromRotationX(.5,new C.Matrix3())))
+ assert.equal(second,first)
+ assert.equal(d.groups.length,1)
+ d.destroy()
+})
+
 test('failed shader compilation releases every temporary program before retry',()=>{
  const s=scene(),released=[]
  s.context._gl={CURRENT_PROGRAM:1,getParameter:()=>null,useProgram(){}}
@@ -96,6 +108,38 @@ test('failed shader compilation releases every temporary program before retry',(
  assert.equal(released.length,5)
  assert.equal(d.programs.size,0)
  d.destroy()
+})
+
+test('over-budget frames never allocate compact targets and resume when environments merge',()=>{
+ const s=scene(),d=new DeferredLighting143({Cesium:C,scene:s}),geometry=d.materials
+ let allocated=0,cleared=0,currentProgram={}
+ s.context.uniformState={}
+ s.context._gl={CURRENT_PROGRAM:1,getParameter:()=>currentProgram,useProgram(value){currentProgram=value}}
+ const initialProgram=currentProgram
+ const commands=Array.from({length:33},()=>({
+   shaderProgram:program(['LIGHTING_PBR','SPECULAR_IBL']),uniformMap:{model_specularEnvironmentMaps:()=>({})}
+ }))
+ const bin={indices:{[C.Pass.OPAQUE]:commands.length},commands:{[C.Pass.OPAQUE]:commands}}
+ s._view.frustumCommandsList=[bin]
+ geometry.scopeReason=()=>null
+ geometry.programFor=()=>({supported:true,_program:{_bind(){}},_invalid:{_bind(){}},_recovery:{_bind(){}}})
+ d.ensureProgram=()=>{}
+ geometry.allocate=()=>{allocated++;geometry.target={clear:{execute(){cleared++}},clearCoverage:{execute(){cleared++}}}}
+ geometry.releaseTarget=()=>{geometry.target=null}
+ for(let frame=1;frame<=3;frame++){
+   s.frameState.frameNumber=frame;geometry.prepare()
+   assert.equal(geometry.ready,false)
+   assert.match(geometry.reason,/group budget exceeded/)
+   assert.equal(allocated,0,'fallback must be decided before any texture allocation')
+   assert.equal(cleared,0)
+   assert.equal(currentProgram,initialProgram)
+ }
+ bin.indices[C.Pass.OPAQUE]=1
+ s.frameState.frameNumber++;geometry.prepare()
+ assert.equal(geometry.ready,true)
+ assert.equal(allocated,1)
+ assert.equal(cleared,2)
+ geometry.target=null;d.destroy()
 })
 
 test('partially constructed geometry variants remain owned by failure cleanup',()=>{

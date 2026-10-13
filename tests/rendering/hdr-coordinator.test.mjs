@@ -1,6 +1,6 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
-import { registerHdrEffect } from '../../src/environment/HdrCoordinator143.js'
+import { registerHdrEffect, attachHdrGraph } from '../../src/environment/HdrCoordinator143.js'
 import HdrEnvironmentPass143 from '../../src/environment/HdrEnvironmentPass143.js'
 
 function fixture() {
@@ -21,6 +21,30 @@ function fixture() {
   return { scene, context, native, original, events, effect,
     execute: () => native.execute(context, 'HDR', 'depth', 'id', 'extra') }
 }
+
+test('attached Render Graph brackets HDR effects and native tone mapping', () => {
+  const f = fixture()
+  const events = []
+  const graph = { destroyed: false, beginFrame() { events.push('begin') }, endFrame() { events.push('end') } }
+  const detachGraph = attachHdrGraph(f.scene, graph)
+  const detach = registerHdrEffect(f.scene, 10, (c, color) => { events.push('effect'); return color })
+  f.execute()
+  assert.deepEqual(events, ['begin', 'effect', 'end'])
+  detach()
+  detachGraph()
+  assert.equal(f.native.execute, f.original)
+})
+
+test('attached Render Graph ends the frame when native tone mapping throws', () => {
+  const f = fixture()
+  const events = []
+  f.native.execute = () => { events.push('tone'); throw new Error('tone failed') }
+  const graph = { destroyed: false, beginFrame() { events.push('begin') }, endFrame() { events.push('end') } }
+  const detachGraph = attachHdrGraph(f.scene, graph)
+  assert.throws(f.execute, /tone failed/)
+  assert.deepEqual(events, ['begin', 'tone', 'end'])
+  detachGraph()
+})
 
 for (const order of [['ao', 'environment'], ['environment', 'ao']]) {
   test(`priority orders ${order.join(' then ')} before native tone mapping`, () => {

@@ -7,11 +7,11 @@ import {particleBillboards} from './particleBillboards143.js'
 // Own only the derived shader and added uniforms. Vertex transforms, material
 // evaluation, alpha/discard, depth, picking and OIT remain with the engine.
 export default class TransparentForward143 {
-  constructor({Cesium:C,scene,getShadowVisibility=()=>null,isDeferredActive=()=>false,getOptions=()=>({})}={}) {
+  constructor({Cesium:C,scene,graph=null,getShadowVisibility=()=>null,isDeferredActive=()=>false,getOptions=()=>({})}={}) {
     if(!C||!scene)throw new Error('TransparentForward143 requires { Cesium, scene }')
     if(!/^1\.143(?:\.0)?$/.test(C.VERSION))throw new Error('TransparentForward143 requires Cesium 1.143')
-    Object.assign(this,{C,scene,getShadowVisibility,isDeferredActive,getOptions,enabled:false,destroyed:false,failed:false,
-      reason:'Disabled',error:null,programs:new Map(),programFrames:new Map(),commands:new Map(),water:new Map(),stats:{frames:0,translucentCommands:0,patchedCommands:0,compatibilityCommands:0,shaderVariants:0}})
+    Object.assign(this,{C,scene,graph,getShadowVisibility,isDeferredActive,getOptions,enabled:false,destroyed:false,failed:false,
+      reason:'Disabled',error:null,programs:new Map(),programFrames:new Map(),commands:new Map(),water:new Map(),stats:{frames:0,renderItems:0,translucentCommands:0,patchedCommands:0,compatibilityCommands:0,shaderVariants:0}})
   }
   _sceneDestroyed(){return !!this.scene.isDestroyed?.()}
   scopeReason(){
@@ -30,8 +30,9 @@ export default class TransparentForward143 {
     try{
       this.sunUniforms=acquireSunUniforms(this.C,this.scene)
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
-      this.offCommand=this.bridge.onCommand(command=>this.applyTo(command))
-      this.offResolve=this.bridge.on('resolve',()=>this.endFrame())
+      this.offItem=this.bridge.onRenderItem(item=>{this.stats.renderItems++;this.applyTo(item.command)})
+      this.offCommand=null
+      this.offResolve=this.bridge.on('resolve',context=>{this.stats.renderItems=this.bridge.getRenderItems('transparent.forward').length;this.graph?.executePass('transparent.forward',context);this.endFrame()})
       this.bridge.install();this.enabled=true;this.reason='Not rendered'
       this.proxy={update:state=>this.updateWater(state),isDestroyed:()=>false,destroy(){}}
       this.scene.primitives?.add(this.proxy)
@@ -179,7 +180,7 @@ export default class TransparentForward143 {
     this.water.clear()
   }
   detach(){
-    this.offCommand?.();this.offCommand=null;this.offResolve?.();this.offResolve=null
+    this.offItem?.();this.offItem=null;this.offCommand?.();this.offCommand=null;this.offResolve?.();this.offResolve=null
     this.bridge?.destroy();this.bridge=null
     if(this.proxy&&!this._sceneDestroyed())this.scene.primitives?.remove(this.proxy)
     this.proxy=null

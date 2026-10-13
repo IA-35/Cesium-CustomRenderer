@@ -59,6 +59,7 @@ export default class DepthPyramid143 {
     this.error = null
     this.reason = 'Not rendered'
     this.frames = 0
+    this.maxLevel = undefined
     this.support = { supported: true, reason: null }
     for (const capability of ['webgl2', 'floatingPointTexture', 'colorBufferFloat']) {
       if (!scene.context[capability]) {
@@ -85,7 +86,9 @@ export default class DepthPyramid143 {
         minificationFilter: C.TextureMinificationFilter.NEAREST,
         magnificationFilter: C.TextureMagnificationFilter.NEAREST
       })
-      for (const [levelWidth, levelHeight] of pyramidDimensions(width, height)) {
+      const dimensions = pyramidDimensions(width, height)
+      const last = this.maxLevel === undefined ? dimensions.length : Math.min(dimensions.length, this.maxLevel + 1)
+      for (const [levelWidth, levelHeight] of dimensions.slice(0, last)) {
         const index = this.levels.length
         const level = { width: levelWidth, height: levelHeight }
         this.levels.push(level)
@@ -175,10 +178,18 @@ export default class DepthPyramid143 {
     return this.levels
   }
 
+  setMaxLevel(value) {
+    const next = value === undefined ? undefined : Math.max(0, Math.floor(value))
+    if (next === this.maxLevel) return
+    this.maxLevel = next
+    if (this.levels.length) this.release()
+  }
+
   getDiagnostics() {
     const valid = !!this.getLevels()
     return { supported: this.support.supported, valid, reason: this._unavailable() || this.reason || (valid ? null : 'No current frame output'),
       error: this.error, failed: this.failed, bytes: this.bytes, frames: this.frames, outputFrame: this.outputFrame,
+      maxLevel: this.maxLevel,
       transparencyIncluded: valid && !!this.transparency,
       unknownMaskContractVersion: 2, unknownMaskBits: { opaque: 1, transparency: 2 },
       levels: this.levels.map(level => ({ width: level.width, height: level.height })),

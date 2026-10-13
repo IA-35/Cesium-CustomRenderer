@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CCR · 车流演示</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+  <style>
+    :root { color-scheme: light; --ink: #172b30; --accent: #ba4b27; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #d5dfd5; color: var(--ink); font: 14px/1.6 system-ui, sans-serif; }
+    #scene { position: fixed; inset: 0; }
+    aside { position: fixed; top: 28px; left: 28px; width: 282px; padding: 25px; background: #f7f5eeed;
+      border-top: 4px solid var(--accent); box-shadow: 0 8px 40px #142a2a18; }
+    .eyebrow { margin: 0; font-size: 11px; letter-spacing: .18em; color: #66756e; }
+    h1 { margin: 12px 0 5px; font-size: 30px; font-weight: 650; letter-spacing: -.04em; }
+    .description { margin: 0 0 22px; color: #59675f; font-size: 12px; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-block: 1px solid #d6dcd0; padding: 16px 0; }
+    .metrics strong { display: block; font: 30px/1.3 ui-monospace, monospace; }
+    .metrics span { color: #69756e; font-size: 11px; }
+    .controls { margin-top: 18px; display: grid; gap: 15px; }
+    button { font: inherit; border: 1px solid #b9c4b7; background: transparent; padding: 9px 14px; color: var(--ink); cursor: pointer; }
+    #play { background: var(--ink); color: #f7f5ee; border-color: var(--ink); }
+    button:disabled, input:disabled { opacity: .45; cursor: wait; }
+    button:hover:enabled { border-color: var(--accent); }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    input[type="checkbox"] { accent-color: var(--accent); }
+    #status { margin: 20px 0 0; border-top: 1px solid #d6dcd0; padding-top: 15px; color: #4c6258; font-size: 12px; }
+    footer { position: fixed; bottom: 23px; right: 28px; color: #344f40; background: #f7f5eee0; padding: 7px 14px; font-size: 12px; }
+    @media (max-width: 640px) { aside { top: 12px; left: 12px; width: 228px; padding: 17px; } h1 { font-size: 24px; }
+      .metrics strong { font-size: 24px; } footer { bottom: 12px; right: 12px; } }
+  </style>
+  <script>window.CESIUM_BASE_URL = '/node_modules/cesium/Build/Cesium/'</script>
+  <script src="/node_modules/cesium/Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+  <main id="scene" aria-label="三维车流场景"></main>
+  <aside aria-label="车流控制">
+    <p class="eyebrow">CCR / TRAFFIC STUDY</p>
+    <h1>学校车流路网</h1>
+    <p class="description">正在读取学校道路数据…</p>
+    <div class="metrics">
+      <div><strong id="count">—</strong><span>在途车辆</span></div>
+      <div><strong id="speedValue">1.0×</strong><span>行驶速度倍率</span></div>
+      <div><strong id="waiting">0</strong><span>等待入场</span></div>
+      <div><strong id="departed">0</strong><span>累计离场</span></div>
+    </div>
+    <div class="controls">
+      <button id="play" disabled>暂停车流</button>
+      <label for="speed">行驶速度<input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" disabled></label>
+      <label class="row"><span>显示车辆</span><input id="visible" type="checkbox" checked disabled></label>
+      <label class="row"><span>增强渲染</span><input id="enhanced" type="checkbox" checked disabled></label>
+      <button id="reset" disabled>查看全校路网</button>
+      <button id="closeup" disabled>近看车流</button>
+    </div>
+    <p id="status" role="status" aria-live="polite">正在加载道路与车辆…</p>
+  </aside>
+  <footer>拖动旋转 · 滚轮缩放</footer>
+  <script type="module" src="./traffic-demo.js"></script>
+</body>
+</html>

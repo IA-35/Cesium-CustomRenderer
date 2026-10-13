@@ -199,6 +199,8 @@ function connect(wsUrl) {
     assert.equal(diagnostics.primitiveCount, 1)
     assert.equal(diagnostics.grassAssets, 2)
     assert.equal(diagnostics.sharedColorTextures, 1)
+    assert.equal(diagnostics.shadowCastingDraws, 0)
+    assert.equal(diagnostics.shadowReceivingDraws, 0)
     assert.equal(diagnostics.variantCounts['grass-10'] + diagnostics.variantCounts['grass-17'], diagnostics.instances)
     assert.ok(Math.abs(diagnostics.variantCounts['grass-10'] - diagnostics.variantCounts['grass-17']) <= 1)
     assert.equal(diagnostics.polygons, 314)
@@ -206,6 +208,8 @@ function connect(wsUrl) {
     assert.equal(diagnostics.height, 3)
     assert.equal(diagnostics.groundClamped, false)
     assert.equal(diagnostics.groundFallbacks, 0)
+    const treeSource = await evaluate(`campus.trees.getDiagnostics().source`)
+    assert.equal(treeSource, 'glb')
     assert.ok(diagnostics.instances > 0, `No grass instances: ${JSON.stringify(diagnostics)}`)
 
     const views = [
@@ -263,7 +267,7 @@ function connect(wsUrl) {
 
     const report = {
       scope: '1280x800 headless Chrome (SwiftShader); isolated (globe/tiles/imagery hidden); surveyed polygons; grass only',
-      diagnostics, states: states.map(s => ({ name: s.name, ...s.diagnostics })),
+      diagnostics, treeSource, states: states.map(s => ({ name: s.name, ...s.diagnostics })),
       pixelDelta, colors, grassResponses, pageErrors, consoleErrors, httpErrors,
     }
     fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2))

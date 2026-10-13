@@ -485,6 +485,7 @@ function createMaterial(record, materialId) {
     imageRecord: defined(imageId) ? record.imageRecords[imageId] : undefined,
     alphaMode: material?.alphaMode ?? "OPAQUE",
     alphaCutoff: material?.alphaCutoff ?? 0.5,
+    roundedLeafNormals: material?.extras?.roundedLeafNormals === true,
   };
 }
 
@@ -722,6 +723,7 @@ function finalizePrimitives(record) {
       colorTexture: material.imageRecord?.texture,
       alphaMode: material.alphaMode,
       alphaCutoff: material.alphaCutoff,
+      roundedLeafNormals: material.roundedLeafNormals,
     };
   });
 }

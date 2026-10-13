@@ -38,9 +38,28 @@ test('explicit grass assets partition every instance once and normalize alpha cu
   assert.equal(groups.size,2)
   assert.deepEqual(groups.get('grass-10').instances.map(item=>item.id),['a','c'])
   assert.deepEqual(groups.get('grass-17').instances.map(item=>item.id),['b'])
-  assert.equal(groups.get('grass-10').alphaCutoff,0.35)
-  assert.equal(groups.get('grass-17').alphaCutoff,0.35)
+  assert.equal(groups.get('grass-10').alphaCutoff,0.03)
+  assert.equal(groups.get('grass-17').alphaCutoff,0.03)
   assert.throws(()=>runtime.groupGrassAssets([{kind:'grass',asset:'missing'}],assets),/Unknown grass asset/)
+})
+
+test('grass commands never cast or receive shadows while tree commands retain primitive policy',()=>{
+  const runtime=getRuntime(C)
+  assert.deepEqual(runtime.shadowFlagsForCutout(2,true),{castShadows:false,receiveShadows:false})
+  assert.deepEqual(runtime.shadowFlagsForCutout(2,false),{castShadows:false,receiveShadows:false})
+  assert.deepEqual(runtime.shadowFlagsForCutout(0,true),{castShadows:true,receiveShadows:true})
+})
+
+test('external tree leaf cutoff preserves coverage as geometry LOD decreases',()=>{
+  const runtime=getRuntime(C)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.35,0,true),0.35)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.35,1,true),0.30)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.35,2,true),0.24)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.35,3,true),0.18)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.35,3,false),0.35)
+  const primitive=new runtime.EzTreePrimitive({instances:[]})
+  assert.deepEqual(primitive._externalThresholds,[180,80,12])
+  primitive.destroy()
 })
 
 test('byte-identical material images share one canonical record without trusting hash collisions',()=>{
@@ -83,4 +102,7 @@ test('ez-tree receiver retains ambient color and depth variant retains cutout al
   const fs=caster.fragmentShaderSource.sources.join('\n')
   assert.ok(fs.indexOf('mask < u_alphaCutoff')<fs.indexOf('#ifdef SHADOW_MAP'))
   assert.match(fs,/#ifdef SHADOW_MAP\s+out_FragColor = vec4\(1\.0\);\s+return;/)
+  assert.match(FS,/u_alphaFromColor[\s\S]*max\(assetTexel\.r, max\(assetTexel\.g, assetTexel\.b\)\)/)
+  assert.match(FS,/albedo \*= czm_srgbToLinear\(assetTexel\.rgb\)/)
+  assert.match(FS,/#ifndef HDR\s+color = czm_linearToSrgb\(color\)/)
 })

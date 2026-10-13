@@ -7,19 +7,37 @@ import CameraShadowCoverage from './CameraShadowCoverage.js'
 import CascadedShadowCoverage,{terrainDepthRange} from './CascadedShadowCoverage.js'
 import {shadowUniforms} from './shadowUniforms143.js'
 import {groupShadowCommands,withShadowBindings} from './ShadowSubmit143.js'
+import {keepPrimitiveLast} from '../pipeline/PrimitiveOrder143.js'
+
+// Reuse for at most one display frame by default, including a stationary camera:
+// caster matrices, animation and instance buffers may change without new commands.
+// Applications with static campus casters can raise this to 3 or 4 to reduce the
+// shadow pass GPU duty cycle while keeping the camera path responsive.
+const DEFAULT_SHADOW_UPDATE_INTERVAL=2
 
 // Each level selects its own light-space casters. Native ShadowMap is never a fallback.
 export default class DirectionalShadowPass {
   constructor(C,viewer,getOptions,isTransparentForwardActive=()=>false){
     Object.assign(this,{C,viewer,scene:viewer.scene,getOptions,enabled:false,ready:false,dead:false,levels:[],version:0})
     this.coverage=new CascadedShadowCoverage(C);this.singleCoverage=new CameraShadowCoverage(C)
-    this.stats={updates:0,cacheHits:0,casters:0,receivers:0,selectedOffscreen:0,error:null,cascades:[]}
+    this.stats={updates:0,cacheHits:0,skippedFrames:0,casters:0,receivers:0,selectedOffscreen:0,error:null,cascades:[]}
+    this.forceShadowUpdate=true
+    this.shadowFrameCounter=0
+    this.lastShadowFrame=-Infinity
+    this.lastCommandCount=-1
+    this.lastCommandRefs=[]
+    this.lastPrimitiveCount=-1
+    this.lastPrimitiveRefs=[]
+    this.lastCameraView=null
+    this.lastLightDirection=null
+    this.lastFrustumKey=''
+    this.lastShadowOptionsKey=''
     this.uniforms=shadowUniforms(C,this.scene,()=>this.getReceiverData(viewer.camera))
     this.isTransparentForwardActive=isTransparentForwardActive
     this.configureReceivers(getOptions().shadowCascades!==1)
     this.proxy={update:state=>this.update(state),isDestroyed:()=>this.dead,destroy(){}}
     this.scene.primitives.add(this.proxy)
-    this.removePreUpdate=this.scene.preUpdate.addEventListener(()=>{if(this.enabled)this.scene.primitives.raiseToTop(this.proxy)})
+    this.removePreUpdate=this.scene.preUpdate.addEventListener(()=>{if(this.enabled)keepPrimitiveLast(this.scene.primitives,this.proxy)})
     this.debugStage=this.scene.postProcessStages.add(new C.PostProcessStage({name:'campus_custom_shadow_depth',
       fragmentShader:'uniform sampler2D shadowDepth;in vec2 v_textureCoordinates;void main(){float d=texture(shadowDepth,v_textureCoordinates).r;out_FragColor=vec4(vec3(d),1.0);}',
       uniforms:{shadowDepth:()=>this.levels[0]?.target.depth||this.scene.context.defaultTexture}}))
@@ -30,7 +48,78 @@ export default class DirectionalShadowPass {
   get target(){return this.levels.at(-1)?.target}
   get light(){return this.levels.at(-1)?.light}
   setOrigin(){this.invalidate()}
-  invalidate(){for(const level of this.levels)level.cache.invalidate();this.ready=false;this.version++}
+  invalidate(){for(const level of this.levels)level.cache.invalidate();this.ready=false;this.forceShadowUpdate=true;this.version++}
+  getFrameNumber(state){
+    const frame=state?.frameNumber??state?.frameState?.frameNumber
+    return Number.isFinite(frame)?frame:++this.shadowFrameCounter
+  }
+  shadowOptionsKey(options){return [options.shadowCascades,options.shadowSize,options.shadowDistance].join('|')}
+  cameraFrustumKey(camera){
+    const f=camera?.frustum||{}
+    return [f.near,f.far,f.fovy,f.aspectRatio,f.xOffset,f.yOffset].join('|')
+  }
+  rootPrimitivesMatch(){
+    const current=this.scene.primitives?._primitives
+    if(!Array.isArray(current))return this.scene.primitives?.length===this.lastPrimitiveCount
+    if(current.length!==this.lastPrimitiveRefs.length)return false
+    for(let i=0;i<current.length;i++)if(current[i]!==this.lastPrimitiveRefs[i])return false
+    return true
+  }
+  commandListMatch(commandList){
+    let index=0
+    for(const command of commandList){
+      if(!this.isShadowCaster(command))continue
+      if(command!==this.lastCommandRefs[index++])return false
+    }
+    return index===this.lastCommandRefs.length
+  }
+  isShadowCaster(command){return !!command.castShadows&&!!command.shaderProgram&&command.pass!==this.C.Pass.TRANSLUCENT&&command.pass!==this.C.Pass.COMPUTE}
+  shadowSizesMatch(options){
+    const count=options.shadowCascades===1?1:3
+    const sizes=count===1?[options.shadowSize]:[options.shadowSize,Math.max(512,options.shadowSize/2),Math.max(512,options.shadowSize/2)]
+    return this.levels.length===count&&this.levels.every((level,i)=>level.target.size===sizes[i])
+  }
+  shouldReuseShadowFrame(state,camera,commandList,toLight,options){
+    if(!this.ready||this.forceShadowUpdate||!this.lastCameraView||!this.lastLightDirection)return false
+    if(!this.commandListMatch(commandList)||this.lastPrimitiveCount!==this.scene.primitives?.length||!this.rootPrimitivesMatch())return false
+    if(this.lastShadowOptionsKey!==this.shadowOptionsKey(options)||this.lastFrustumKey!==this.cameraFrustumKey(camera)||!this.shadowSizesMatch(options))return false
+    if(this.C.Cartesian3.distanceSquared(toLight,this.lastLightDirection)>1e-12)return false
+    if(this.C.Cartesian3.dot(toLight,camera.positionWC)<=0)return false
+    const frame=this.getFrameNumber(state)
+    const interval = Number.isFinite(options.shadowUpdateInterval)
+      ? Math.max(1, Math.min(4, Math.round(options.shadowUpdateInterval)))
+      : DEFAULT_SHADOW_UPDATE_INTERVAL
+    if(frame-this.lastShadowFrame>=interval)return false
+    if(this.C.Matrix4.equalsEpsilon(camera.viewMatrix,this.lastCameraView,1e-10)){
+      this.lastShadowReuseReason='camera-stable'
+      return true
+    }
+    if(frame-this.lastShadowFrame<interval){
+      this.lastShadowReuseReason='camera-moving'
+      return true
+    }
+    return false
+  }
+  rememberShadowFrame(state,camera,commandList,toLight,options){
+    const roots=this.scene.primitives?._primitives
+    this.lastCommandRefs=commandList.filter(command=>this.isShadowCaster(command))
+    this.lastCommandCount=this.lastCommandRefs.length
+    this.lastPrimitiveCount=this.scene.primitives?.length??0
+    this.lastPrimitiveRefs=Array.isArray(roots)?roots.slice():[]
+    this.lastCameraView=this.C.Matrix4.clone(camera.viewMatrix,this.lastCameraView)
+    this.lastLightDirection=this.C.Cartesian3.clone(toLight,this.lastLightDirection)
+    this.lastFrustumKey=this.cameraFrustumKey(camera)
+    this.lastShadowOptionsKey=this.shadowOptionsKey(options)
+    this.lastShadowFrame=this.getFrameNumber(state)
+    this.forceShadowUpdate=false
+  }
+  skipShadowFrame(options){
+    this.version++
+    this.stats.skippedFrames++
+    this.stats.lastSkipReason=this.lastShadowReuseReason||'adaptive'
+    this.debugStage.enabled=options.shadowDebug===true
+    this.adapter.prune()
+  }
   configureReceivers(cascades){
     this.adapter?.destroy()
     this.adapter=new ShadowReceiver143(this.C,this.scene,this.uniforms,{cascades,sunUbo:false,
@@ -84,21 +173,21 @@ export default class DirectionalShadowPass {
   render(state){
     const C=this.C,s=this.scene,ctx=s.context,us=ctx.uniformState,options=this.getOptions()
     const camera=state.camera,commandList=state.commandList,cullingVolume=state.cullingVolume
+    const toLight=s.light instanceof C.SunLight?us.sunDirectionWC:C.Cartesian3.negate(s.light.direction,new C.Cartesian3())
+    if(C.Cartesian3.dot(toLight,camera.positionWC)<=0){this.ready=false;return}
+    if(this.shouldReuseShadowFrame(state,camera,commandList,toLight,options)){this.skipShadowFrame(options);return}
     const viewport=C.BoundingRectangle.clone(us.viewport),previousPass=us.pass
     const gl=ctx._gl,read=gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),draw=gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING),cached=ctx._currentFramebuffer
     try{
-      const toLight=s.light instanceof C.SunLight?us.sunDirectionWC:C.Cartesian3.negate(s.light.direction,new C.Cartesian3())
-      if(C.Cartesian3.dot(toLight,camera.positionWC)<=0){this.ready=false;return}
       const count=options.shadowCascades===1?1:3
-      const direction=C.Cartesian3.normalize(toLight,new C.Cartesian3()),visible=[],main=new Set()
+      const direction=C.Cartesian3.normalize(toLight,new C.Cartesian3()),visible=[],main=count>1?new Set():null
       let terrainMin=Infinity,terrainMax=-Infinity
       // Receiver spheres and the terrain height envelope are consumed only by the
       // multi-cascade coverage; the single cascade derives its region from the
       // camera ray alone, so skip that per-frame collection for the common case.
-      for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE,C.Pass.TRANSLUCENT]){
+      if(count>1) for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE,C.Pass.TRANSLUCENT]){
         for(let i=0;i<(bin.indices[pass]||0);i++){
           const command=bin.commands[pass][i];main.add(command)
-          if(count===1)continue
           if(pass===C.Pass.GLOBE){const region=command.owner?.data?.tileBoundingRegion;terrainMin=Math.min(terrainMin,region?.minimumHeight??0);terrainMax=Math.max(terrainMax,region?.maximumHeight??0)}
           else{const b=this.sphere(command.boundingVolume);if(b)visible.push(b)}
         }
@@ -137,12 +226,13 @@ export default class DirectionalShadowPass {
           level.cache.commit(key);level.ready=true;level.updates++
         }
         results.push({size:sizes[i],near:region.near??regions.near,far:region.far??regions.far,extent:region.extent,texelWorld:level.light.texelWorld,
-          depthSpan:level.light.depthSpan,casters:casters.length,selectedOffscreen:candidates.filter(c=>!main.has(c)).length,updates:level.updates,cacheHits:level.cacheHits})
+          depthSpan:level.light.depthSpan,casters:casters.length,selectedOffscreen:main ? candidates.filter(c=>!main.has(c)).length : 0,updates:level.updates,cacheHits:level.cacheHits})
       }
       this.version++;this.ready=true;this.debugStage.enabled=options.shadowDebug===true
       Object.assign(this.stats,{updates:this.stats.updates+1,casters:results.reduce((n,r)=>n+r.casters,0),receivers:this.adapter.commands.size,
         selectedOffscreen:results.reduce((n,r)=>n+r.selectedOffscreen,0),cascades:results,error:null,bytes:sizes.reduce((n,size)=>n+size*size*4,0),
         coverage:{mode:'camera',count,near:regions.near,far:regions.far,extent:regions.cascades.at(-1).extent,center:C.Cartesian3.clone(regions.cascades.at(-1).center),texelWorld:results[0].texelWorld}})
+      this.rememberShadowFrame(state,camera,commandList,toLight,options)
     }catch(error){this.stats.error=error.message;this.ready=false;this.setEnabled(false)}
     finally{
       state.commandList=commandList;state.camera=camera;state.cullingVolume=cullingVolume
@@ -163,7 +253,7 @@ export default class DirectionalShadowPass {
     }
     return this.receiverData
   }
-  releaseTargets(){for(const l of this.levels)l.target.destroy();this.levels=[];this.ready=false;this.receiverData=null;this.receiverVersion=undefined;this.stats.bytes=0;this.stats.cascades=[]}
+  releaseTargets(){for(const l of this.levels)l.target.destroy();this.levels=[];this.ready=false;this.forceShadowUpdate=true;this.receiverData=null;this.receiverVersion=undefined;this.stats.bytes=0;this.stats.cascades=[]}
   destroy(){
     if(this.dead)return
     this.setEnabled(false);this.removePreUpdate();this.adapter.destroy();this.releaseTargets()

@@ -31,6 +31,8 @@ test('campus example enables prepared vegetation by default and keeps explicit o
   assert.match(source, /const treeEnabled = !\['0', 'none'\]\.includes\(treeParam\)/)
   assert.match(source, /if \(treeEnabled\) \{[\s\S]*window\.campus\.treeReady = loadTrees\(\)/)
   assert.match(source, /\?trees=none/)
+  assert.match(source, /const treeSource = query\.get\('treeSource'\) === 'procedural' \? 'procedural' : 'glb'/)
+  assert.match(source, /source: treeSource/)
   assert.match(source, /const grassEnabled = !\['0', 'none'\]\.includes\(grassParam\)/)
   assert.match(source, /if \(grassEnabled\) \{[\s\S]*window\.campus\.grassReady = loadGrass\(\)/)
   assert.match(source, /\?grass=none/)
@@ -267,6 +269,8 @@ test('assigns the two host GLBs in a stable 50/50 mix with authored scale correc
   assert.equal(counts['grass-17'].length, 50)
   assert.ok(counts['grass-10'].every(instance => Math.abs(instance.scale.x - 1.0734813213348389) < 1e-8))
   assert.ok(counts['grass-17'].every(instance => instance.scale.x === 1))
+  assert.ok(first.primitive._instances.every(instance =>
+    instance.color.red === 1 && instance.color.green === 1 && instance.color.blue === 1))
   const assignment = first.primitive._instances.map(instance => instance.asset)
   const second = await create()
   assert.deepEqual(second.primitive._instances.map(instance => instance.asset), assignment)

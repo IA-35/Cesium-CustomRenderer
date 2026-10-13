@@ -21,10 +21,10 @@ pipeline.setDepthPyramid({ enabled: true }) // 自动请求材质深度依赖；
 pipeline.getDepthPyramidDiagnostics()
 pipeline.setScreenSpaceAO({ enabled: true, radius: 3, strength: 1, bias: 0.08 }) // 新AO默认关闭
 pipeline.getScreenSpaceAODiagnostics()
-pipeline.setScreenSpaceReflections({ enabled: true, distance: 150, thickness: 0.5, strength: 1 }) // SSR默认关闭
-pipeline.getScreenSpaceReflectionDiagnostics()
-pipeline.setScreenSpaceReflections({ transparent: true }) // 可选透明PBR逐层反射
-pipeline.getTransparentReflectionDiagnostics()
+pipeline.setEnvironmentReflections({ enabled: true, strength: 0.6,
+  map: '/assets/environment/your-prefiltered-ibl.ktx2' }) // 静态预过滤Cube环境反射，默认关闭
+pipeline.setEnvironmentReflectionIncluded(mirrorBuilding, true) // 模型默认不参与，按需加入
+pipeline.getEnvironmentReflectionDiagnostics()
 pipeline.setEnabled(false) // 原生对比
 pipeline.setEnabled(true)
 pipeline.destroy() // 必须先于 viewer.destroy；重复调用安全
@@ -38,7 +38,7 @@ pipeline.destroy() // 必须先于 viewer.destroy；重复调用安全
 
 透明覆盖已接入材质布局V2，AO对受支持透明区域保留原色、对其他区域继续生效；复杂深度依赖/轮廓仍有安全旁路。颜色继续由原生前向/OIT生成，详见 [透明边界说明](channels/TRANSPARENCY.md)。
 
-[SSR与原生环境反射](reflections/README.md) 已支持不透明PBR模型及可选透明PBR逐层合成：材质MRT按需增加反射分量和不透明颜色，命中后替换原镜面项，未命中保留CubeMap。HDR按不透明SSR→透明SSR→AO→雾云排序。原生Water/未知材质适配、TAA和完整延迟光照仍未完成。
+[环境反射](reflections/README.md) 现在使用模型与 3D Tiles 的原生 CubeMap IBL，不再采样场景颜色，也不请求反射 MRT、透明反射或反射专用 Hi-Z。旧 SSR 类仍导出供兼容和独立研究使用，但 VisualPipeline 的公开反射入口统一转到 CubeMap。
 
 [统一缓冲基础](buffers/README.md)已将共享相机和独立参数接入SSR/透明SSR，数据未变时零上传，Profiler独立统计去重后的192字节。灯页已验证5000条记录的实际GPU读回；尚未接入分块照明，不能据此宣称5000灯实时渲染。
 
