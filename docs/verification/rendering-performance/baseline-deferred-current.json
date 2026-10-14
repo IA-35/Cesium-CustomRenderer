@@ -1,0 +1,644 @@
+{
+  "schemaVersion": "phase0-v3-baseline",
+  "case": "deferred-current",
+  "options": {
+    "warmupFrames": 30,
+    "sampledFrames": 300,
+    "repeat": 3
+  },
+  "runs": [
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": false,
+        "enhanced": false,
+        "deferred": true,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 5,
+          "p95": 8.199999999254942,
+          "mean": 4.66287625432762,
+          "cv": 0.4561298063794406,
+          "bootstrapCI": {
+            "low": 3.599999997764826,
+            "high": 5.300000000745058,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 76,
+          "p50": 20.75136,
+          "p95": 35.38432,
+          "mean": 22.35137347368422,
+          "cv": 0.19175111044101892,
+          "bootstrapCI": {
+            "low": 20.676608,
+            "high": 20.835328,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 666,
+        "submittedCommands": 608,
+        "triangles": null
+      },
+      "passes": [
+        {
+          "name": "shadow",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.5,
+            "p95": 4.900000002235174,
+            "mean": 1.9246753246535535,
+            "cv": 1.0105950784511717,
+            "bootstrapCI": {
+              "low": 0.10000000149011612,
+              "high": 3.099999997764826,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 76,
+            "p50": 0.095232,
+            "p95": 0.516288,
+            "mean": 0.17897473684210524,
+            "cv": 2.1269014263194617,
+            "bootstrapCI": {
+              "low": 0.093184,
+              "high": 0.099328,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "environment",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.10000000149011612,
+            "p95": 0.19999999925494194,
+            "mean": 0.09350649349681743,
+            "cv": 0.7279420935894005,
+            "bootstrapCI": {
+              "low": 0.09999999776482582,
+              "high": 0.10000000149011612,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 18.820096,
+            "p95": 19.212288,
+            "mean": 18.709786879999996,
+            "cv": 0.024056044382464056,
+            "bootstrapCI": {
+              "low": 18.656256,
+              "high": 18.90304,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "smaa",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0,
+            "p95": 0.10000000149011612,
+            "mean": 0.04870129864082321,
+            "cv": 1.1400584783901442,
+            "bootstrapCI": {
+              "low": 0,
+              "high": 0.09999999776482582,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 0.1792,
+            "p95": 0.183296,
+            "mean": 0.17888597333333336,
+            "cv": 0.01871827312275505,
+            "bootstrapCI": {
+              "low": 0.178176,
+              "high": 0.180224,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        }
+      ],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 190928,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 143240712,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 1
+    },
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": false,
+        "enhanced": false,
+        "deferred": true,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 5.199999999254942,
+          "p95": 7.5,
+          "mean": 4.436454849647838,
+          "cv": 0.42745228009461367,
+          "bootstrapCI": {
+            "low": 3,
+            "high": 5.600000001490116,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 76,
+          "p50": 20.80768,
+          "p95": 31.517696,
+          "mean": 22.389272842105257,
+          "cv": 0.1721445602894918,
+          "bootstrapCI": {
+            "low": 20.754432,
+            "high": 20.878336,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 666,
+        "submittedCommands": 608,
+        "triangles": null
+      },
+      "passes": [
+        {
+          "name": "shadow",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.30000000074505806,
+            "p95": 4.300000000745058,
+            "mean": 1.8240259740888685,
+            "cv": 0.9797729530276258,
+            "bootstrapCI": {
+              "low": 0.10000000149011612,
+              "high": 3.100000001490116,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 76,
+            "p50": 0.09648,
+            "p95": 1.038336,
+            "mean": 0.23756673684210536,
+            "cv": 2.707366839544221,
+            "bootstrapCI": {
+              "low": 0.095232,
+              "high": 0.1016,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "environment",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.09999999776482582,
+            "p95": 0.19999999925494194,
+            "mean": 0.08311688319429175,
+            "cv": 0.7792944277519201,
+            "bootstrapCI": {
+              "low": 0.09999999776482582,
+              "high": 0.10000000149011612,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 18.878464,
+            "p95": 19.075072,
+            "mean": 18.732714666666666,
+            "cv": 0.016891815358219573,
+            "bootstrapCI": {
+              "low": 18.835456,
+              "high": 18.893824,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "smaa",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0,
+            "p95": 0.10000000149011612,
+            "mean": 0.04383116883116883,
+            "cv": 1.2043587960983126,
+            "bootstrapCI": {
+              "low": 0,
+              "high": 0,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 0.178176,
+            "p95": 0.182272,
+            "mean": 0.17821696000000004,
+            "cv": 0.018277081454443588,
+            "bootstrapCI": {
+              "low": 0.177152,
+              "high": 0.1792,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        }
+      ],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 193735,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 143240712,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 2
+    },
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": false,
+        "enhanced": false,
+        "deferred": true,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 5.099999997764826,
+          "p95": 7.900000002235174,
+          "mean": 4.597324414708243,
+          "cv": 0.4300967022151633,
+          "bootstrapCI": {
+            "low": 3.199999999254942,
+            "high": 5.599999997764826,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 76,
+          "p50": 20.675584,
+          "p95": 33.077248,
+          "mean": 21.68667621052632,
+          "cv": 0.1652341883679161,
+          "bootstrapCI": {
+            "low": 20.41344,
+            "high": 20.983808,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 76,
+        "submittedCommands": 608,
+        "triangles": null
+      },
+      "passes": [
+        {
+          "name": "shadow",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.20000000298023224,
+            "p95": 3.800000000745058,
+            "mean": 1.5561688312317257,
+            "cv": 0.9827480827775271,
+            "bootstrapCI": {
+              "low": 0.10000000149011612,
+              "high": 2.599999997764826,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 76,
+            "p50": 0.734208,
+            "p95": 1.368064,
+            "mean": 0.7767983157894738,
+            "cv": 0.26806925847592794,
+            "bootstrapCI": {
+              "low": 0.72704,
+              "high": 0.736256,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "environment",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0.09999999776482582,
+            "p95": 0.19999999925494194,
+            "mean": 0.07110389611115317,
+            "cv": 0.8678562409401889,
+            "bootstrapCI": {
+              "low": 0.09999999776482582,
+              "high": 0.09999999776482582,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 19.347456,
+            "p95": 20.33152,
+            "mean": 19.420624213333326,
+            "cv": 0.03209310954988506,
+            "bootstrapCI": {
+              "low": 19.284992,
+              "high": 19.59424,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        },
+        {
+          "name": "smaa",
+          "cpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 308,
+            "p50": 0,
+            "p95": 0.10000000149011612,
+            "mean": 0.040909091010689735,
+            "cv": 1.3247075472625507,
+            "bootstrapCI": {
+              "low": 0,
+              "high": 0,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "gpuMs": {
+            "supported": true,
+            "reason": null,
+            "samples": 75,
+            "p50": 0.162816,
+            "p95": 12.311552,
+            "mean": 1.0106743466666666,
+            "cv": 3.3430098770115153,
+            "bootstrapCI": {
+              "low": 0.160768,
+              "high": 0.164864,
+              "confidence": 0.95,
+              "iterations": 1000
+            }
+          },
+          "draws": null,
+          "renderItems": null,
+          "batches": null
+        }
+      ],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 1356431,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 143240712,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 3
+    }
+  ],
+  "summary": {
+    "repeat": 3,
+    "cpuP95": {
+      "p50": 7.900000002235174,
+      "p95": 8.199999999254942
+    },
+    "gpuP50": {
+      "p50": 20.75136,
+      "p95": 20.80768
+    },
+    "validFrames": 900,
+    "invalidFrames": 0,
+    "gpuSupported": true
+  },
+  "generatedAt": "2026-10-14T07:25:15.081Z"
+}

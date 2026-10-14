@@ -10,10 +10,47 @@ export default class ContextDrawDispatcher143 {
     this.context = context; this.label = label; this.native = context.draw; this.handlers = []; this.observers = []
     this.bypassDepth = 0
     this.installed = false; this.destroyed = false; this.generation = 0
-    this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0 }
+    this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0,
+      programBinds: 0, materialBinds: 0, textureBinds: 0, uniformUploads: 0 }
+    this._bindTracking = null
     this.wrapper = (...args) => this._dispatch(args)
     installations.set(context, this)
   }
+  // Phase 0/6: bind counters live in one place instead of being estimated per module.
+  // Each counter wraps the GL entry point that actually issues that kind of bind.
+  startBindTracking() {
+    if (this._bindTracking) return this._bindTracking
+    const gl = this.context?._gl
+    if (!gl) return null
+    const counters = { programBinds: 0, materialBinds: 0, textureBinds: 0, uniformUploads: 0 }
+    // drawElements/drawArrays are the per-draw material submission; useProgram is the
+    // program bind a batch is supposed to amortise; bindTexture and uniform* are uploads.
+    const bindings = [
+      ['programBinds', 'useProgram'],
+      ['materialBinds', 'drawElements'],
+      ['materialBinds', 'drawArrays'],
+      ['textureBinds', 'bindTexture'],
+      ['uniformUploads', 'uniform4fv'],
+      ['uniformUploads', 'uniformMatrix4fv']
+    ]
+    const restores = []
+    for (const [counter, method] of bindings) {
+      const original = gl[method]
+      if (typeof original !== 'function') continue
+      gl[method] = function (...args) { counters[counter]++; return original.apply(this, args) }
+      restores.push(() => { gl[method] = original })
+    }
+    this._bindTracking = { counters, stop: () => { for (const restore of restores.reverse()) restore(); this._bindTracking = null } }
+    return this._bindTracking
+  }
+  stopBindTracking() {
+    const tracking = this._bindTracking
+    if (!tracking) return null
+    const snapshot = { ...tracking.counters }
+    tracking.stop()
+    return snapshot
+  }
+  readBindCounters() { return this._bindTracking ? { ...this._bindTracking.counters } : null }
   install() {
     if (this.destroyed) throw new Error('ContextDrawDispatcher143 is destroyed')
     if (this.installed) return this
@@ -80,10 +117,10 @@ export default class ContextDrawDispatcher143 {
     if (this.context._ccrDrawDispatcher === this) delete this.context._ccrDrawDispatcher
     this.installed = false; this.generation++
   }
-  getDiagnostics() { return { label: this.label, installed: this.installed, destroyed: this.destroyed, generation: this.generation, activeHandlers: this.handlers.filter(item => item.active && item.enabled).map(item => item.name), activeObservers: this.observers.filter(item => item.active && item.enabled).map(item => item.name), ...this.stats } }
+  getDiagnostics() { const measured = this.readBindCounters(); return { label: this.label, installed: this.installed, destroyed: this.destroyed, generation: this.generation, activeHandlers: this.handlers.filter(item => item.active && item.enabled).map(item => item.name), activeObservers: this.observers.filter(item => item.active && item.enabled).map(item => item.name), bindTracking: !!measured, ...this.stats, ...(measured || {}) } }
   destroy() {
     if (this.destroyed) return
-    this.uninstall(); this.handlers = []; this.observers = []; this.destroyed = true; if (installations.get(this.context) === this) installations.delete(this.context)
+    this.uninstall(); this.stopBindTracking(); this.handlers = []; this.observers = []; this.destroyed = true; if (installations.get(this.context) === this) installations.delete(this.context)
   }
 }
 

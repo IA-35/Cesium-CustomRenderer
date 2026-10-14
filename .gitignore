@@ -5,7 +5,9 @@ evidence/
 *.log
 .DS_Store
 Thumbs.db
-docs/verification/
+docs/verification/*
+# Phase 0 冻结基线是契约要求的可提交产物；其余 docs/verification 内容仍为脚本输出。
+!docs/verification/rendering-performance/
 
 # 私有本地内容，按 B04_B06_EXECUTION.md 规定不纳入提交：
 # 真实校园/城市资产（约 362 MB）、编辑器与外部工具状态。

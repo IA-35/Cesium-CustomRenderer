@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "phase7-comparison-v1",
+  "correctness": "pass",
+  "noRegression": "pass",
+  "optimizationSuccess": "not-achieved",
+  "achieved": [],
+  "thresholds": {
+    "programBindReduction": 0.3,
+    "cpuP95Reduction": 0.15,
+    "gpuP50Reduction": 0.1
+  },
+  "metrics": {
+    "cpuP95": {
+      "before": 5.199999999254942,
+      "after": 8.199999999254942,
+      "change": 0.5769230770057386,
+      "reduction": -0.5769230770057386,
+      "target": 0.15
+    },
+    "gpuP50": {
+      "before": 2.121728,
+      "after": 20.75136,
+      "change": 8.780405405405403,
+      "reduction": -8.780405405405403,
+      "target": 0.1
+    },
+    "programBinds": {
+      "before": 0,
+      "after": 0,
+      "change": null,
+      "reduction": null,
+      "target": 0.3
+    }
+  },
+  "before": {
+    "cpuP50": 2.199999999254942,
+    "cpuP95": 5.199999999254942,
+    "gpuP50": 2.121728,
+    "gpuP95": 3.828736,
+    "drawCalls": 84,
+    "submittedCommands": 621,
+    "programBinds": 0,
+    "drawHookInvocations": 94758,
+    "ccrTextureBytes": 8294400,
+    "poolPeakBytes": 0,
+    "graphPeakBytes": 0,
+    "validFrames": 300,
+    "invalidFrames": 0,
+    "gpuSupported": true
+  },
+  "after": {
+    "cpuP50": 5,
+    "cpuP95": 8.199999999254942,
+    "gpuP50": 20.75136,
+    "gpuP95": 35.38432,
+    "drawCalls": 666,
+    "submittedCommands": 608,
+    "programBinds": 0,
+    "drawHookInvocations": 190928,
+    "ccrTextureBytes": 143240712,
+    "poolPeakBytes": 0,
+    "graphPeakBytes": 0,
+    "validFrames": 300,
+    "invalidFrames": 0,
+    "gpuSupported": true
+  },
+  "notes": [
+    "tracked allocation bytes are CCR-owned allocations, not true board VRAM",
+    "headless/short samples are not production performance",
+    "GPU timing available on both sides"
+  ]
+}

@@ -38,3 +38,36 @@ test('dispatcher composes aroundDraw scopes before native execution', () => {
   assert.deepEqual(calls,['before','native','after'])
   dispatcher.destroy()
 })
+
+test('dispatcher measures program and material binds from the GL entry points', () => {
+  let useProgram = 0
+  const gl = {
+    useProgram() { useProgram++; return useProgram },
+    drawElements() {}, drawArrays() {}, bindTexture() {}, uniform4fv() {}, uniformMatrix4fv() {}
+  }
+  const dispatcher = new ContextDrawDispatcher143({ draw() {}, _gl: gl }).install()
+  const original = gl.useProgram
+  dispatcher.startBindTracking()
+  gl.useProgram('p'); gl.drawElements(); gl.drawElements()
+  const measured = dispatcher.readBindCounters()
+  assert.equal(measured.programBinds, 1)
+  assert.equal(measured.materialBinds, 2)
+  assert.equal(dispatcher.getDiagnostics().bindTracking, true)
+  assert.equal(dispatcher.getDiagnostics().programBinds, 1)
+  dispatcher.stopBindTracking()
+  gl.useProgram('p')
+  assert.equal(useProgram, 2, 'the original GL entry point must be restored')
+  assert.equal(dispatcher.readBindCounters(), null)
+  dispatcher.destroy()
+  assert.equal(gl.useProgram, original)
+})
+
+test('destroy stops bind tracking instead of leaving wrapped GL methods', () => {
+  const gl = { useProgram() {}, drawElements() {}, drawArrays() {}, bindTexture() {}, uniform4fv() {}, uniformMatrix4fv() {} }
+  const original = gl.useProgram
+  const dispatcher = new ContextDrawDispatcher143({ draw() {}, _gl: gl }).install()
+  dispatcher.startBindTracking()
+  assert.notEqual(gl.useProgram, original)
+  dispatcher.destroy()
+  assert.equal(gl.useProgram, original, 'a destroyed dispatcher must not keep wrapping GL')
+})

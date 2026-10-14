@@ -1,0 +1,317 @@
+{
+  "schemaVersion": "phase0-v3-baseline",
+  "case": "native",
+  "options": {
+    "warmupFrames": 30,
+    "sampledFrames": 300,
+    "repeat": 3
+  },
+  "runs": [
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": true,
+        "enhanced": false,
+        "deferred": false,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 2.199999999254942,
+          "p95": 5.199999999254942,
+          "mean": 2.884615384665221,
+          "cv": 1.1382868727857616,
+          "bootstrapCI": {
+            "low": 2.199999999254942,
+            "high": 2.300000000745058,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 77,
+          "p50": 2.121728,
+          "p95": 3.828736,
+          "mean": 2.8725327792207787,
+          "cv": 0.9540449537347007,
+          "bootstrapCI": {
+            "low": 1.896448,
+            "high": 2.829312,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 84,
+        "submittedCommands": 621,
+        "triangles": null
+      },
+      "passes": [],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 94758,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 8294400,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 1
+    },
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": true,
+        "enhanced": false,
+        "deferred": false,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 2.100000001490116,
+          "p95": 4.399999998509884,
+          "mean": 2.844816053566526,
+          "cv": 1.2580805219335378,
+          "bootstrapCI": {
+            "low": 2.099999997764826,
+            "high": 2.199999999254942,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 77,
+          "p50": 1.808384,
+          "p95": 3.698688,
+          "mean": 2.0958952727272724,
+          "cv": 0.8833230349418453,
+          "bootstrapCI": {
+            "low": 1.620992,
+            "high": 1.896448,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 84,
+        "submittedCommands": 621,
+        "triangles": null
+      },
+      "passes": [],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 1745771,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 8294400,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 2
+    },
+    {
+      "schemaVersion": "phase0-v3",
+      "scene": {
+        "name": "campus",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "dpr": 1,
+        "renderer": "WebKit WebGL",
+        "cesiumVersion": "1.143.0",
+        "assetHash": null,
+        "cameraTrack": "fixed",
+        "clock": "2026-09-08T03:00:00Z"
+      },
+      "mode": {
+        "native": true,
+        "enhanced": false,
+        "deferred": false,
+        "deferredTransparent": false,
+        "taa": false,
+        "ao": false,
+        "bloom": false
+      },
+      "validity": {
+        "warmupFrames": 30,
+        "sampledFrames": 300,
+        "validFrames": 300,
+        "invalidFrames": 0,
+        "gpuSupported": true,
+        "disjointCount": 0,
+        "discarded": 0,
+        "focusLoss": 0,
+        "configChanges": 0,
+        "assetChanges": 0,
+        "readinessChanges": 0,
+        "invalidReasons": {},
+        "pageErrors": []
+      },
+      "frame": {
+        "cpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 299,
+          "p50": 1.9000000022351742,
+          "p95": 3.800000000745058,
+          "mean": 2.7026755850774586,
+          "cv": 1.222737464849974,
+          "bootstrapCI": {
+            "low": 1.8999999985098839,
+            "high": 2,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "gpuMs": {
+          "supported": true,
+          "reason": null,
+          "samples": 77,
+          "p50": 1.927168,
+          "p95": 2.876416,
+          "mean": 2.471031688311687,
+          "cv": 0.9881619062956805,
+          "bootstrapCI": {
+            "low": 1.87392,
+            "high": 2.00704,
+            "confidence": 0.95,
+            "iterations": 1000
+          }
+        },
+        "drawCalls": 84,
+        "submittedCommands": 621,
+        "triangles": null
+      },
+      "passes": [],
+      "state": {
+        "drawHookInstallations": 1,
+        "drawHookInvocations": 1728989,
+        "programBinds": 0,
+        "materialBinds": 0,
+        "uniformUploads": 0,
+        "textureBinds": 0
+      },
+      "memory": {
+        "graphPhysicalBytes": null,
+        "graphPeakBytes": 0,
+        "poolCurrentBytes": 0,
+        "poolPeakBytes": 0,
+        "ccrTextureBytes": 8294400,
+        "tilesetReportedBytes": null,
+        "jsHeapBytes": null,
+        "scope": "tracked allocations; true board VRAM requires vendor profiler",
+        "graphScope": "render-graph transient physical allocations when an allocator exposes byte diagnostics; null means unavailable",
+        "poolScope": "CCR render-target pool allocations reported by the pool; excludes driver and board overhead"
+      },
+      "repeat": 3
+    }
+  ],
+  "summary": {
+    "repeat": 3,
+    "cpuP95": {
+      "p50": 4.399999998509884,
+      "p95": 5.199999999254942
+    },
+    "gpuP50": {
+      "p50": 1.927168,
+      "p95": 2.121728
+    },
+    "validFrames": 900,
+    "invalidFrames": 0,
+    "gpuSupported": true
+  },
+  "generatedAt": "2026-10-14T07:19:10.129Z"
+}

@@ -787,15 +787,34 @@ export default class VisualPipeline {
         s.camera.frustum instanceof C.PerspectiveFrustum),
       frustumCount: frusta ? frusta.length : 0,
         features: {
-          graphTransientActive: { requested: true, active: !!this.renderGraph?.transientAllocator, reason: this.renderGraph?.transientAllocator ? null : 'Graph allocator is not attached' },
+          graphTransientActive: { requested: true, active: !!this.renderGraph?.transientAllocator, reason: this.renderGraph?.transientAllocator ? null : 'Graph allocator is not attached', generation: this._capabilityGeneration() },
           renderItemDirectSubmit: { requested: this.options.renderItemDirectSubmit === true,
             active: this.options.renderItemDirectSubmit === true && !!this.deferredLighting?.enabled && !this.deferredLighting.failed && this.deferredLighting.materials?.ready === true && this.deferredLighting.geometryAvailable !== false && !!this.drawDispatcher?.installed,
-            reason: this.options.renderItemDirectSubmit !== true ? 'RenderItem direct-submit is disabled' : !this.deferredLighting?.enabled ? 'Deferred lighting is not active' : !this.deferredLighting.materials?.ready ? 'Deferred geometry is not ready' : !this.drawDispatcher?.installed ? 'Dispatcher is not installed' : null },
-          materialBatchingActive: this._batchingFeature(),
-          contextDrawDispatcherActive: { requested: true, active: !!this.drawDispatcher?.installed, reason: this.drawDispatcher?.installed ? null : 'Dispatcher is not installed' },
+            reason: this.options.renderItemDirectSubmit !== true ? 'RenderItem direct-submit is disabled' : !this.deferredLighting?.enabled ? 'Deferred lighting is not active' : !this.deferredLighting.materials?.ready ? 'Deferred geometry is not ready' : !this.drawDispatcher?.installed ? 'Dispatcher is not installed' : null, generation: this._capabilityGeneration() },
+          materialBatchingActive: { ...this._batchingFeature(), generation: this._capabilityGeneration() },
+          contextDrawDispatcherActive: { requested: true, active: !!this.drawDispatcher?.installed, reason: this.drawDispatcher?.installed ? null : 'Dispatcher is not installed', generation: this._capabilityGeneration() },
         }
     }
-  }  /**
+  }  _capabilityGeneration() {
+    return this.renderGraph?.frame ?? this.drawDispatcher?.generation ?? 0
+  }
+  /**
+   * Phase 8 A/B switch: force the pre-refactor path for a comparison run. This exists only so
+   * a baseline can be measured against the optimised path; it is not a supported main route and
+   * cannot enable anything by itself.
+   */
+  setDiagnosticLegacyPath(value = true) {
+    if (this.destroyed) return this.getDiagnostics()
+    this.options = normalizeOptions({
+      renderItemDirectSubmit: value ? false : this.options.renderItemDirectSubmit,
+      transparentDirectSubmit: value ? false : this.options.transparentDirectSubmit,
+      materialBatchingEnabled: value ? false : this.options.materialBatchingEnabled
+    }, this.options)
+    this.diagnosticLegacyPath = !!value
+    this.apply()
+    return this.getDiagnostics()
+  }
+  /**
    * Phase 6 batching state, measured from the live batch plan rather than hard-coded, so the
    * flag cannot claim an optimisation that produced no mergeable program runs.
    */
