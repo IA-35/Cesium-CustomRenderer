@@ -83,9 +83,19 @@ export default class TransparentForward143 {
       if(previous!==undefined&&item.nativeOrderKey<previous)return {submitted:0,reason:'Native order regression'}
       previous=item.nativeOrderKey
     }
-    for(const item of items)this.executor.execute(item,context,passState)
-    this.stats.directSubmitDraws=(this.stats.directSubmitDraws||0)+items.length
-    return {submitted:items.length,reason:null}
+    // The range already proved the ordering contract, so the planner can merge the items that
+    // share a program/render state and the executor can bind each program once per batch.
+    const plan=planRenderBatches143(items,{pass:'transparent.forward'})
+    // Items already carry their command; the planner only grouped them.
+    let submitted=0
+    for(const batch of plan.batches){
+      const result=this.executor.executeBatch(batch,context,passState)
+      submitted+=result.submitted
+      if(result.failedAt!==-1)break
+    }
+    this.stats.directSubmitDraws=(this.stats.directSubmitDraws||0)+submitted
+    this.stats.batchPlan=plan
+    return {submitted,reason:null,batchCount:plan.batchCount,programBindReduction:plan.programBindReduction}
   }
   applyTo(command,item=null){
     if(this.destroyed||!this.enabled||this.failed)return

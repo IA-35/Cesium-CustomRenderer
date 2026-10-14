@@ -29,6 +29,37 @@ export default class RenderItemExecutor143 {
     for (const item of items || []) results.push(this.execute(item, context, passState, typeof overrides === 'function' ? overrides(item) : overrides))
     return results
   }
+  // Phase 6: submit a batch that shares one program/render state. The bind happens once for
+  // the whole run; only the per-item uniform values are still applied per draw. A batch that
+  // throws is abandoned at the failing item so the caller can replay it natively.
+  executeBatch(batch, context, passState, nativeSubmit = null) {
+    const items = batch?.items?.length ? batch.items : []
+    if (!items.length) return { submitted: 0, failedAt: -1 }
+    const first = this._command(items[0])
+    const program = first?.shaderProgram
+    const boundOnce = !!program?._bind
+    try {
+      if (boundOnce) program._bind()
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index]
+        // The batch groups by shader/render-state identity; a mismatch means the plan is
+        // stale and must not be submitted as one unit.
+        const command = this._command(item)
+        if (boundOnce && command?.shaderProgram !== program) {
+          this.stats.batchBroken = (this.stats.batchBroken || 0) + 1
+          return { submitted: index, failedAt: index }
+        }
+        this.execute(item, context, passState, {}, nativeSubmit)
+      }
+      this.stats.batched = (this.stats.batched || 0) + items.length
+      this.stats.batches = (this.stats.batches || 0) + 1
+      if (this.stats.batchBroken === undefined) this.stats.batchBroken = 0
+      return { submitted: items.length, failedAt: -1 }
+    } catch (error) {
+      this.stats.batchErrors = (this.stats.batchErrors || 0) + 1
+      throw error
+    }
+  }
   fallback(item, context, passState, reason, overrides = {}) { this.stats.fallback++; return this.execute(item, context, passState, overrides) }
   getDiagnostics() { return { label: this.label, ...this.stats } }
 }

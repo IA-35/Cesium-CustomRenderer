@@ -791,11 +791,29 @@ export default class VisualPipeline {
           renderItemDirectSubmit: { requested: this.options.renderItemDirectSubmit === true,
             active: this.options.renderItemDirectSubmit === true && !!this.deferredLighting?.enabled && !this.deferredLighting.failed && this.deferredLighting.materials?.ready === true && this.deferredLighting.geometryAvailable !== false && !!this.drawDispatcher?.installed,
             reason: this.options.renderItemDirectSubmit !== true ? 'RenderItem direct-submit is disabled' : !this.deferredLighting?.enabled ? 'Deferred lighting is not active' : !this.deferredLighting.materials?.ready ? 'Deferred geometry is not ready' : !this.drawDispatcher?.installed ? 'Dispatcher is not installed' : null },
-          materialBatchingActive: { requested: this.options.materialBatchingEnabled === true, active: false, reason: 'Material/shader batching planner is diagnostic-only; execution batching is not active' },
+          materialBatchingActive: this._batchingFeature(),
           contextDrawDispatcherActive: { requested: true, active: !!this.drawDispatcher?.installed, reason: this.drawDispatcher?.installed ? null : 'Dispatcher is not installed' },
         }
     }
   }  /**
+   * Phase 6 batching state, measured from the live batch plan rather than hard-coded, so the
+   * flag cannot claim an optimisation that produced no mergeable program runs.
+   */
+  _batchingFeature() {
+    if (this.options.materialBatchingEnabled !== true) return { requested: false, active: false, reason: 'Material batching is disabled' }
+    if (!this.drawDispatcher?.installed) return { requested: true, active: false, reason: 'Dispatcher is not installed' }
+    const plan = this.transparentForward?.batchPlan || this.transparentForward?.stats?.batchPlan
+    if (!plan) return { requested: true, active: false, reason: 'No batch plan for this frame' }
+    const reducing = plan.programBindReduction > 0
+    return {
+      requested: true, active: reducing,
+      reason: reducing ? null : 'Batch plan found no mergeable program runs',
+      batchCount: plan.batchCount, programBinds: plan.programBinds,
+      programBindReduction: plan.programBindReduction,
+      optimizationSuccess: plan.optimizationSuccess, correctness: plan.correctness
+    }
+  }
+  /**
    * B11: coverage flags for the deferred-default gate.
    *
    * These are measured from the live modules rather than hard-coded, so the gate

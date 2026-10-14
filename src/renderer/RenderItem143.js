@@ -19,6 +19,13 @@ export function createRenderItem143(command, options = {}) {
     pipelineKey: text(options.pipelineKey),
     renderStateKey: text(options.renderStateKey || command.renderState?.id),
     framebufferKey: text(options.framebufferKey || command.framebuffer?.id),
+    // Phase 6 batch key inputs. Deliberately identity/state only: no transform, colour or
+    // IBL factor, because those differ per object and would defeat batching entirely.
+    shaderSourceId: text(options.shaderSourceId || command.shaderProgram?.id),
+    injectedVariant: text(options.injectedVariant),
+    framebufferLayout: text(options.framebufferLayout || command.framebuffer?.id),
+    textureLayout: text(options.textureLayout),
+    featureFlags: text(options.featureFlags),
     sortKey: number(options.sortKey),
     orderKey: options.orderKey ?? nativeOrderKey,
     nativeOrderKey,

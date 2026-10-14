@@ -279,12 +279,18 @@ test('transparent order ledger detects native order regressions per frustum pass
 })
 
 test('transparent direct-submit accepts only a continuous native-order range', () => {
-  const calls=[]
+  const calls=[],batches=[]
   const pass=Object.create(TransparentForward143.prototype)
-  pass.getOptions=()=>({transparentDirectSubmit:true});pass.executor={execute(item){calls.push(item.command)}};pass.stats={directSubmitDraws:0}
-  const item=n=>({command:n,pass:'transparent.forward',frustumIndex:0,passIndex:1,framebufferKey:'fb',nativeOrderKey:n})
-  assert.deepEqual(pass.directSubmitRange([item(1),item(2)],{},{}),{submitted:2,reason:null})
+  pass.getOptions=()=>({transparentDirectSubmit:true})
+  pass.executor={execute(item){calls.push(item.command)},executeBatch(batch){batches.push(batch);for(const item of batch.items)calls.push(item.command);return {submitted:batch.items.length,failedAt:-1}}}
+  pass.stats={directSubmitDraws:0}
+  const item=n=>({command:n,pass:'transparent.forward',sourcePass:'translucent',shaderSourceId:'s',frustumIndex:0,passIndex:1,framebufferKey:'fb',nativeOrderKey:n})
+  const first=pass.directSubmitRange([item(1),item(2)],{},{})
+  assert.equal(first.submitted,2)
+  assert.equal(first.reason,null)
   assert.equal(calls.length,2)
+  assert.equal(first.batchCount,1,'same-program items must merge into one batch')
+  assert.equal(batches[0].items.length,2)
   assert.equal(pass.directSubmitRange([item(3),{...item(4),framebufferKey:'other'}],{},{}).reason,'Native order boundary')
   assert.equal(pass.directSubmitRange([item(6),item(5)],{},{}).reason,'Native order regression')
 })

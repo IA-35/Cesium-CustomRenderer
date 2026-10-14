@@ -32,3 +32,32 @@ test('executor submits a command through the dispatcher without recursively re-e
   assert.equal(dispatcher.getDiagnostics().drawHookInvocations, 1)
   dispatcher.destroy()
 })
+
+test('executeBatch binds the shared program once and submits every item', () => {
+  const binds = [], executed = []
+  const program = { _bind() { binds.push('bind'); return true } }
+  const executor = new RenderItemExecutor143(null, { label: 'test' })
+  const command = n => ({ shaderProgram: program, execute() { executed.push(n); return n } })
+  const items = [
+    { pass: 'opaque.forward', command: command(1) },
+    { pass: 'opaque.forward', command: command(2) }
+  ]
+  const result = executor.executeBatch({ items }, {}, {})
+  assert.equal(result.submitted, 2)
+  assert.equal(result.failedAt, -1)
+  assert.equal(binds.length, 1, 'one program bind must serve the whole batch')
+  assert.deepEqual(executed, [1, 2])
+  assert.equal(executor.getDiagnostics().batched, 2)
+})
+
+test('executeBatch refuses a stale batch whose program no longer matches the plan', () => {
+  const executor = new RenderItemExecutor143(null, { label: 'test' })
+  const items = [
+    { pass: 'opaque.forward', command: { shaderProgram: { _bind() {} } } },
+    { pass: 'opaque.forward', command: { shaderProgram: { _bind() {} } } }
+  ]
+  const result = executor.executeBatch({ items }, { draw() {} }, {})
+  assert.equal(result.submitted, 1)
+  assert.equal(result.failedAt, 1)
+  assert.equal(executor.getDiagnostics().batchBroken, 1)
+})
