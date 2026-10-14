@@ -83,13 +83,17 @@ test('cloud shader replaces the previous per-step optical depth integral', () =>
   assert.doesNotMatch(sunBody, /ccrCloudDensity\(/)
 })
 
-test('cloud slab boundaries use ellipsoid altitude, not raw z', () => {
+test('cloud slab boundaries use planet-centred altitude, not raw z', () => {
   const shader = cloudGLSL('balanced')
-  // Every slab test must go through the altitude helper; a raw `position.z` comparison against
-  // the altitude bounds would be wrong away from the equator.
+  // The atmosphere and the cloud now share one planet-centred frame, so altitude is the distance
+  // from the planet centre minus the radius. A raw z comparison would only hold on the equator.
   assert.match(shader, /float ccrCloudAltitude\(vec3 position\)/)
+  assert.match(shader, /return length\(position - CCR_PLANET_POS\) - atmosphereParams\.x/)
   assert.match(shader, /ccrCloudProfileAtAltitude\(sampleAltitude\)/)
   assert.doesNotMatch(shader, /cloudParams\.y\s*<\s*position\.z|position\.z\s*>\s*cloudParams\.z/)
+  // The sun march must measure "vertical" against the local surface normal, not the frame's z.
+  assert.match(shader, /vec3 up = normalize\(position - CCR_PLANET_POS\)/)
+  assert.match(shader, /float sunVertical = dot\(sunDirectionAtmo, up\)/)
 })
 
 test('cloud march skips empty space with a growing step and integrates energy conservatively', () => {

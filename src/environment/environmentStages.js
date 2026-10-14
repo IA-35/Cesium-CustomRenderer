@@ -88,6 +88,10 @@ in vec2 v_textureCoordinates;
 // Declared here rather than in the scattering/cloud modules because they are read directly by
 // each stage's main(): eyeToLocal frames the ray, and the two radiance terms light the cloud.
 uniform mat4 eyeToLocal;
+// ENU-to-ECEF. The atmosphere integral is written for a planet-centred frame, so the ray must be
+// transformed before it is integrated; see the porting notes for the measured error this avoids.
+uniform mat4 enuToEcef;
+uniform sampler2D originalHdr;
 uniform vec3 skyRadiance;
 uniform vec3 sunRadiance;
 
@@ -104,7 +108,7 @@ vec3 ccrViewDirection(vec2 uv) {
   const shading = `${uboDefine}${sharedDeclarations}\n${atmosphereGLSL(tier)}\n${radianceHelpers}\n${cloudGLSL(tier)}`
 
   const rayUniforms = {}
-  for (const name of ['eyeToLocal', 'sunDirectionLocal', 'sunRadiance', 'skyRadiance',
+  for (const name of ['eyeToLocal', 'enuToEcef', 'originalHdr', 'sunDirectionLocal', 'sunRadiance', 'skyRadiance',
     'cloudParams', 'cloudWind', 'noiseTexture', 'sourceSize',
     'surfaceDepthTexture', 'surfaceDepthAvailable', 'atmosphereParams', 'surfaceHeight']) {
     if (uniforms[name] !== undefined) rayUniforms[name] = uniforms[name]
@@ -118,7 +122,7 @@ vec3 ccrViewDirection(vec2 uv) {
     ? uniforms.sunDirectionLocal() : uniforms.sunDirectionLocal
   // Validate the shader's uniform contract up front. A missing binding would otherwise surface
   // as a driver compile error inside the render loop, where the cause is hard to see.
-  const required = ['eyeToLocal', 'sunDirectionAtmo', 'sunRadiance', 'skyRadiance', 'cloudParams', 'cloudWind', 'noiseTexture', 'atmosphereParams']
+  const required = ['eyeToLocal', 'enuToEcef', 'originalHdr', 'sunDirectionAtmo', 'sunRadiance', 'skyRadiance', 'cloudParams', 'cloudWind', 'noiseTexture', 'atmosphereParams']
   const missing = required.filter(name => rayUniforms[name] === undefined)
   if (missing.length) throw new Error(`environment stages missing uniforms: ${missing.join(', ')}`)
 
@@ -131,16 +135,29 @@ void main() {
   // The ray is rebuilt in the local frame so the atmosphere and cloud integrals share one
   // origin; eyeToLocal is the atmosphere's local frame supplied by EnvironmentRenderer.
   vec3 eyeDirection = ccrViewDirection(uv);
-  vec3 direction = normalize((eyeToLocal * vec4(eyeDirection, 0.0)).xyz);
-  vec3 origin = (eyeToLocal * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 localDirection = normalize((eyeToLocal * vec4(eyeDirection, 0.0)).xyz);
+  vec3 localOrigin = (eyeToLocal * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
   float distance = sceneDistance(uv);
-  vec3 transmittance = vec3(1.0);
-  vec3 atmosphere = ccrAtmosphere(origin, direction, transmittance);
-  vec4 clouds = ccrClouds(origin, direction, distance);
+  vec3 sceneColor = texture(originalHdr, uv).rgb;
 
-  // Composite the cloud over the background, then apply atmospheric extinction to the sum so
-  // the haze sits in front of both the cloud and the scene.
+  // The reference integrates in a planet-centred frame and derives altitude as
+  // length(position) - planetRadius. eyeToLocal produces an ENU frame whose origin sits on the
+  // ellipsoid, so feeding it in directly measures the distance from the planet centre to a point
+  // near the surface (measured: -2205 m at the campus latitude, +7237 m at the equator). The
+  // ENU-to-ECEF transform is applied here to put both the origin and the direction in the frame
+  // the integral expects.
+  vec3 ecefOrigin = (enuToEcef * vec4(localOrigin, 1.0)).xyz;
+  vec3 ecefDirection = normalize((enuToEcef * vec4(localDirection, 0.0)).xyz);
+
+  vec3 transmittance = vec3(1.0);
+  // ccrAtmosphere already composites the scene extinction, so it returns the scene colour for a
+  // miss and L_scatter + L_scene * T otherwise. Only the cloud layer is composited here.
+  vec3 atmosphere = ccrAtmosphere(ecefOrigin, ecefDirection, distance, sceneColor, transmittance);
+  vec4 clouds = ccrClouds(ecefOrigin, ecefDirection, distance);
+
+  // Composite the cloud over the atmosphere-composited background, then apply atmospheric
+  // extinction to the cloud contribution so the haze sits in front of both.
   vec3 color = atmosphere + clouds.rgb * transmittance;
   float alpha = clouds.a;
   out_FragColor = vec4(color, alpha);

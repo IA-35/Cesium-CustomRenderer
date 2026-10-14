@@ -19,6 +19,9 @@ function create(quality = 'balanced') {
     sunRadiance: () => new C.Cartesian3(1, 0.95, 0.85),
     skyRadiance: () => new C.Cartesian3(0.4, 0.5, 0.7),
     eyeToLocal: () => C.Matrix4.IDENTITY,
+    // The atmosphere integral is planet-centred, so the fixture supplies the same ENU-to-ECEF
+    // transform EnvironmentRenderer builds; identity is enough for shader-structure tests.
+    enuToEcef: () => C.Matrix4.IDENTITY,
     cloudParams: () => new C.Cartesian4(0.42, 1600, 2800, 0.02),
     windOffset: () => new C.Cartesian3(0, 0, 0),
     noiseTexture: () => null,

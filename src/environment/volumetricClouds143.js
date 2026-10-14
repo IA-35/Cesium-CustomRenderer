@@ -83,12 +83,12 @@ float ccrNoise3D(vec3 point) {
   return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
 }
 
-// Altitude above the ellipsoid, mirroring the flattening correction the atmosphere uses. The
-// cloud slab bounds are altitudes, so every height test must go through this and not through
-// the raw z component.
+// Altitude above the planet surface, in the planet-centred frame the caller now supplies.
+// Using the sphere radius rather than an ellipsoid is deliberate: it matches the atmosphere
+// module, which also carries the reference's spherical planet. The flattening difference is
+// recorded as an open item in reference/PORTING_DIFFERENCES.md.
 float ccrCloudAltitude(vec3 position) {
-  float horizontal = length(position.xy);
-  return position.z - (horizontal * horizontal) / (2.0 * atmosphereParams.x);
+  return length(position - CCR_PLANET_POS) - atmosphereParams.x;
 }
 
 // Height inside the cloud slab, normalised to 0..1, with a soft profile so the slab does not
@@ -121,11 +121,15 @@ float ccrCloudDensity(vec3 position) {
 // integral: this is the change that makes the light march affordable.
 float ccrCloudSunVisibility(vec3 position) {
   float altitude = ccrCloudAltitude(position);
-  // Distance to the top of the slab along the sun direction, so the samples stay inside it.
+  // The planet-centred frame has no global "up": vertical is the local surface normal. Using the
+  // sun direction's z component here would only be correct on the equatorial plane.
+  vec3 up = normalize(position - CCR_PLANET_POS);
+  float sunVertical = dot(sunDirectionAtmo, up);
+  // Distance to the top or bottom of the slab along the sun direction, so the samples stay inside.
   float distanceToTop = 4000.0;
-  if (abs(sunDirectionAtmo.z) > 1.0e-4) {
-    float boundary = sunDirectionAtmo.z > 0.0 ? cloudParams.z : cloudParams.y;
-    distanceToTop = clamp((boundary - altitude) / sunDirectionAtmo.z, 0.0, 6000.0);
+  if (abs(sunVertical) > 1.0e-4) {
+    float boundary = sunVertical > 0.0 ? cloudParams.z : cloudParams.y;
+    distanceToTop = clamp((boundary - altitude) / sunVertical, 0.0, 6000.0);
   }
   float stepLength = distanceToTop / float(CLOUD_LIGHT_STEPS);
   float inside = 0.0;

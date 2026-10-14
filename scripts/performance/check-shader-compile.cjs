@@ -21,25 +21,42 @@ try {
   else {
     // A preamble that mirrors the host contract: the cloud module relies on the atmosphere
     // module's helpers and on the host-provided radiance functions.
+    // The shader modules declare their own uniforms (atmosphereParams, cloudParams, cloudWind,
+    // noiseTexture, sunDirectionAtmo, skyRadiance, sunRadiance). Only the host-side inputs that
+    // environmentStages.js supplies are declared here, plus the radiance accessor functions the
+    // cloud module calls into.
     const preamble = [
       '#version 300 es',
       'precision highp float;',
       'precision highp int;',
       'precision highp sampler2D;',
       'out vec4 out_FragColor;',
-      'vec3 ccrSkyRadiance() { return vec3(0.4, 0.5, 0.7); }',
-      'vec3 ccrSunRadiance() { return vec3(1.0, 0.95, 0.85); }'
+      'uniform mat4 enuToEcef;',
+      'uniform mat4 eyeToLocal;',
+      'uniform sampler2D originalHdr;',
+      'uniform vec2 sourceSize;',
+      'uniform vec2 effectSize;',
+      'uniform bool surfaceDepthAvailable;',
+      'uniform sampler2D surfaceDepthTexture;',
+      'uniform sampler2D depthTexture;',
+      'uniform bool shellEmptyScene;'
     ].join('\\n')
     const body = [
       atmosphereGLSL('balanced'),
+      // environmentStages.js injects these between the scattering and cloud modules.
+      'vec3 ccrSkyRadiance() { return vec3(0.4, 0.5, 0.7); }',
+      'vec3 ccrSunRadiance() { return vec3(1.0, 0.95, 0.85); }',
       cloudGLSL('balanced'),
       'void main() {',
-      '  vec3 transmittance = vec3(1.0);',
-      '  vec3 origin = vec3(0.0, 0.0, 6371002.0);',
+      '  vec2 uv = vec2(0.5);',
+      '  // Planet-centred frame, as the reference integral expects.',
+      '  vec3 origin = vec3(0.0, 0.0, atmosphereParams.x + 100.0);',
       '  vec3 direction = normalize(vec3(0.0, 0.0, 1.0));',
-      '  vec3 atmosphere = ccrAtmosphere(origin, direction, transmittance);',
+      '  vec4 original = texture(originalHdr, uv);',
+      '  vec3 transmittance = vec3(1.0);',
+      '  vec3 atmosphere = ccrAtmosphere(origin, direction, 40000.0, original.rgb, transmittance);',
       '  vec4 clouds = ccrClouds(origin, direction, 40000.0);',
-      '  out_FragColor = vec4(atmosphere + clouds.rgb, clouds.a * transmittance.b);',
+      '  out_FragColor = vec4(atmosphere + clouds.rgb * transmittance, clouds.a);',
       '}'
     ].join('\\n')
 

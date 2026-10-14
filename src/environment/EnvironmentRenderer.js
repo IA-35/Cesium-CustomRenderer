@@ -33,6 +33,10 @@ export default class EnvironmentRenderer {
         surfaceDepthTexture: () => this.surfaceDepth() || this.scene.context.defaultTexture,
         surfaceDepthAvailable: () => !!this.surfaceDepth(),
         eyeToLocal: () => C.Matrix4.multiply(this.inverseFrame, viewer.camera.inverseViewMatrix, this.eyeToLocal),
+        // The atmosphere integral expects planet-centred positions. eyeToLocal yields ENU, whose
+        // origin sits on the ellipsoid, so the ray is carried into ECEF with the ENU frame this
+        // renderer already builds in update().
+        enuToEcef: () => this.frame || C.Matrix4.IDENTITY,
         sunDirectionLocal: () => this.sunLocal,
         sunRadiance: () => new C.Cartesian3(...this.state.sunRadiance),
         skyRadiance: () => new C.Cartesian3(...this.state.skyRadiance),
