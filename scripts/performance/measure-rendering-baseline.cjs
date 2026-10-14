@@ -184,6 +184,9 @@ async function run() {
         // The wait above happens outside the ledger listener; account for those
         // frames explicitly so sampled frames are not discarded as warmup again.
         for (let index = 0; index < options.warmup; index++) ledger.recordFrame({ warmup: true })
+        // Start bind accounting after warmup so the counters describe the sampled window, and
+        // so the extra GL indirection never affects the warmup timing.
+        const bindTracking = pipeline?.drawDispatcher?.startBindTracking?.() || null
         if (pipeline) {
           const { default: RenderProfiler143 } = await import('/src/diagnostics/RenderProfiler143.js')
           profiler = new RenderProfiler143(Cesium, pipeline)
@@ -206,6 +209,7 @@ async function run() {
             if (--left === 0) { off(); resolve() }
           })
         })
+        const bindCounters = pipeline?.drawDispatcher?.stopBindTracking?.() || bindTracking?.counters || null
         if (profiler) {
           // EXT_disjoint_timer_query results are asynchronous. Give the browser
           // a few render turns to publish the last sampled queries before reading
@@ -233,6 +237,13 @@ async function run() {
           profiler.destroy()
         }
         const report = ledger.getReport()
+        // Prefer the measured totals over the per-frame counter deltas: the delta only sees
+        // frames the listener observed, while the tracking window covers the whole sample.
+        if (bindCounters) {
+          report.state = { ...report.state, ...bindCounters, bindTracking: true }
+        } else {
+          report.state = { ...report.state, bindTracking: false }
+        }
         report.validity.pageErrors = []
         report.repeat = repeat + 1
         return report

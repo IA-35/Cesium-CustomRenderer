@@ -41,12 +41,79 @@ smaa:        GPU p50 ≈ 0.16–0.18ms
 frame:       GPU p50 ≈ 20.7ms
 ```
 
-这是"频繁掉帧"的首要原因，**不是** dispatcher 的 handler 开销。后续任何性能工作都应先
-处理 environment pass，否则 batching/直提的收益会被它掩盖。
+这是"频繁掉帧"的首要原因，**不是** dispatcher 的 handler 开销。
+
+### environment pass 是什么
+
+`src/environment/EnvironmentRenderer.js` + `environmentStages.js` 实现的**全屏体积云与体积雾
+raymarching 后处理**（B08/B09 阶段功能，默认开启），与本次管线重构无关。它由一个 composite 组成：
+
+```text
+environment_<id>
+  ├─ environment_raymarch_<id>   体积累积
+  └─ environment_resolve_<id>    解算合成
+```
+
+### 为什么是 19ms
+
+`environmentQuality: 'balanced'` 对应的循环次数，且它们是**嵌套**的：
+
+```glsl
+#define FOG_STEPS   24
+#define CLOUD_STEPS 64
+#define SHELL_STEPS 128      // cloudGeometry: 'shell'
+
+for (i < FOG_STEPS) 24       // environmentStages.js:212
+  for (i < SHELL_STEPS) 128  // :300
+    for (i < CLOUD_STEPS) 64 // :328
+      for (j < 4) 4          // :281，每步 4 次噪声采样
+```
+
+在 `textureScale: 0.5`（518,400 像素）上执行，每像素数万至数十万次纹理采样。
+这**不是 bug**，是该算法在当前参数下的真实成本：业界全屏体积云通常需要 1/4–1/8 分辨率
+配合时域复用与透射率预计算，当前实现只有 0.5 缩放。
+
+**降低该 pass 的质量会直接改变画面观感**，因此它与管线重构分开处理，本阶段不动。
 
 ### 增强/延迟路径比原生慢约 10 倍 GPU 时间
 
 `native` 的 GPU p50 约 2ms，增强/延迟约 20.7ms。差值几乎全部来自 environment pass。
+
+### 绑定次数（实测）
+
+采样窗口（300 帧）内的真实 GL 调用次数，由 `ContextDrawDispatcher143.startBindTracking()` 包装
+GL 入口点统计（而非估算）：
+
+```text
+programBinds   useProgram
+materialBinds  drawElements + drawArrays
+textureBinds   bindTexture
+uniformUploads uniform4fv + uniformMatrix4fv
+```
+
+| case | programBinds | materialBinds | textureBinds | uniformUploads |
+|---|---|---|---|---|
+| `native` | 23,949 | 23,647 | 17,113 | 57,626 |
+| `enhanced-current` | 30,955 | 112,042 | 104,039 | 93,620 |
+| `deferred-current` | 30,955 | 112,042 | 104,039 | 93,620 |
+| `deferred-transparent-current` | 30,955 | 112,042 | 104,039 | 93,620 |
+
+**这组数字改变了优化优先级。** 增强/延迟相对原生：
+
+```text
+programBinds   +29%      (23,949 -> 30,955)
+materialBinds  +374%     (23,647 -> 112,042)
+textureBinds   +508%     (17,113 -> 104,039)
+uniformUploads +62%      (57,626 -> 93,620)
+```
+
+材质与纹理绑定是 Program 绑定的 3.4–3.6 倍。因此：
+
+- 当前实现的 batching 只合并 **program bind**，覆盖的是增幅最小的那一项；
+- 若要真正降低提交开销，batch key 需要进一步覆盖**材质与纹理布局**，让每个批次内的
+  纹理绑定也合并（同图集/同材质组），否则收益上限很低。
+
+这是下一步 batching 工作的依据，也说明只按 program bind 判断成功是不够的。
 
 ## 四、Phase 6 门槛与当前状态
 
@@ -63,18 +130,15 @@ frame:       GPU p50 ≈ 20.7ms
 
 **当前状态：未达标（`optimizationSuccess: not-achieved`）。**
 
-原因有两个，都必须如实记录：
+原因是三个开关默认关闭：
 
-1. `programBinds` 计数器在测量时尚未接入真实 GL 计数，报告中为 0，无法计算 bind 收益。
-   计数器已在 `ContextDrawDispatcher143.startBindTracking()` 实现，但基线是用旧构建跑的，
-   **需要重新测量**才能得到真实 bind 数字。
-2. 三个开关默认关闭：
+```js
+renderItemDirectSubmit: false, transparentDirectSubmit: false, materialBatchingEnabled: false
+```
 
-   ```js
-   renderItemDirectSubmit: false, transparentDirectSubmit: false, materialBatchingEnabled: false
-   ```
-
-   因此基线测的是**优化前路径**。这是有意的：真实场景等价性未验证前不默认启用。
+因此基线测的是**优化前路径**。这是有意的：真实场景等价性未验证前不默认启用。
+绑定计数器已接入（`bindTracking: true`），所以一旦开启 batching，program bind 的下降
+可以直接用同一套脚本测量并对比。
 
 ## 五、明确的范围限制
 

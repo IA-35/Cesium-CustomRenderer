@@ -51,13 +51,13 @@
           "supported": true,
           "reason": null,
           "samples": 299,
-          "p50": 2.199999999254942,
-          "p95": 5.199999999254942,
-          "mean": 2.884615384665221,
-          "cv": 1.1382868727857616,
+          "p50": 2,
+          "p95": 4.5,
+          "mean": 2.723076923199023,
+          "cv": 1.2441420217785937,
           "bootstrapCI": {
-            "low": 2.199999999254942,
-            "high": 2.300000000745058,
+            "low": 2,
+            "high": 2.100000001490116,
             "confidence": 0.95,
             "iterations": 1000
           }
@@ -66,13 +66,13 @@
           "supported": true,
           "reason": null,
           "samples": 77,
-          "p50": 2.121728,
-          "p95": 3.828736,
-          "mean": 2.8725327792207787,
-          "cv": 0.9540449537347007,
+          "p50": 2.044928,
+          "p95": 3.448832,
+          "mean": 2.7634967272727264,
+          "cv": 1.0018677485251208,
           "bootstrapCI": {
-            "low": 1.896448,
-            "high": 2.829312,
+            "low": 1.924096,
+            "high": 2.327552,
             "confidence": 0.95,
             "iterations": 1000
           }
@@ -84,11 +84,12 @@
       "passes": [],
       "state": {
         "drawHookInstallations": 1,
-        "drawHookInvocations": 94758,
-        "programBinds": 0,
-        "materialBinds": 0,
-        "uniformUploads": 0,
-        "textureBinds": 0
+        "drawHookInvocations": 91955,
+        "programBinds": 23949,
+        "materialBinds": 23647,
+        "uniformUploads": 57626,
+        "textureBinds": 17113,
+        "bindTracking": true
       },
       "memory": {
         "graphPhysicalBytes": null,
@@ -149,9 +150,9 @@
           "reason": null,
           "samples": 299,
           "p50": 2.100000001490116,
-          "p95": 4.399999998509884,
-          "mean": 2.844816053566526,
-          "cv": 1.2580805219335378,
+          "p95": 3.800000000745058,
+          "mean": 2.6535117056432576,
+          "cv": 1.0281756783800222,
           "bootstrapCI": {
             "low": 2.099999997764826,
             "high": 2.199999999254942,
@@ -163,13 +164,13 @@
           "supported": true,
           "reason": null,
           "samples": 77,
-          "p50": 1.808384,
-          "p95": 3.698688,
-          "mean": 2.0958952727272724,
-          "cv": 0.8833230349418453,
+          "p50": 2.291712,
+          "p95": 4.488192,
+          "mean": 2.9570231688311694,
+          "cv": 1.1359585483547239,
           "bootstrapCI": {
-            "low": 1.620992,
-            "high": 1.896448,
+            "low": 1.908736,
+            "high": 2.597888,
             "confidence": 0.95,
             "iterations": 1000
           }
@@ -181,11 +182,12 @@
       "passes": [],
       "state": {
         "drawHookInstallations": 1,
-        "drawHookInvocations": 1745771,
-        "programBinds": 0,
-        "materialBinds": 0,
-        "uniformUploads": 0,
-        "textureBinds": 0
+        "drawHookInvocations": 105749,
+        "programBinds": 23949,
+        "materialBinds": 23647,
+        "uniformUploads": 57626,
+        "textureBinds": 17113,
+        "bindTracking": true
       },
       "memory": {
         "graphPhysicalBytes": null,
@@ -245,13 +247,13 @@
           "supported": true,
           "reason": null,
           "samples": 299,
-          "p50": 1.9000000022351742,
-          "p95": 3.800000000745058,
-          "mean": 2.7026755850774586,
-          "cv": 1.222737464849974,
+          "p50": 2.099999997764826,
+          "p95": 4.600000001490116,
+          "mean": 2.7769230768508137,
+          "cv": 1.2557235091985524,
           "bootstrapCI": {
-            "low": 1.8999999985098839,
-            "high": 2,
+            "low": 2,
+            "high": 2.100000001490116,
             "confidence": 0.95,
             "iterations": 1000
           }
@@ -260,13 +262,13 @@
           "supported": true,
           "reason": null,
           "samples": 77,
-          "p50": 1.927168,
-          "p95": 2.876416,
-          "mean": 2.471031688311687,
-          "cv": 0.9881619062956805,
+          "p50": 2.451456,
+          "p95": 7.68,
+          "mean": 2.9711825454545453,
+          "cv": 1.0155841354380204,
           "bootstrapCI": {
-            "low": 1.87392,
-            "high": 2.00704,
+            "low": 1.970176,
+            "high": 2.761728,
             "confidence": 0.95,
             "iterations": 1000
           }
@@ -278,11 +280,12 @@
       "passes": [],
       "state": {
         "drawHookInstallations": 1,
-        "drawHookInvocations": 1728989,
-        "programBinds": 0,
-        "materialBinds": 0,
-        "uniformUploads": 0,
-        "textureBinds": 0
+        "drawHookInvocations": 186083,
+        "programBinds": 23951,
+        "materialBinds": 23647,
+        "uniformUploads": 57627,
+        "textureBinds": 17113,
+        "bindTracking": true
       },
       "memory": {
         "graphPhysicalBytes": null,
@@ -302,16 +305,16 @@
   "summary": {
     "repeat": 3,
     "cpuP95": {
-      "p50": 4.399999998509884,
-      "p95": 5.199999999254942
+      "p50": 4.5,
+      "p95": 4.600000001490116
     },
     "gpuP50": {
-      "p50": 1.927168,
-      "p95": 2.121728
+      "p50": 2.291712,
+      "p95": 2.451456
     },
     "validFrames": 900,
     "invalidFrames": 0,
     "gpuSupported": true
   },
-  "generatedAt": "2026-10-14T07:19:10.129Z"
+  "generatedAt": "2026-10-14T07:43:11.631Z"
 }
