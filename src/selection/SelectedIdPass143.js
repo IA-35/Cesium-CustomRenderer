@@ -28,7 +28,7 @@ export default class SelectedIdPass143 {
   constructor(C, scene, active = () => true) {
     this.C = C; this.scene = scene; this.active = active; this.enabled = true
     this.stats = { skipped: 0, drawn: 0, copies: 0, reason: 'not requested' }
-    const context = scene.context, previous = context.draw, pass = this
+    const context = scene.context, dispatcher = context._ccrDrawDispatcher, previous = context.draw, pass = this
     this.previous = previous
     this.hook = function(command, passState, ...args) {
       if (!scene._environmentState?.usePostProcessSelected) {
@@ -44,7 +44,17 @@ export default class SelectedIdPass143 {
       pass.stats.drawn++
       return previous.call(this, command, passState, ...args)
     }
-    context.draw = this.hook
+    if (dispatcher) this.dispatcherOff = dispatcher.addHandler(event => {
+      const command=event.command,passState=event.passState
+      if (!scene._environmentState?.usePostProcessSelected) { pass.owners=null; return 'continue' }
+      if (pass.dead||!pass.enabled||!active()||!scene.frameState.passes.render||scene.frameState.passes.pick||scene.frameState.passes.pickVoxel) return 'continue'
+      const id=scene._view?.sceneFramebuffer?.idFramebuffer
+      if (!id||(command.framebuffer||passState?.framebuffer)!==id)return 'continue'
+      if (pass.frame!==scene.frameState.frameNumber)pass.prepare(id)
+      if (pass.owners&&!keepIdCommand(C,command,pass.owners)){pass.stats.skipped++;return 'skip'}
+      pass.stats.drawn++;return 'continue'
+    },{name:'selected-id',priority:-10})
+    else context.draw = this.hook
   }
 
   prepare(id) {
@@ -78,7 +88,7 @@ export default class SelectedIdPass143 {
 
   destroy() {
     if (this.dead) return
-    this.dead = true; this.owners = null
+    this.dead = true; this.owners = null; this.dispatcherOff?.(); this.dispatcherOff = null
     if (this.scene.context.draw === this.hook) this.scene.context.draw = this.previous
   }
 

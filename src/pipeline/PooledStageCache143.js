@@ -19,7 +19,7 @@ export function installPooledStageCache(C,scene,collection,stages,kind,retained=
 
 export default class PooledStageCache143 {
   constructor(C,scene,collection,stages,kind,retained){
-    Object.assign(this,{C,scene,collection,stages,kind,owner:{kind},slots:[],nodes:[],nameToNode:new Map(),retained:new Set(retained),hooks:[],graph:null,graphResources:new Map()})
+    Object.assign(this,{C,scene,collection,stages,kind,owner:{kind},slots:[],nodes:[],nameToNode:new Map(),retained:new Set(retained),hooks:[],graph:null,graphResources:new Map(),nodeGraphResources:new Map()})
     this.pool=getRenderTargetPool(C,scene.context);this.pool.attach(this.owner)
     // First build the complete resource ledger, before allocating GPU targets.
     const names=new Set(stages.map(stage=>stage.name))
@@ -45,22 +45,30 @@ export default class PooledStageCache143 {
   declareGraph(graph) {
     this.graph = graph
     this.graphResources.clear()
+    this.nodeGraphResources.clear()
+    this.inputGraphResource = graph.importResource(`${this.kind}.input`, { keepAlive: true })
     for (const slot of this.slots) {
       const node = slot.nodes[0]
+      this.graphResources.set(slot, null)
+    }
+    for (const node of this.nodes) {
       const resource = graph.createResource(`${this.kind}.${node.name}`, {
         width: Math.ceil(this.scene.drawingBufferWidth * node.scale),
         height: Math.ceil(this.scene.drawingBufferHeight * node.scale),
-        format: String(node.pixelFormat), datatype: String(node.pixelDatatype)
+        format: String(node.pixelFormat), datatype: String(node.pixelDatatype), scale: node.scale,
+        keepAlive: this.retained.has(node.name) || node.index === this.nodes.length - 1
       })
-      this.graphResources.set(slot, resource)
+      this.nodeGraphResources.set(node, resource)
+      if (!this.graphResources.get(node.slot)) this.graphResources.set(node.slot, resource)
     }
     for (const node of this.nodes) {
       graph.addPass(`${this.kind}.${node.name}`, pass => {
+        pass.read(this.inputGraphResource)
         for (const name of node.reads) {
           const dependency = this.nameToNode.get(name)
-          if (dependency) pass.read(this.graphResources.get(dependency.slot))
+          if (dependency) pass.read(this.nodeGraphResources.get(dependency))
         }
-        pass.write(this.graphResources.get(node.slot))
+        pass.write(this.nodeGraphResources.get(node))
         pass.sideEffect()
       }, null, { phase: this.kind })
     }
@@ -70,31 +78,45 @@ export default class PooledStageCache143 {
   begin(input){
     this.unreserve?.();this.unreserve=this.pool.reserve([input])
     this.releaseFrame();this.prepared=false;this.input=input
+    if (this.graph && this.inputGraphResource) this.graph.bindExternal(this.inputGraphResource, input)
   }
   end(){this.unreserve?.();this.unreserve=null;this.input=null}
   update(context){
     if(this.prepared)return
-    this.pool.resize(this.scene.drawingBufferWidth,this.scene.drawingBufferHeight)
+    if (!this.graph?.activeFrame || !this.graph.transientAllocator) this.pool.resize(this.scene.drawingBufferWidth,this.scene.drawingBufferHeight)
     try{
       for(const slot of this.slots){
         const node=slot.nodes[0],width=Math.ceil(this.scene.drawingBufferWidth*node.scale),height=Math.ceil(this.scene.drawingBufferHeight*node.scale)
-        slot.lease=this.pool.acquire(this.owner,{context,width,height,pixelFormat:node.pixelFormat,pixelDatatype:node.pixelDatatype,samples:1})
-        if (this.graph && this.graphResources.has(slot) && this.graph.activeFrame) this.graph.trackLease(this.graphResources.get(slot), slot.lease)
+        const resource=this.nodeGraphResources.get(node) || this.graphResources.get(slot)
+        if(this.graph?.transientAllocator&&this.graph.activeFrame&&resource){
+          slot.lease=this.graph.leaseOf(resource)
+          if(!slot.lease)throw new Error(`PooledStageCache143 missing Graph lease for ${resource.name}`)
+          slot.graphManaged=true
+        }else{
+          const existing = this.graph && resource && this.graph.activeFrame ? this.graph.leaseOf(resource) : undefined
+          if (existing) {
+            slot.lease=existing
+            slot.graphManaged=true
+          } else {
+            slot.lease=this.pool.acquire(this.owner,{context,width,height,pixelFormat:node.pixelFormat,pixelDatatype:node.pixelDatatype,samples:1})
+            slot.graphManaged=false
+          }
+        }
         slot.lastId=slot.lease.id
         slot.clear=new this.C.ClearCommand({framebuffer:slot.lease.framebuffer,color:node.stage.clearColor})
       }
       this.prepared=true
     }catch(error){this.releaseFrame();throw error}
   }
-  clear(context){for(const slot of this.slots)slot.clear.execute(context)}
+  clear(context){const cleared=new Set();for(const slot of this.slots){const id=slot.lease?.id;if(id!==undefined&&cleared.has(id))continue;if(id!==undefined)cleared.add(id);slot.clear?.execute(context)}}
   finishStage(index){
     const completedName=this.nodes[index]?.name
     for(const slot of this.slots) if(slot.last===index) {
-      const completed=this.graph?.activeFrame && this.graph.completePass(`${this.kind}.${completedName}`)
-      if(!completed) slot.lease?.release()
+      if(slot.graphManaged && this.graph?.activeFrame) { this.graph.completePass(`${this.kind}.${completedName}`); continue }
+      slot.lease?.release()
     }
   }
-  releaseFrame(){for(const slot of this.slots){slot.lease?.release();slot.lease=null;slot.clear=null}this.prepared=false}
+  releaseFrame(){for(const slot of this.slots){if(!slot.graphManaged)slot.lease?.release();slot.lease=null;slot.graphManaged=false;slot.clear=null}this.prepared=false}
   updateDependencies(){} // this adapter's declared graph is immutable
   getFramebuffer(name){const lease=this.nameToNode.get(name)?.slot.lease;return lease?.valid?lease.framebuffer:undefined}
   getOutputTexture(name){return this.getFramebuffer(name)?.getColorTexture(0)}
@@ -105,7 +127,7 @@ export default class PooledStageCache143 {
   getDiagnostics(){
     const ids=new Set(this.slots.map(s=>s.lastId)),entries=this.pool.entries.filter(e=>ids.has(e.id)&&!e.retired)
     const output=this.pool.entries.find(e=>e.id===this.nodes.at(-1)?.slot.lastId&&!e.retired)
-    return {bytes:entries.reduce((n,e)=>n+e.bytes,0),liveBytes:entries.filter(e=>e.lease?.owner===this.owner).reduce((n,e)=>n+e.bytes,0),
+    return {bytes:entries.reduce((n,e)=>n+e.bytes,0),liveBytes:entries.filter(e=>e.lease).reduce((n,e)=>n+e.bytes,0),
       output:output?{width:output.texture.width,height:output.texture.height,id:output.id}:null,
       scope:'resident targets last used by this producer; may be shared, use pool totals for allocation',ledger:this.getLedger()}
   }

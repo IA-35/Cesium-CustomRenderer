@@ -60,7 +60,7 @@ export default class DeferredGeometry143 {
     if (this.enabled === value) return
     this.enabled = value
     if (!value) { this.detach(); return }
-    const token = { active: true }, context = this.scene.context, previous = context.draw, self = this
+    const token = { active: true }, context = this.scene.context, dispatcher=context._ccrDrawDispatcher, previous = context.draw, self = this
     this.token = token; this.previous = previous
     this.hook = function(command, passState, ...args) {
       const item = self.owner.renderItemFor?.(command), submitted = item?.command || command
@@ -83,7 +83,20 @@ export default class DeferredGeometry143 {
         return previous.call(this, command, passState)
       }
     }
-    context.draw = this.hook
+    if(dispatcher)this.dispatcherOff=dispatcher.addHandler(event=>{
+      let command=event.command
+      const item=self.owner.renderItemFor?.(command),submitted=item?.command||command
+      // Fast reject: a command that prepare() did not mark can only fall through to native draw.
+      // Without this the handler re-derived the material program on every context.draw.
+      if(!self.supportedCommands?.has(command)&&!self.supportedCommands?.has(submitted))return 'continue'
+      if(!token.active||self.busy||!self.canCapture(submitted,event.passState))return 'continue'
+      if(self.owner.shouldCull(command))return 'skip'
+      if(event.overrides[0]||event.overrides[1]){
+        command=self.C.DrawCommand.shallowClone(command);command.shaderProgram=event.overrides[0]??command.shaderProgram;command.uniformMap=event.overrides[1]??command.uniformMap
+      }
+      try{self.capture(event.native,command,event.passState);return 'replace'}catch(error){self.owner.recover(error);return 'continue'}
+    },{name:'deferred-geometry',priority:10})
+    else context.draw = this.hook
     this.proxy = { update: state => {
       this.ready = false
       if (state.passes.render) state.commandList.push({ pass: this.C.Pass.COMPUTE, execute: () => this.prepare() })
@@ -135,6 +148,10 @@ export default class DeferredGeometry143 {
       // Compile before removing any native colors. Unknown/depth-dependent shaders
       // that cannot be invalidated safely force native rendering for this frame.
       const saved = ctx._gl.getParameter(ctx._gl.CURRENT_PROGRAM)
+      // Mark the commands whose material program already supports the compact MRT during the
+      // prepare pass, so the per-draw dispatcher handler can reject everything else with one
+      // WeakSet lookup instead of re-deriving the program on every context.draw.
+      this.supportedCommands = new WeakSet()
       try {
         for (const bin of bins) for (const pass of [C.Pass.GLOBE, C.Pass.CESIUM_3D_TILE, C.Pass.OPAQUE, C.Pass.TRANSLUCENT]) {
           for (let i=0;i<(bin.indices[pass]||0);i++) {
@@ -145,7 +162,10 @@ export default class DeferredGeometry143 {
             else {
               const record=this.programFor(command)
               record._program._bind();record._invalid?._bind();record._recovery?._bind()
-              if(record.supported)this.owner.environmentGroup(command)
+              // Record support against both the raw and the derived (log-depth/HDR) command so the
+              // handler can match whichever one Cesium actually submits.
+              this.supportedCommands.add(command)
+              if(record.supported){this.supportedCommands.add(bin.commands[pass][i]);this.owner.environmentGroup(command)}
               if (this.owner.groups.length > MAX_DEFERRED_LIGHTING_GROUPS) {
                 this.reason = `Deferred lighting group budget exceeded (${this.owner.groups.length}>${MAX_DEFERRED_LIGHTING_GROUPS})`
                 this.owner.setGeometryAvailable(false)
@@ -248,6 +268,7 @@ export default class DeferredGeometry143 {
 
   canCapture(command,passState) {
     const C=this.C,s=this.scene
+    if (this.owner.getOptions?.().renderItemDirectSubmit === false) return false
     if(!this.ready||this.frame!==s.frameState.frameNumber||!s.frameState.passes.render||s.frameState.passes.pick)return false
     if(![C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE].includes(command.pass))return false
     const fb=command.framebuffer||passState?.framebuffer
@@ -286,7 +307,7 @@ export default class DeferredGeometry143 {
         const frustum=s.camera.frustum.clone()
         frustum.near=ctx.uniformState.currentFrustum.x;frustum.far=ctx.uniformState.currentFrustum.y
         this.captured.push({command,nativeTarget,group,frustum})
-        nativeDraw.call(ctx,derived,passState)
+        this.owner.executor ? this.owner.executor.execute({command:derived,pass:'deferred.geometry'},ctx,passState,{},nativeDraw) : nativeDraw.call(ctx,derived,passState)
         this.owner.setGeometryAvailable(true)
         this.stats.materialDraws++
       }else{
@@ -392,7 +413,21 @@ export default class DeferredGeometry143 {
     return {normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency,...this.owner.getReflectionTextures()}
   }
   getReflectionDiagnostics(){return {valid:!!this.getTextures()?.reflectionSpecular,source:'deferred-lighting',layout:'compact-v1'}}
-  getOpaqueColorDiagnostics(){return {valid:!!this.getTextures()?.opaqueColor,source:'deferred-lighting'}}
+  getGeometrySubmission() {
+    const items=[], batches=new Map(), fallbacks=[]
+    for(const record of this.captured){
+      const item=this.owner.renderItemFor?.(record.command)
+      if(item)items.push(item)
+      else fallbacks.push({command:record.command,reason:'RenderItem unavailable'})
+      const batch=batches.get(record.group.id)||{id:record.group.id,group:record.group,items:[]}
+      if(item)batch.items.push(item)
+      batches.set(record.group.id,batch)
+    }
+    const lightingBatches=[...batches.values()].map(batch=>Object.freeze({...batch,items:Object.freeze(batch.items.slice())}))
+    return Object.freeze({items:Object.freeze(items),lightingBatches:Object.freeze(lightingBatches),fallbacks:Object.freeze(fallbacks),frame:this.frame})
+  }
+
+
   getDepthPyramidLevels(){return this.depthPyramid.getLevels()}
   get compactActive(){return !!this.getTextures()}
   getDiagnostics(){return {enabled:this.enabled,valid:!!this.getTextures(),reason:this.reason,compact:true,colorAttachmentCount:4,
@@ -413,6 +448,7 @@ export default class DeferredGeometry143 {
   }
   detach(){
     if(this.token)this.token.active=false
+    this.dispatcherOff?.();this.dispatcherOff=null
     if(this.scene.context?.draw===this.hook)this.scene.context.draw=this.previous
     this.offUpdate?.();this.offUpdate=null
     if(this.proxy&&!this.scene.isDestroyed?.())this.scene.primitives.remove(this.proxy)

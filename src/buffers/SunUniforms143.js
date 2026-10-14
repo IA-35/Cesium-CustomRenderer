@@ -18,7 +18,7 @@ export function acquireSunUniforms(C,scene){
   if(!uniformBuffersSupported(scene.context))return null
   let owner=owners.get(scene)
   if(!owner){
-    const context=scene.context,previous=context.draw,token={active:true}
+    const context=scene.context,dispatcher=context._ccrDrawDispatcher,previous=context.draw,token={active:true}
     owner={references:0,token,previous,data:new Float32Array(12),buffer:new UniformBuffer143(context._gl,48),programs:new WeakMap(),revision:0}
     owner.update=()=>{
       const us=context.uniformState
@@ -35,7 +35,19 @@ export function acquireSunUniforms(C,scene){
       if(owner.scopedPrograms?.has(program))return previous.call(this,command,passState,...args)
       return withUniformBlocks(context._gl,[program],[{name:'CCRSunFrame',buffer:owner.buffer}],()=>previous.call(this,command,passState,...args))
     }
-    context.draw=owner.hook;owners.set(scene,owner)
+         if(dispatcher){
+       owner.dispatcherDispose=dispatcher.addHandler(event=>{
+         const command=event.command,program=event.overrides[0]||command?.shaderProgram
+         if(!token.active||!program?.fragmentShaderSource?.defines?.includes('CCR_SUN_UBO'))return 'continue'
+         let active=owner.programs.get(program)
+         if(active===undefined){void program.allUniforms;const index=context._gl.getUniformBlockIndex(program._program,'CCRSunFrame');active=index!==0xffffffff;owner.programs.set(program,active)}
+         if(!active)return 'continue'
+         owner.update()
+         if(!owner.scopedPrograms?.has(program))event.aroundDraw(invoke=>withUniformBlocks(context._gl,[program],[{name:'CCRSunFrame',buffer:owner.buffer}],invoke))
+         return 'continue'
+       },{name:'sun-uniforms'})
+     }else context.draw=owner.hook
+     owners.set(scene,owner)
   }
   owner.references++;let released=false
   return {buffer:owner.buffer,update:()=>{if(released)throw new Error('Sun uniform lease released');return owner.update()},
@@ -48,5 +60,5 @@ export function acquireSunUniforms(C,scene){
       })
     },
     getDiagnostics:()=>({...owner.buffer.getDiagnostics(),references:owner.references,viewRevision:owner.revision,released}),
-    release(){if(released)return;released=true;if(--owner.references)return;owner.token.active=false;if(scene.context?.draw===owner.hook)scene.context.draw=owner.previous;owner.buffer.destroy();owners.delete(scene)}}
+    release(){if(released)return;released=true;if(--owner.references)return;owner.token.active=false;if(owner.dispatcherDispose)owner.dispatcherDispose();if(scene.context?.draw===owner.hook)scene.context.draw=owner.previous;owner.buffer.destroy();owners.delete(scene)}}
 }

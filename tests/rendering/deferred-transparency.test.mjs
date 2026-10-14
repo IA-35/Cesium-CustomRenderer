@@ -265,3 +265,26 @@ test('a destroyed instance refuses to enable and reports so', () => {
   assert.equal(pass.enabled, false, 'a destroyed pass must not re-enable')
   assert.equal(pass.scopeReason(), 'Destroyed')
 })
+
+test('transparent order ledger detects native order regressions per frustum pass', () => {
+  const pass = Object.create(TransparentForward143.prototype)
+  pass.orderLedger = new Map()
+  pass.stats = { orderViolations: 0, lastNativeOrderKey: null, nativeOrderSamples: 0 }
+  pass.recordNativeOrder({ pass: 'transparent.forward', sourcePass: 'translucent', frustumIndex: 0, passIndex: 1, nativeOrderKey: 10 })
+  pass.recordNativeOrder({ pass: 'transparent.forward', sourcePass: 'translucent', frustumIndex: 0, passIndex: 1, nativeOrderKey: 9 })
+  pass.recordNativeOrder({ pass: 'transparent.forward', sourcePass: 'translucent', frustumIndex: 1, passIndex: 1, nativeOrderKey: 1 })
+  assert.equal(pass.stats.orderViolations, 1)
+  assert.equal(pass.stats.nativeOrderSamples, 3)
+  assert.equal(pass.stats.lastNativeOrderKey, 1)
+})
+
+test('transparent direct-submit accepts only a continuous native-order range', () => {
+  const calls=[]
+  const pass=Object.create(TransparentForward143.prototype)
+  pass.getOptions=()=>({transparentDirectSubmit:true});pass.executor={execute(item){calls.push(item.command)}};pass.stats={directSubmitDraws:0}
+  const item=n=>({command:n,pass:'transparent.forward',frustumIndex:0,passIndex:1,framebufferKey:'fb',nativeOrderKey:n})
+  assert.deepEqual(pass.directSubmitRange([item(1),item(2)],{},{}),{submitted:2,reason:null})
+  assert.equal(calls.length,2)
+  assert.equal(pass.directSubmitRange([item(3),{...item(4),framebufferKey:'other'}],{},{}).reason,'Native order boundary')
+  assert.equal(pass.directSubmitRange([item(6),item(5)],{},{}).reason,'Native order regression')
+})

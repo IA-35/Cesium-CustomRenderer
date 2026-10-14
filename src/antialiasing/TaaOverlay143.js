@@ -8,20 +8,26 @@ export default class TaaOverlay143 {
     Object.assign(this, {C, scene, jitter, active: false, drawing: false, skipped: 0, drawn: 0})
     const overlay=this, context=scene.context
     this.previous=context.draw
-    this.hook=function(command, passState, ...args) {
-      const passes=scene.frameState.passes, view=scene._view
-      if(overlay.active&&!overlay.drawing&&passes.render&&!passes.pick&&!passes.depth&&
-        overlay.isOverlay(command)){
+    this.dispatcher=context._ccrDrawDispatcher
+    this.handler=event=>{
+      const command=event.command,passState=event.passState,passes=scene.frameState.passes,view=scene._view
+      if(overlay.active&&!overlay.drawing&&passes.render&&!passes.pick&&!passes.depth&&overlay.isOverlay(command)){
         const framebuffer=command.framebuffer||passState?.framebuffer
         if(framebuffer&&framebuffer!==view?.sceneFramebuffer?.idFramebuffer&&
           (framebuffer===view?.globeDepth?.framebuffer||framebuffer===view?.sceneFramebuffer?.framebuffer||
            framebuffer===view?.oit?._translucentFBO?.framebuffer||framebuffer===view?.oit?._alphaFBO?.framebuffer)){
-          overlay.skipped++;return
+          overlay.skipped++;return 'skip'
         }
       }
+      return 'continue'
+    }
+    this.hook=function(command, passState, ...args) {
+      const decision=overlay.handler({command,passState,overrides:args})
+      if(decision==='skip')return
       return overlay.previous.call(this,command,passState,...args)
     }
-    context.draw=this.hook
+    if(this.dispatcher)this.offDispatcher=this.dispatcher.addHandler(this.handler,{name:'taa-overlay',priority:-20})
+    else context.draw=this.hook
   }
   isOverlay(command) {
     const {C}=this,owner=command.owner
@@ -84,5 +90,5 @@ export default class TaaOverlay143 {
   }
   releaseTarget(){this.framebuffer?.destroy();this.texture?.destroy();this.framebuffer=this.texture=this.depth=undefined}
   getDiagnostics(){return {active:this.active,skipped:this.skipped,drawn:this.drawn,bytes:this.texture?.sizeInBytes||0}}
-  destroy(){this.active=false;if(this.scene.context.draw===this.hook)this.scene.context.draw=this.previous;this.releaseTarget();this.copy?.shaderProgram.destroy();this.copy=undefined;this.particles?.clear();this.particles=undefined}
+  destroy(){this.active=false;this.offDispatcher?.();this.offDispatcher=null;if(this.scene.context.draw===this.hook)this.scene.context.draw=this.previous;this.releaseTarget();this.copy?.shaderProgram.destroy();this.copy=undefined;this.particles?.clear();this.particles=undefined}
 }

@@ -27,6 +27,7 @@ import WebGLDevice143 from './rhi/WebGLDevice143.js'
 import { resolveRendererCapabilities143 } from './diagnostics/CapabilityResolver143.js'
 import CesiumSceneAdapter143 from './scene/CesiumSceneAdapter143.js'
 import SelectedIdPass143 from './selection/SelectedIdPass143.js'
+import ContextDrawDispatcher143 from './pipeline/ContextDrawDispatcher143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
@@ -58,6 +59,9 @@ export default class VisualPipeline {
     this.renderGraph = new RenderGraph143({ label: 'CCR/VisualPipeline' })
     this.rhi = viewer.scene.context ? new WebGLDevice143(Cesium, viewer.scene) : null
     this.sceneAdapter = new CesiumSceneAdapter143(Cesium, viewer.scene)
+    this.drawDispatcher = viewer.scene.context?.draw ? new ContextDrawDispatcher143(viewer.scene.context,{label:'CCR/VisualPipeline'}) : null
+    this.drawDispatcher?.install()
+    this.renderGraph.setTransientAllocator(this.rhi?.createTransientAllocator('graph') || null)
     this.detachRenderGraph = attachHdrGraph(viewer.scene, this.renderGraph)
     this.color = createColorGrading(Cesium, () => this.options, () => this.enabled && !this.suspensions.size)
     const stages = viewer.scene.postProcessStages
@@ -344,7 +348,7 @@ export default class VisualPipeline {
     const graph = this.renderGraph
     graph.reset()
     const scene = this.viewer.scene
-    const screen = graph.importResource('cesium.screenColor', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f' })
+    const screen = graph.importResource('cesium.screenColor', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f', keepAlive: true })
     const history = this.taa?.declareGraph(graph)?.colorA || graph.importResource('taa.history', { width: scene.drawingBufferWidth, height: scene.drawingBufferHeight, format: 'rgba16f' })
     const deferredRequested = this.options.lightingMode === 'deferred'
     const deferredActive = !!(deferredRequested && this.deferredLighting && !this.deferredLighting.failed)
@@ -781,7 +785,15 @@ export default class VisualPipeline {
       scene3D: C.SceneMode ? C.SceneMode.SCENE3D : undefined,
       perspectiveCamera: !!(s && s.camera && s.camera.frustum && C.PerspectiveFrustum &&
         s.camera.frustum instanceof C.PerspectiveFrustum),
-      frustumCount: frusta ? frusta.length : 0
+      frustumCount: frusta ? frusta.length : 0,
+        features: {
+          graphTransientActive: { requested: true, active: !!this.renderGraph?.transientAllocator, reason: this.renderGraph?.transientAllocator ? null : 'Graph allocator is not attached' },
+          renderItemDirectSubmit: { requested: this.options.renderItemDirectSubmit === true,
+            active: this.options.renderItemDirectSubmit === true && !!this.deferredLighting?.enabled && !this.deferredLighting.failed && this.deferredLighting.materials?.ready === true && this.deferredLighting.geometryAvailable !== false && !!this.drawDispatcher?.installed,
+            reason: this.options.renderItemDirectSubmit !== true ? 'RenderItem direct-submit is disabled' : !this.deferredLighting?.enabled ? 'Deferred lighting is not active' : !this.deferredLighting.materials?.ready ? 'Deferred geometry is not ready' : !this.drawDispatcher?.installed ? 'Dispatcher is not installed' : null },
+          materialBatchingActive: { requested: this.options.materialBatchingEnabled === true, active: false, reason: 'Material/shader batching planner is diagnostic-only; execution batching is not active' },
+          contextDrawDispatcherActive: { requested: true, active: !!this.drawDispatcher?.installed, reason: this.drawDispatcher?.installed ? null : 'Dispatcher is not installed' },
+        }
     }
   }  /**
    * B11: coverage flags for the deferred-default gate.
@@ -993,7 +1005,8 @@ export default class VisualPipeline {
     if (this.shadowMap && !this.shadowMap.isDestroyed()) this.shadowMap.destroy()
     if (this.releaseOitCompatibility) this.releaseOitCompatibility()
     this.releaseOitCompatibility = undefined
-    this.rhi?.destroy()
+    this.drawDispatcher?.destroy();this.drawDispatcher=null
+     this.rhi?.destroy()
     this.rhi = null
     this.suspensions.clear()
     this.destroyed = true

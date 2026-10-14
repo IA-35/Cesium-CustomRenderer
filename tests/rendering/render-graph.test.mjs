@@ -4,7 +4,7 @@ import RenderGraph143 from '../../src/pipeline/RenderGraph143.js'
 
 test('compiles deferred, transparent and TAA dependencies in order', () => {
   const graph = new RenderGraph143()
-  const screen = graph.importResource('cesium.screenColor')
+  const screen = graph.importResource('cesium.screenColor', { keepAlive: true })
   const history = graph.importResource('taa.history')
   const gbuffer = graph.createResource('deferred.gbuffer', { width: 64, height: 32, format: 'rgba16f' })
   const resolved = graph.createResource('taa.resolved', { width: 64, height: 32, format: 'rgba16f' })
@@ -22,7 +22,7 @@ test('compiles deferred, transparent and TAA dependencies in order', () => {
 
 test('culls disconnected passes and aliases non-overlapping transient resources', () => {
   const graph = new RenderGraph143()
-  const screen = graph.importResource('screen')
+  const screen = graph.importResource('screen', { keepAlive: true })
   const first = graph.createResource('first', { width: 8, height: 8, format: 'rgba8' })
   const second = graph.createResource('second', { width: 8, height: 8, format: 'rgba8' })
   graph.addPass('first.pass', p => { p.write(first); p.write(screen) })
@@ -35,7 +35,7 @@ test('culls disconnected passes and aliases non-overlapping transient resources'
 
 test('tracks and releases transient target leases at frame end', () => {
   const graph = new RenderGraph143()
-  const screen = graph.importResource('screen')
+  const screen = graph.importResource('screen', { keepAlive: true })
   const transient = graph.createResource('transient', { width: 4, height: 4, format: 'rgba8' })
   graph.addPass('producer', p => { p.write(transient); p.write(screen) })
   let releases = 0
@@ -50,7 +50,7 @@ test('tracks and releases transient target leases at frame end', () => {
 
 
 test('executes a compiled pass once and reports execution state', () => {
-  const graph = new RenderGraph143(), screen = graph.importResource('screen')
+  const graph = new RenderGraph143(), screen = graph.importResource('screen', { keepAlive: true })
   let calls = 0
   graph.addPass('present', p => p.write(screen), () => { calls++ })
   graph.beginFrame({ frameNumber: 3 })
@@ -69,4 +69,20 @@ test('rejects cycles and invalid resource handles', () => {
   graph.addPass('b.pass', p => { p.read(a); p.write(b) }, null, { sideEffect: true })
   assert.throws(() => graph.describe(), /cyclic dependency/)
   assert.throws(() => graph.addPass('invalid', p => p.read({ id: 99 })), /invalid resource/)
+})
+
+test('culls an unbound external writer without side effects', () => {
+  const graph = new RenderGraph143()
+  const external = graph.importResource('unused.external', { keepAlive: false })
+  graph.addPass('dead.external', pass => pass.write(external))
+  assert.deepEqual(graph.describe().culled, ['dead.external'])
+})
+
+test('wraps graph pass execution in optional asynchronous GPU scopes', () => {
+  const graph = new RenderGraph143(), screen = graph.importResource('screen', { keepAlive: true }), events=[]
+  graph.addPass('present', p => p.write(screen), () => events.push('pass'))
+  const timer = { supported: true, pending: [], samples: [], measure(label, fn) { events.push(`begin:${label}`); const result=fn(); events.push(`end:${label}`); return result } }
+  graph.setGpuTimer(timer);graph.beginFrame();graph.executePass('present');graph.endFrame()
+  assert.deepEqual(events, ['begin:graph:present', 'pass', 'end:graph:present'])
+  assert.equal(graph.setGpuTimer(null), graph)
 })

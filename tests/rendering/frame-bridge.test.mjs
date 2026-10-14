@@ -25,6 +25,7 @@ function fakeScene({ withOit = true } = {}) {
   const prototype = {
     updateAndExecuteCommands() { calls.updateAndExecute++; return 'update' },
     resolveFramebuffers() { calls.resolve++; return 'resolve' },
+    updateDerivedCommands(command) { return command },
   }
   const scene = Object.create(prototype)
   scene.id = 'scene-under-test'
@@ -118,10 +119,26 @@ test('phases are dispatched with frame, view and generation attached, in order',
     assert.equal(typeof entry.generation, 'number')
     assert.equal(entry.sceneId, 'scene-under-test')
     assert.equal(entry.generation, 1)
+    assert.equal(typeof entry.frustumIndex, 'number')
     // Every phase after the per-view wrapper knows which view it belongs to.
     if (entry.phase !== 'opaqueFrame') assert.equal(entry.viewId, 'scene-under-test:0')
   }
   assert.deepEqual(seen[0].drawingBuffer, { width: 100, height: 50 })
+})
+
+test('collected RenderItems carry monotonic native command order metadata', () => {
+  const Cesium = fakeCesium()
+  Cesium.Pass = { TRANSLUCENT: 4 }
+  const { scene } = fakeScene()
+  const bridge = createFrameBridge({ Cesium, scene })
+  const items = []
+  bridge.onRenderItem(item => items.push(item))
+  bridge.install()
+  scene.updateDerivedCommands({ pass: Cesium.Pass.TRANSLUCENT })
+  scene.updateDerivedCommands({ pass: Cesium.Pass.TRANSLUCENT })
+  assert.deepEqual(items.map(item => item.commandIndex), [0, 1])
+  assert.equal(items[0].frustumIndex, 0)
+  assert.ok(items[1].nativeOrderKey > items[0].nativeOrderKey)
 })
 
 test('attached Render Graph begins with the main color command frame', () => {

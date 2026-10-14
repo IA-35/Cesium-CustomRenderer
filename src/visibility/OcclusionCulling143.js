@@ -35,7 +35,7 @@ export default class OcclusionCulling143 {
     if(!ctx.webgl2||!gl.createQuery){this.reason='Requires WebGL2 occlusion queries';return}
     try{
     this.enabled=true;this.cache=new OccluderCache143(C,s);this.pool=getRenderTargetPool(C,ctx);this.pool.attach(this.owner)
-    const previous=ctx.draw,token={active:true},self=this;this.previous=previous;this.token=token
+    const previous=ctx.draw,dispatcher=ctx._ccrDrawDispatcher,token={active:true},self=this;this.previous=previous;this.token=token
     this.hook=function(command,ps,...args){
       const fb=command.framebuffer||ps?.framebuffer,view=s._view
       if(token.active&&self.shouldCull(command)&&(fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer)){
@@ -43,7 +43,8 @@ export default class OcclusionCulling143 {
       }
       return previous.call(this,command,ps,...args)
     }
-    ctx.draw=this.hook
+         if(dispatcher)this.dispatcherOff=dispatcher.addHandler(event=>{const command=event.command,ps=event.passState,fb=command.framebuffer||ps?.framebuffer,view=s._view;if(token.active&&self.shouldCull(command)&&(fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer)){self.recordSkip(command);return 'skip'}return 'continue'},{name:'occlusion',priority:0})
+     else ctx.draw=this.hook
     this.proxy={update:state=>{if(state.passes.render)state.commandList.unshift({pass:C.Pass.COMPUTE,execute:()=>this.prepare()})},isDestroyed:()=>false,destroy(){}}
     s.primitives.add(this.proxy);this.offUpdate=s.preUpdate.addEventListener(()=>keepPrimitiveLast(s.primitives,this.proxy))
     this.bridge=createFrameBridge({Cesium:C,scene:s});this.offResolve=this.bridge.on('resolve',()=>this.query());this.bridge.install()
@@ -153,7 +154,7 @@ export default class OcclusionCulling143 {
     needsDepth:this.needsDepth,queryBudget:128,revision:this.cache?.revision,...this.stats}}
   detach(){
     this.enabled=false;this.setDemand(false);this.reset();this.cache?.destroy();this.cache=null
-    if(this.token)this.token.active=false
+    if(this.token)this.token.active=false;this.dispatcherOff?.();this.dispatcherOff=null
     if(this.scene.context?.draw===this.hook)this.scene.context.draw=this.previous
     this.offUpdate?.();this.offPost?.();this.offResolve?.();this.bridge?.destroy();this.bridge=null
     if(this.onLost)this.scene.canvas?.removeEventListener('webglcontextlost',this.onLost)

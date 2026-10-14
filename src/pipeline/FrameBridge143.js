@@ -18,7 +18,7 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   const itemQueue = new RenderItemQueue143()
   let viewCount = 0, installation, activeContext, enabled = true
   const state = { installed: false, destroyed: false, generation: 0, frameGeneration: 0,
-    frameNumber: undefined, scratch: {}, errors: [], uploadProgram: undefined }
+    frameNumber: undefined, commandIndex: 0, scratch: {}, errors: [], uploadProgram: undefined }
   const stats = { frames: 0, resolves: 0, views: 0, replacementUploads: 0,
     callbacks: Object.fromEntries(FRAME_BRIDGE_PHASES.map(p => [p, 0])) }
   const alive = value => value && !(typeof value.isDestroyed === 'function' && value.isDestroyed())
@@ -32,14 +32,14 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   function contextFor(phase) {
     const view = scene._view, frameNumber = scene.frameState.frameNumber
     if (state.frameNumber !== frameNumber) {
-      state.frameNumber = frameNumber; state.frameGeneration++; stats.frames++
+      state.frameNumber = frameNumber; state.frameGeneration++; state.commandIndex = 0; stats.frames++
     }
     if (view && !viewIds.has(view)) viewIds.set(view, viewCount++)
     const id = view ? viewIds.get(view) : -1, current = scene.context.uniformState?.currentFrustum
     const frameState = createFrameState143(scene, { generation: state.frameGeneration })
     return { phase, frameState, scene, view, frameNumber, frameGeneration: state.frameGeneration,
       generation: state.generation, sceneId: scene.id || 'scene-0',
-      viewId: (scene.id || 'scene-0') + ':' + id, callIndex: id,
+      viewId: (scene.id || 'scene-0') + ':' + id, callIndex: id, frustumIndex: id < 0 ? 0 : id,
       frustum: current ? { near: current.x, far: current.y } : null,
       boundary: phase === 'translucent' ? 'oit-compose' : phase === 'resolve' ? 'post-resolve' : 'oit-frustum',
       useOIT: scene._environmentState?.useOIT === true,
@@ -129,12 +129,16 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   }
   function dispatchCommand(command) {
     if (!state.installed || !enabled || state.destroyed || !isRender()) return
-    const generation=state.generation
-    const item = createRenderItem143(command, { frameState: activeContext?.frameState, pass: command.pass === C.Pass?.TRANSLUCENT ? 'transparent.forward' : 'native.forward' })
+    const generation=state.generation, itemContext=activeContext || contextFor('opaqueFrame')
+    const transparent = command.pass === C.Pass?.TRANSLUCENT
+    const item = createRenderItem143(command, { frameState: itemContext.frameState,
+      pass: transparent ? 'transparent.forward' : 'native.forward', sourcePass: transparent ? 'translucent' : command.pass,
+      transparent, frustumIndex: itemContext.frustumIndex ?? 0, passIndex: transparent ? 1 : 0,
+      commandIndex: state.commandIndex++, oitMaterialIndex: command._oitMaterialIndex ?? command.oitMaterialIndex })
     itemQueue.submit(item)
     for (const record of [...itemCallbacks].sort((a,b) => a.priority - b.priority)) {
       if (!record.active || !record.enabled) continue
-      try { record.fn(item, activeContext) }
+      try { record.fn(item, itemContext) }
       catch (error) { record.enabled = false; state.errors.push(String(error?.message || error)); state.errors = state.errors.slice(-8) }
     }
     for (const record of [...commandCallbacks].sort((a,b) => a.priority - b.priority)) {

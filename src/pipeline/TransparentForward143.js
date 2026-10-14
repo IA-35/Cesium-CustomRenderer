@@ -3,6 +3,8 @@ import { createFrameBridge } from './FrameBridge143.js'
 import {shadowUniforms} from '../shadows/shadowUniforms143.js'
 import {acquireSunUniforms} from '../buffers/SunUniforms143.js'
 import {particleBillboards} from './particleBillboards143.js'
+import RenderItemExecutor143 from '../renderer/RenderItemExecutor143.js'
+import { planRenderBatches143 } from '../renderer/RenderBatchPlanner143.js'
 
 // Own only the derived shader and added uniforms. Vertex transforms, material
 // evaluation, alpha/discard, depth, picking and OIT remain with the engine.
@@ -11,7 +13,7 @@ export default class TransparentForward143 {
     if(!C||!scene)throw new Error('TransparentForward143 requires { Cesium, scene }')
     if(!/^1\.143(?:\.0)?$/.test(C.VERSION))throw new Error('TransparentForward143 requires Cesium 1.143')
     Object.assign(this,{C,scene,graph,getShadowVisibility,isDeferredActive,getOptions,enabled:false,destroyed:false,failed:false,
-      reason:'Disabled',error:null,programs:new Map(),programFrames:new Map(),commands:new Map(),water:new Map(),stats:{frames:0,renderItems:0,translucentCommands:0,patchedCommands:0,compatibilityCommands:0,shaderVariants:0}})
+      reason:'Disabled',error:null,programs:new Map(),programFrames:new Map(),commands:new Map(),water:new Map(),itemsByCommand:new WeakMap(),orderLedger:new Map(),batchPlan:null,stats:{frames:0,renderItems:0,translucentCommands:0,patchedCommands:0,compatibilityCommands:0,shaderVariants:0,orderViolations:0,lastNativeOrderKey:null,nativeOrderSamples:0,directSubmitDraws:0},executor:new RenderItemExecutor143(C,{label:'transparent'})})
   }
   _sceneDestroyed(){return !!this.scene.isDestroyed?.()}
   scopeReason(){
@@ -30,9 +32,10 @@ export default class TransparentForward143 {
     try{
       this.sunUniforms=acquireSunUniforms(this.C,this.scene)
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
-      this.offItem=this.bridge.onRenderItem(item=>{this.stats.renderItems++;this.applyTo(item.command)})
-      this.offCommand=null
-      this.offResolve=this.bridge.on('resolve',context=>{this.stats.renderItems=this.bridge.getRenderItems('transparent.forward').length;this.graph?.executePass('transparent.forward',context);this.endFrame()})
+      this.offItem=this.bridge.onRenderItem(item=>{this.stats.renderItems++;if(item.pass==='transparent.forward')this.itemsByCommand.set(item.command,item);this.applyTo(item.command,item)})
+      this.dispatcher=this.scene.context._ccrDrawDispatcher;if(this.dispatcher)this.offDispatcher=this.dispatcher.addHandler(event=>this.dispatchDirect(event),{name:'transparent-direct-submit',priority:20})
+       this.offCommand=null
+      this.offResolve=this.bridge.on('resolve',context=>{this.stats.renderItems=this.bridge.getRenderItems('transparent.forward').length;this.batchPlan=planRenderBatches143(this.bridge.getRenderItems('transparent.forward'),{pass:'transparent.forward'});this.graph?.executePass('transparent.forward',context);this.endFrame()})
       this.bridge.install();this.enabled=true;this.reason='Not rendered'
       this.proxy={update:state=>this.updateWater(state),isDestroyed:()=>false,destroy(){}}
       this.scene.primitives?.add(this.proxy)
@@ -45,13 +48,49 @@ export default class TransparentForward143 {
     const frame=this.scene.frameState.frameNumber
     if(this.frame===frame)return
     this.frame=frame;this.outputFrame=undefined
-    this.stats.frames++;this.stats.translucentCommands=0;this.stats.patchedCommands=0;this.stats.compatibilityCommands=0
+    this.stats.frames++;this.stats.translucentCommands=0;this.stats.patchedCommands=0;this.stats.compatibilityCommands=0;this.stats.orderViolations=0;this.stats.lastNativeOrderKey=null;this.stats.nativeOrderSamples=0;this.stats.directSubmitDraws=0;this.orderLedger.clear()
     this.stats.opaqueParticleCommands=0
     this.stats.patchedFamilies={};this.stats.compatibilityReasons={}
   }
-  applyTo(command){
+  recordNativeOrder(item){
+    if(!item||!(item.pass==='transparent.forward'||item.sourcePass==='translucent'))return
+    const scope=`${item.frustumIndex}:${item.passIndex}`
+    const previous=this.orderLedger.get(scope)
+    if(previous!==undefined&&item.nativeOrderKey<previous)this.stats.orderViolations++
+    this.orderLedger.set(scope,item.nativeOrderKey)
+    this.stats.lastNativeOrderKey=item.nativeOrderKey;this.stats.nativeOrderSamples++
+  }
+  dispatchDirect(event){
+    const options=this.getOptions(),item=this.itemsByCommand.get(event.command)
+    if(options.transparentDirectSubmit!==true||!item||this.stats.orderViolations>0||this.scopeReason())return 'continue'
+    const family=this.family(event.command)
+    if(!['model','water','particle'].includes(family))return 'continue'
+    try{
+      this.executor.execute({...item,command:event.command},event.context,event.passState,{},event.native)
+      this.stats.directSubmitDraws=(this.stats.directSubmitDraws||0)+1
+      return 'skip'
+    }catch(error){this.stats.directSubmitFallbacks=(this.stats.directSubmitFallbacks||0)+1;this.stats.directSubmitReason=error.message||String(error);return 'continue'}
+  }
+  directSubmitRange(items,context,passState){
+    const options=this.getOptions(),first=items?.[0]
+    if(options.transparentDirectSubmit!==true)return {submitted:0,reason:'Not requested'}
+    if(!Array.isArray(items)||!items.length)return {submitted:0,reason:'Empty range'}
+    const scope=first&&`${first.frustumIndex}:${first.passIndex}:${first.framebufferKey}`
+    let previous
+    for(const item of items){
+      const current=`${item.frustumIndex}:${item.passIndex}:${item.framebufferKey}`
+      if(item.pass!=='transparent.forward'||current!==scope)return {submitted:0,reason:'Native order boundary'}
+      if(previous!==undefined&&item.nativeOrderKey<previous)return {submitted:0,reason:'Native order regression'}
+      previous=item.nativeOrderKey
+    }
+    for(const item of items)this.executor.execute(item,context,passState)
+    this.stats.directSubmitDraws=(this.stats.directSubmitDraws||0)+items.length
+    return {submitted:items.length,reason:null}
+  }
+  applyTo(command,item=null){
     if(this.destroyed||!this.enabled||this.failed)return
     this.beginFrame()
+    this.recordNativeOrder(item)
     let record=this.commands.get(command)
     // BillboardCollection splits alpha=1 cores from translucent edges. Both
     // particle commands remain forward-rendered and share emissive controls.
@@ -180,7 +219,7 @@ export default class TransparentForward143 {
     this.water.clear()
   }
   detach(){
-    this.offItem?.();this.offItem=null;this.offCommand?.();this.offCommand=null;this.offResolve?.();this.offResolve=null
+    this.offItem?.();this.offItem=null;this.offCommand?.();this.offCommand=null;this.offDispatcher?.();this.offDispatcher=null;this.offResolve?.();this.offResolve=null
     this.bridge?.destroy();this.bridge=null
     if(this.proxy&&!this._sceneDestroyed())this.scene.primitives?.remove(this.proxy)
     this.proxy=null
@@ -191,6 +230,6 @@ export default class TransparentForward143 {
   fail(error){this.enabled=false;this.failed=true;this.error=error.message||String(error);this.reason=this.error+'; disable before retrying';this.detach()}
   getDiagnostics(){return {enabled:this.enabled,failed:this.failed,error:this.error,valid:!this.scopeReason()&&this.outputFrame===this.scene.frameState.frameNumber,
     reason:this.failed?this.reason:this.scopeReason()||this.reason,partial:true,contract:'CCR direct term/shadow, per-model indirect IBL and emissive controls',
-    coverage:'standard PBR models, Water PBR forward, emissive particles; native OIT MRT/multipass and sorted order',stats:{...this.stats}}}
+    coverage:'standard PBR models, Water PBR forward, emissive particles; native OIT MRT/multipass and sorted order',batching:this.batchPlan,directSubmit:{requested:this.getOptions().transparentDirectSubmit===true,draws:this.stats.directSubmitDraws||0,fallbacks:this.stats.directSubmitFallbacks||0,reason:this.stats.directSubmitReason||null},stats:{...this.stats}}}
   destroy(){if(this.destroyed)return;this.enabled=false;this.detach();this.destroyed=true}
 }

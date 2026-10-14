@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import { receiverSource, casterSources, pcf } from '../../src/shadows/shaderAdapter143.js'
 import ShadowCache from '../../src/shadows/ShadowCache.js'
@@ -174,10 +174,13 @@ test('adaptive shadow reuse ignores scheduling commands and never skips consecut
   assert.equal(pass.shouldReuseShadowFrame({ frameNumber: 13 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false)
 })
 
-test('shadow receiver uses a compact 2x2 PCF footprint for sharp edges', () => {
-  assert.match(pcf, /for \(int y = 0; y < 2; y\+\+\)/)
-  assert.match(pcf, /for \(int x = 0; x < 2; x\+\+\)/)
-  assert.doesNotMatch(pcf, /visibility \/ 16\.0/)
+test('shadow receiver uses a 4x4 tent PCF footprint that avoids stair-step edges', () => {
+  assert.match(pcf, /for \(int y = 0; y < 4; y\+\+\)/)
+  assert.match(pcf, /for \(int x = 0; x < 4; x\+\+\)/)
+  // The tent weights must stay normalized so the result is a coverage fraction.
+  assert.match(pcf, /visibility \/ 16\.0/)
+  // A 2x2 footprint turned any multi-texel transition into visible stair-steps.
+  assert.doesNotMatch(pcf, /weightX = x == 0 \? 1\.0 - fraction\.x : fraction\.x/)
 })
 
 test('a fixed campus anchor does not drift when the sun rotates', () => {

@@ -11,6 +11,7 @@ export default class RenderProfiler143 {
     this.peakTextureBytes = 0
     this.peakUniformBufferBytes = 0
     this.timer = new GpuTimer(this.scene.context._gl)
+    pipeline.renderGraph?.setGpuTimer(this.timer)
     this.frames = []
     this.cpu = []
     this.hooks = []
@@ -35,7 +36,10 @@ export default class RenderProfiler143 {
       this.labels.push(label)
       this._wrap(target, method, invoke => this._measure(label, invoke))
     }
-    this._wrap(this.scene.context, 'draw', invoke => { this.drawCalls++; return invoke() })
+    this.dispatcher = pipeline.drawDispatcher || this.scene.context._ccrDrawDispatcher
+    if (this.dispatcher) this.dispatcherOff = this.dispatcher.addObserver(() => { this.drawCalls++ }, { name: 'render-profiler' })
+    else this._wrap(this.scene.context, 'draw', invoke => { this.drawCalls++; return invoke() })
+
     this._wrap(this.scene, 'render', invoke => {
       this.timer.poll()
       this.selected = this.labels[this.index++ % this.labels.length]
@@ -147,6 +151,8 @@ export default class RenderProfiler143 {
       if (target[key] === hook) target[key] = previous
     }
     this.hooks = []
+    this.dispatcherOff?.();this.dispatcherOff=null
+    this.pipeline.renderGraph?.setGpuTimer(null)
     this.timer.destroy()
   }
 }

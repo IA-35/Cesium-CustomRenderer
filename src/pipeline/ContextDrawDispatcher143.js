@@ -1,0 +1,90 @@
+// One context.draw wrapper for CCR handlers. Render mutation stays in handlers;
+// observers are readonly and cannot change the draw decision.
+const installations = new WeakMap()
+const allowed = new Set(['pass', 'replace', 'skip', 'continue'])
+
+export default class ContextDrawDispatcher143 {
+  constructor(context, { label = 'CCR' } = {}) {
+    if (!context || typeof context.draw !== 'function') throw new Error('ContextDrawDispatcher143 requires a Cesium context')
+    if (installations.has(context)) return installations.get(context)
+    this.context = context; this.label = label; this.native = context.draw; this.handlers = []; this.observers = []
+    this.bypassDepth = 0
+    this.installed = false; this.destroyed = false; this.generation = 0
+    this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0 }
+    this.wrapper = (...args) => this._dispatch(args)
+    installations.set(context, this)
+  }
+  install() {
+    if (this.destroyed) throw new Error('ContextDrawDispatcher143 is destroyed')
+    if (this.installed) return this
+    if (this.context.draw !== this.native && this.context.draw !== this.wrapper) this.foreign = this.context.draw
+    this.native = this.foreign || this.context.draw
+    this.context.draw = this.wrapper; this.context._ccrDrawDispatcher = this; this.installed = true; this.generation++; this.stats.drawHookInstallations++
+    return this
+  }
+  addHandler(fn, { name = `handler-${this.handlers.length}`, priority = 0, enabled = true } = {}) {
+    if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 handler must be a function')
+    const record = { fn, name, priority, enabled, active: true }
+    this.handlers.push(record); this.handlers.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
+    return () => { record.active = false }
+  }
+  addObserver(fn, { name = `observer-${this.observers.length}`, priority = 0, enabled = true } = {}) {
+    if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 observer must be a function')
+    const record = { fn, name, priority, enabled, active: true }; this.observers.push(record); this.observers.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
+    return () => { record.active = false }
+  }
+  _dispatch(args) {
+    if (this.bypassDepth > 0) return this.native.apply(this.context, args)
+    if (!this.installed || this.destroyed) return this.native.apply(this.context, args)
+    const [command, passState, ...overrides] = args
+    const restores = [], scopes = []
+    const invokeNative = next => {
+      const invoke = index => index === scopes.length ? this.native.apply(this.context, next)
+        : scopes[index](() => invoke(index + 1))
+      return invoke(0)
+    }
+    const event = { dispatcher: this, context: this.context, command, passState, overrides, phase: undefined,
+      aroundDraw(fn) { if (typeof fn === 'function') scopes.push(fn) },
+      deferRestore(fn) { if (typeof fn === 'function') restores.push(fn); return fn },
+      native: (...next) => invokeNative(next.length ? next : args) }
+    this.stats.drawHookInvocations++
+    let decision = 'continue', result
+    try {
+      for (const record of this.handlers) {
+        if (!record.active || !record.enabled) continue
+        try {
+          const returned = record.fn(event)
+          if (allowed.has(returned)) decision = returned
+          if (returned === 'pass' || returned === 'replace' || returned === 'skip') break
+        } catch (error) { record.enabled = false; this.stats.handlerErrors++; event.error = error; break }
+      }
+      if (decision === 'pass' || decision === 'continue') { this.stats.nativeFallbackDraws++; result = event.native() }
+      else if (decision === 'skip' || decision === 'replace') this.stats.shortCircuits++
+      return result
+    } finally {
+      for (const restore of restores.reverse()) try { restore() } catch (error) { event.restoreError = error }
+      for (const record of this.observers) {
+        if (!record.active || !record.enabled) continue
+        try { record.fn({ ...event, decision, result }) } catch { record.enabled = false; this.stats.observerErrors++ }
+      }
+    }
+  }
+  withBypass(fn) {
+    if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143.withBypass requires a function')
+    this.bypassDepth++
+    try { return fn() } finally { this.bypassDepth-- }
+  }
+  uninstall() {
+    if (!this.installed) return
+    if (this.context.draw === this.wrapper) this.context.draw = this.foreign || this.native
+    if (this.context._ccrDrawDispatcher === this) delete this.context._ccrDrawDispatcher
+    this.installed = false; this.generation++
+  }
+  getDiagnostics() { return { label: this.label, installed: this.installed, destroyed: this.destroyed, generation: this.generation, activeHandlers: this.handlers.filter(item => item.active && item.enabled).map(item => item.name), activeObservers: this.observers.filter(item => item.active && item.enabled).map(item => item.name), ...this.stats } }
+  destroy() {
+    if (this.destroyed) return
+    this.uninstall(); this.handlers = []; this.observers = []; this.destroyed = true; if (installations.get(this.context) === this) installations.delete(this.context)
+  }
+}
+
+export function getContextDrawDispatcher143(context) { return installations.get(context) }

@@ -25,6 +25,11 @@ export const defaults = Object.freeze({
   // term instead of being blamed on "the lighting" as a whole.
   lightingMode: 'enhanced', lightingDirect: true, lightingIndirect: true, lightingEmissive: true,
   lightingShadow: true, lightingAo: true, lightingAoStrength: 1, lightingDebugMode: 0,
+  // Direct-submit and batching are opt-in: their executors exist and are covered by unit tests,
+  // but the real-scene equivalence (transparent OIT order, deferred replay parity) has not been
+  // verified yet. Defaulting them off keeps the shipped path on the reviewed native/dispatcher
+  // route; enable explicitly when validating a specific scenario.
+  renderItemDirectSubmit: false, transparentDirectSubmit: false, materialBatchingEnabled: false,
   screenSpaceAoEnabled: false, screenSpaceAoAlgorithm: 'ssao', screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
   environmentReflectionEnabled: false, environmentReflectionStrength: 1, environmentReflectionMap: null,
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
@@ -65,7 +70,7 @@ export function normalizeOptions(input = {}, current = defaults) {
       result[key] = Math.max(ranges[key][0], Math.min(ranges[key][1], input[key]))
     }
   })
-  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'environmentReflectionEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo'].forEach(key => {
+  ;['shadows', 'ambientOcclusion', 'fog', 'bloom', 'shadowDebug', 'shadowStatic', 'geometryEnabled', 'materialChannelsEnabled', 'albedoEnabled', 'depthPyramidEnabled', 'screenSpaceAoEnabled', 'environmentReflectionEnabled', 'screenSpaceReflectionEnabled', 'screenSpaceReflectionTransparent', 'msaaCombine', 'lightingDirect', 'lightingIndirect', 'lightingEmissive', 'lightingShadow', 'lightingAo', 'renderItemDirectSubmit', 'transparentDirectSubmit', 'materialBatchingEnabled'].forEach(key => {
     if (typeof input[key] === 'boolean') result[key] = input[key]
   })
   if (Object.prototype.hasOwnProperty.call(input, 'environmentReflectionMap')) {

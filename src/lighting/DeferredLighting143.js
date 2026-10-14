@@ -4,6 +4,7 @@ import { deferredLightingShaderSource } from './deferredLightingShader143.js'
 import DeferredReflectionTarget143 from './DeferredReflectionTarget143.js'
 import {shadowUniforms} from '../shadows/shadowUniforms143.js'
 import {acquireSunUniforms} from '../buffers/SunUniforms143.js'
+import RenderItemExecutor143 from '../renderer/RenderItemExecutor143.js'
 
 export default class DeferredLighting143 {
   constructor({ Cesium:C, scene, rhi=null, graph=null, getOptions=()=>({}), prepareAo=()=>null, prepareReflections=color=>color, getShadowVisibility=()=>null, onGeometryAvailability=()=>{},shouldCull=()=>false }={}) {
@@ -14,7 +15,7 @@ export default class DeferredLighting143 {
     this.reflections=new DeferredReflectionTarget143(C,scene,rhi)
     this.terms={direct:true,indirect:true,emissive:true,shadow:true,ao:true}
     this.aoStrength=1;this.debugMode=0
-    this.stats={frames:0,draws:0,lastAoValid:false,lastShadowValid:false};this.whiteResource=null
+    this.stats={frames:0,draws:0,lastAoValid:false,lastShadowValid:false};this.whiteResource=null;this.executor=new RenderItemExecutor143(C,{label:'deferred'})
   }
   setEnabled(value){
     if(this.destroyed)return
@@ -131,11 +132,11 @@ export default class DeferredLighting143 {
     const viewport=C.BoundingRectangle.clone(us.viewport),cached=ctx._currentFramebuffer
     const gl=ctx._gl,read=gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),draw=gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING)
     try{
-      this.materials.finish()
+      this.materials.finish();this.geometrySubmission=this.materials.getGeometrySubmission()
        this.graph?.executePass('deferred.geometry', this.scene)
       const textures=this.materials.getTextures(),target=this.writeTarget()
       if(!target)throw new Error('Resolved opaque target unavailable')
-      const used=new Set(this.materials.captured.map(record=>record.group.id))
+      const used=new Set(this.geometrySubmission?.lightingBatches?.map(batch=>batch.id)||[])
       const groups=this.groups.filter(group=>used.has(group.id))
       if(!groups.length){
         this.reason='No supported PBR draws'
@@ -152,8 +153,7 @@ export default class DeferredLighting143 {
       if(!this.white){this.whiteResource=this.rhi?this.rhi.createTexture({width:1,height:1,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.UNSIGNED_BYTE,source:{width:1,height:1,arrayBufferView:new Uint8Array([255,255,255,255])}}):null;this.white=this.whiteResource?.texture||new C.Texture({context:ctx,pixelFormat:C.PixelFormat.RGBA,pixelDatatype:C.PixelDatatype.UNSIGNED_BYTE,source:{width:1,height:1,arrayBufferView:new Uint8Array([255,255,255,255])}})}
               const drawGroups=()=>{for(const group of groups){
         const command=this.ensureProgram(group)
-        command.framebuffer=target
-        command.uniformMap={
+        const uniformMap={
           u_normalRoughMetal:()=>textures.normalRoughMetal,u_albedoOcclusion:()=>textures.albedoOcclusion,
           u_emissiveFlags:()=>textures.emissiveFlags,u_eyeDepth:()=>textures.eyeDepth,
           u_group:()=>group.id,
@@ -164,7 +164,7 @@ export default class DeferredLighting143 {
           model_specularEnvironmentMapsMaximumLOD:()=>group.lod,
           ...shadowUniforms(C,this.scene,()=>shadow,()=>this.white),
         }
-        command.execute(ctx,state)
+        this.executor.execute({command,pass:'deferred.lighting'},ctx,state,{framebuffer:target,uniformMap})
         this.stats.draws++
       }}
       if(this.sunUniforms)this.sunUniforms.withPrograms(groups.map(group=>this.ensureProgram(group).shaderProgram),drawGroups)
@@ -201,7 +201,7 @@ export default class DeferredLighting143 {
     for(const {command,options}of this.programs.values()){if(!command.shaderProgram.isDestroyed())command.shaderProgram.destroy();this.C.RenderState.removeFromCache(options)}
     this.programs.clear()
     if(this.whiteResource)this.whiteResource.release();else if(this.white&&!this.white.isDestroyed())this.white.destroy();this.whiteResource=null;this.white=null
-    this.groups=[];this.groupFrame=undefined;this.outputFrame=undefined
+    this.groups=[];this.geometrySubmission=undefined;this.groupFrame=undefined;this.outputFrame=undefined
     this.renderItems.clear()
     this.reflections.destroy();this.reflectionFrame=undefined
     this.sunUniforms?.release();this.sunUniforms=null
