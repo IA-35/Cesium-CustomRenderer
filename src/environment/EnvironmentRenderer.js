@@ -2,6 +2,7 @@ import HdrEnvironmentPass143 from './HdrEnvironmentPass143.js'
 import EnvironmentLighting143 from './EnvironmentLighting143.js'
 import { resolveEnvironmentState } from './environmentState.js'
 import { createEnvironmentStages } from './environmentStages.js'
+import { ATMOSPHERE_RADIUS_M, PLANET_RADIUS_M, MIE_SCALE_HEIGHT, RAYLEIGH_SCALE_HEIGHT } from './atmosphereScattering143.js'
 import createNoiseAtlas from './noiseAtlas.js'
 import UniformBuffer143,{uniformBuffersSupported} from '../buffers/UniformBuffer143.js'
 
@@ -45,7 +46,13 @@ export default class EnvironmentRenderer {
         // 即使将来改为保留原点真实高程，高度语义也不会静默改变。
         localGroundHeight: () => this.originHeight || 0,
         cloudParams: () => new C.Cartesian4(this.state.cloudCoverage, this.state.cloudBase, this.state.cloudTop, this.state.cloudExtinction),
-        windOffset: () => new C.Cartesian2(...this.state.windOffset),
+        // The rewrite marches both the atmosphere and the cloud in metres, so the shader needs the
+        // planet/atmosphere radii and the inverse scale heights rather than a local-fog profile.
+        atmosphereParams: () => new C.Cartesian4(PLANET_RADIUS_M, ATMOSPHERE_RADIUS_M,
+          1 / MIE_SCALE_HEIGHT, 1 / RAYLEIGH_SCALE_HEIGHT),
+        // Wind is applied in shader space; the state carries a 2D offset, so the vertical term
+        // stays zero unless a caller supplies one.
+        windOffset: () => new C.Cartesian3(this.state.windOffset[0], this.state.windOffset[1], 0),
         cloudModel: () => this.state.cloudModel === 'stratus' ? 1 : 0,
         effectFlags: () => new C.Cartesian4(getOptions().fog && this.withinRegion ? 1 : 0, this.state.clouds ? 1 : 0,
           this.state.sunScattering ? 1 : 0, this.state.volumetricFog ? 1 : 0),

@@ -19,7 +19,7 @@ export function normalizeEnvironmentOptions(input = {}, current = environmentDef
     if (typeof input[key] === 'boolean') result[key] = input[key]
   }
   for (const [key, values] of Object.entries({ environmentPreset: Object.keys(profiles),
-    environmentQuality: ['balanced', 'high'], cloudModel: ['auto', 'cumulus', 'stratus'], cloudGeometry: ['local', 'shell'] })) {
+    environmentQuality: ['performance', 'balanced', 'high'], cloudModel: ['auto', 'cumulus', 'stratus'], cloudGeometry: ['local', 'shell'] })) {
     if (values.includes(input[key])) result[key] = input[key]
   }
   for (const [key, min, max] of [['skyLightIntensity', 0, 5], ['sunIntensity', 0, 5], ['cloudCoverage', 0, 0.95],

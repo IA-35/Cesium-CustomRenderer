@@ -107,9 +107,19 @@ if (singleFrustumSample) viewer.camera.frustum.far = 50000
 viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#52654c')
 viewer.scene.renderError.addEventListener((scene, error) => { errors.push(error.message); status.textContent = error.message })
 const requestedShadow = query.get('shadow')
+// ?environment=off disables the volumetric environment pass (clouds + volumetric fog) so its
+// GPU cost can be compared directly against the default. ?clouds=off keeps the atmosphere but
+// drops the cloud raymarch. Both are diagnostic comparisons, not production defaults.
+const environmentParam = query.get('environment')
+const cloudsParam = query.get('clouds')
+const environmentOverrides = {}
+if (environmentParam === 'off') { environmentOverrides.environment = false; environmentOverrides.clouds = false; environmentOverrides.volumetricFog = false }
+else if (environmentParam === 'on') environmentOverrides.environment = true
+if (cloudsParam === 'off') environmentOverrides.clouds = false
 const pipeline = createVisualPipeline({ Cesium, viewer,
   options: { environmentReflectionEnabled: true,
     environmentReflectionMap: '/assets/environment/98_ibl.ktx2',
+    ...environmentOverrides,
     ...(['custom', 'native'].includes(requestedShadow) ? { shadowMode: requestedShadow } : {}) } })
 const tiles = []
 const models = []

@@ -29,6 +29,10 @@ export default class ContextDrawDispatcher143 {
       ['programBinds', 'useProgram'],
       ['materialBinds', 'drawElements'],
       ['materialBinds', 'drawArrays'],
+      // Cesium submits most primitives through the instanced entry points; counting only the
+      // non-instanced pair under-reports the real submission count.
+      ['materialBinds', 'drawElementsInstanced'],
+      ['materialBinds', 'drawArraysInstanced'],
       ['textureBinds', 'bindTexture'],
       ['uniformUploads', 'uniform4fv'],
       ['uniformUploads', 'uniformMatrix4fv']
