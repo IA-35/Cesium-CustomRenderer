@@ -88,9 +88,9 @@ test('uses each point type to choose a distinct procedural tree form', async()=>
   manifest.pointCount=3
   manifest.typeMap={松柏:'cypress',松树:'pine',松树01:'pine-small'}
   manifest.prototypes=[
-    {id:'pine',height:10.5},
-    {id:'cypress',height:9.5},
-    {id:'pine-small',height:8.5}
+    {id:'pine',height:10.5,species:'松树',form:'spreading'},
+    {id:'cypress',height:9.5,species:'松柏',form:'columnar'},
+    {id:'pine-small',height:8.5,species:'松树01',form:'rounded'}
   ]
   const points=resources.get('https://example.test/vegetation/points.json')
   points.summary.objectCount=3
@@ -101,8 +101,23 @@ test('uses each point type to choose a distinct procedural tree form', async()=>
   ]
   const t=await load(h,resources,manifestUrl,{source:'procedural'})
   const primitive=h.models[0]
-  assert.deepEqual(primitive._instances.map(instance=>instance.preset),['cypress','pine','pine-small'])
-  assert.equal(primitive.treePresets.cypress.branch.length[1],10)
+  // Each point still resolves to its own prototype; the name now carries a derived variant index
+  // ("pine~2") because the runtime groups by preset *name*, so several named variants are needed
+  // for a stand not to repeat one silhouette. The prototype prefix is what identifies the species.
+  const presetOf = index => primitive._instances[index].preset
+  assert.deepEqual(primitive._instances.map(instance=>instance.preset.split('~')[0]),
+    ['cypress','pine','pine-small'])
+  for (const name of ['cypress','pine','pine-small']) {
+    assert.ok(primitive.treePresets[name], `${name} must have a base variant`)
+    const derived = Object.keys(primitive.treePresets).filter(key=>key.startsWith(`${name}~`))
+    assert.ok(derived.length >= 8, `${name} must derive several variants, got ${derived.length}`)
+    // Derived variants must differ in topology, not merely repeat the base configuration.
+    const seeds = new Set([name,...derived].map(key=>primitive.treePresets[key].seed))
+    assert.equal(seeds.size, 1 + derived.length, `${name} variants must have distinct seeds`)
+  }
+  // Base variants carry the authored species form: columnar (松柏), spreading (松树) and rounded
+  // (松树01). These are the shape values applySpeciesShape writes for each form.
+  assert.equal(primitive.treePresets.cypress.branch.length[1],13)
   assert.equal(primitive.treePresets.pine.branch.length[1],29)
   assert.equal(primitive.treePresets['pine-small'].branch.length[1],17)
   t.destroy()

@@ -66,9 +66,11 @@ test('the shader keeps the three reference structures the port depends on', () =
   assert.match(shader, /vec3 start = origin - CCR_PLANET_POS/)
   // 2. the allow_mie guard (reference lines 139-140, applied at line 170)
   assert.match(shader, /bool allowMie = maxDist > rayLength\.y/)
-  assert.match(shader, /float phaseMie = allowMie \? ccrPhaseMie\(mu\) : 0\.0/)
+  assert.match(shader, /ccrPhaseMie\(mu, sceneSampling \? atmosphereMieParameters\.y : ATMOS_MIE_G\)/)
+  assert.match(shader, /ccrAtmosphereIntegral\(origin, direction, maxDist, sceneColor, transmittance, false\)/)
   // 3. scene extinction in the composite (reference line 267)
-  assert.match(shader, /return radiance \* CCR_ATMOSPHERE_LIGHT_INTENSITY \+ sceneColor \* transmittance/)
+  assert.match(shader, /sceneSampling \? atmosphereSunRadiance : vec3\(CCR_ATMOSPHERE_LIGHT_INTENSITY\)/)
+  assert.match(shader, /return radiance \* lightRadiance \+ sceneColor \* transmittance/)
 })
 
 test('a ray that misses the atmosphere returns the scene untouched', () => {

@@ -4,9 +4,9 @@
 // 结构正确。真正要验证的是「它能在真实 GPU 上编译、并且材质通道里出现预期数据」——
 // 一个编译不过的着色器会让 Cesium 走渲染错误路径，而这在文本层面看不出来。
 //
-// 所有几何都是程序化生成（docs/RENDERER_SCOPE.md）：不加载校园资产、不依赖外部影像。
+// 所有几何都是程序化生成（docs/01-architecture/RENDERER_SCOPE.md）：不加载校园资产、不依赖外部影像。
 // Globe water mask 用自定义 TerrainProvider 构造（实测 CustomHeightmapTerrainProvider
-// 的 hasWaterMask 硬编码为 false，不可用——见 docs/B07_RECONNAISSANCE.md）。
+// 的 hasWaterMask 硬编码为 false，不可用——见 docs/02-stage1/B07_RECONNAISSANCE.md）。
 
 export const SSR_SURFACES_FIXTURE_VERSION = 1
 

@@ -1,0 +1,141 @@
+{
+  "cases": [
+    {
+      "quality": "sharp",
+      "diag": {
+        "supported": true,
+        "enabled": true,
+        "ready": true,
+        "effective": "smaa",
+        "error": null,
+        "quality": "sharp",
+        "settings": {
+          "smaaThreshold": 0.1,
+          "smaaSearchSteps": 16,
+          "fxaaSubpix": 0.25,
+          "fxaaThreshold": 0.125,
+          "fxaaThresholdMin": 0.0625
+        },
+        "preset": "high",
+        "lookupDimensions": {
+          "area": {
+            "width": 160,
+            "height": 560
+          },
+          "search": {
+            "width": 66,
+            "height": 33
+          }
+        },
+        "outputDimensions": {
+          "width": 640,
+          "height": 420
+        },
+        "resourceCounts": {
+          "collections": 1,
+          "stages": 3,
+          "lookupTextures": 2
+        }
+      },
+      "changedPixels": 1352,
+      "glError": 0,
+      "samplers": {
+        "edges": [],
+        "weights": [],
+        "blend": []
+      }
+    },
+    {
+      "quality": "balanced",
+      "diag": {
+        "supported": true,
+        "enabled": true,
+        "ready": true,
+        "effective": "smaa",
+        "error": null,
+        "quality": "balanced",
+        "settings": {
+          "smaaThreshold": 0.05,
+          "smaaSearchSteps": 16,
+          "fxaaSubpix": 0.5,
+          "fxaaThreshold": 0.0833,
+          "fxaaThresholdMin": 0.0312
+        },
+        "preset": "high",
+        "lookupDimensions": {
+          "area": {
+            "width": 160,
+            "height": 560
+          },
+          "search": {
+            "width": 66,
+            "height": 33
+          }
+        },
+        "outputDimensions": {
+          "width": 640,
+          "height": 420
+        },
+        "resourceCounts": {
+          "collections": 1,
+          "stages": 3,
+          "lookupTextures": 2
+        }
+      },
+      "changedPixels": 1352,
+      "glError": 0,
+      "samplers": {
+        "edges": [],
+        "weights": [],
+        "blend": []
+      }
+    },
+    {
+      "quality": "smooth",
+      "diag": {
+        "supported": true,
+        "enabled": true,
+        "ready": true,
+        "effective": "smaa",
+        "error": null,
+        "quality": "smooth",
+        "settings": {
+          "smaaThreshold": 0.035,
+          "smaaSearchSteps": 32,
+          "fxaaSubpix": 0.75,
+          "fxaaThreshold": 0.063,
+          "fxaaThresholdMin": 0.0156
+        },
+        "preset": "ultra",
+        "lookupDimensions": {
+          "area": {
+            "width": 160,
+            "height": 560
+          },
+          "search": {
+            "width": 66,
+            "height": 33
+          }
+        },
+        "outputDimensions": {
+          "width": 640,
+          "height": 420
+        },
+        "resourceCounts": {
+          "collections": 1,
+          "stages": 3,
+          "lookupTextures": 2
+        }
+      },
+      "changedPixels": 1352,
+      "glError": 0,
+      "samplers": {
+        "edges": [],
+        "weights": [],
+        "blend": []
+      }
+    }
+  ],
+  "errors": [],
+  "messages": []
+}

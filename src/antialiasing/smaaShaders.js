@@ -341,11 +341,17 @@ vec4 SMAANeighborhoodBlendingPS( vec2 texcoord, vec4 offset[ 2 ], sampler2D colo
 		vec4 Cop = texture( colorTex, texcoord, 0.0 );
 		float s = abs( offset.x ) > abs( offset.y ) ? abs( offset.x ) : abs( offset.y );
 
-		// WebGL port note: Added gamma correction
-		C.xyz = pow(C.xyz, vec3(2.2));
-		Cop.xyz = pow(Cop.xyz, vec3(2.2));
+		// Blend in the same space the edges were detected in.
+		//
+		// The three.js r158 port this came from inserts a pow(2.2) round trip here,
+		// because its post-processing chain hands SMAA a linear image. CCR runs SMAA on
+		// Cesium's already tone-mapped, gamma-encoded display colour (see the note in
+		// fxaaShader143.js), while SMAA_THRESHOLD is calibrated for gamma-encoded values.
+		// Keeping the round trip therefore mixed in linear space while detecting in gamma
+		// space: compressing both samples by 2.2 pulls two already-close neighbours closer
+		// together, so the blend survives but loses most of its visible strength. Blending
+		// directly also removes two pow() calls per antialiased pixel.
 		vec4 mixed = mix(C, Cop, s);
-		mixed.xyz = pow(mixed.xyz, vec3(1.0 / 2.2));
 
 		return mixed;
 	}

@@ -36,6 +36,25 @@ function restore(records) {
   return changed
 }
 
+function refreshNightIbl(ibl, record, settings) {
+  const property = record.changes[0]
+  if (!property.owned || !alive(record.primitive)) return
+  if (ibl.sphericalHarmonicCoefficients !== record.coefficients) {
+    property.owned = false
+    return
+  }
+  // Native SH may finish asynchronously while the clock and settings stay
+  // unchanged. Refresh only known IBL records, without walking the model tree.
+  const native = record.primitive.environmentMapManager?.sphericalHarmonicCoefficients
+  const sky = settings.nightSkyRadiance || [0, 0, 0]
+  for (let i = 0; i < 9; i++) {
+    const coefficient = record.coefficients[i], source = native?.[i]
+    coefficient.x = (source?.x || 0) * (1 - settings.nightWeight) + (i === 0 ? sky[0] : 0)
+    coefficient.y = (source?.y || 0) * (1 - settings.nightWeight) + (i === 0 ? sky[1] : 0)
+    coefficient.z = (source?.z || 0) * (1 - settings.nightWeight) + (i === 0 ? sky[2] : 0)
+  }
+}
+
 export default class EnvironmentLighting143 {
   constructor(C, scene) {
     this.C = C
@@ -44,6 +63,7 @@ export default class EnvironmentLighting143 {
     this.destroyed = false
     this.changes = []
     this.managers = new Map()
+    this.nightIbls = new Map()
     this.reflectionRecords = new Map()
     this.sharedReflectionIbls = new Map()
     this.reflectionKey = null
@@ -59,8 +79,9 @@ export default class EnvironmentLighting143 {
     this.collectionRemovers = []
     this.watchedCollections = new WeakSet()
     this.sun = new C.SunLight()
+    this.moon = C.DirectionalLight && C.Cartesian3 ? new C.DirectionalLight({ direction: new C.Cartesian3(0, 0, -1), intensity: 0 }) : null
     this.settings = { skyIntensity: 2.8, sunIntensity: 2, rayleighScale: 1,
-      mieScale: 1, atmosphereIntensity: 10, skyAtmosphereIntensity: 20, daylight: 1 }
+      mieScale: 1, atmosphereIntensity: 10, skyAtmosphereIntensity: 20, daylight: 1, nightWeight: 0 }
     this.supported = !!(scene.context && C.DynamicEnvironmentMapManager &&
       C.DynamicEnvironmentMapManager.isDynamicUpdateSupported(scene))
     this.watchPrimitiveCollection(scene.primitives)
@@ -102,6 +123,8 @@ export default class EnvironmentLighting143 {
   }
 
   restore() {
+    for (const record of this.nightIbls.values()) restore(record.changes)
+    this.nightIbls.clear()
     if (alive(this.scene)) {
       const atmosphereChanged = restore(this.changes)
       for (const [manager, record] of this.managers) {
@@ -265,14 +288,26 @@ export default class EnvironmentLighting143 {
     this.settings = { ...this.settings, ...settings }
     if (!this.enabled || !alive(this.scene)) return
     const C = this.C, scene = this.scene, o = this.settings
+    for (const [ibl, record] of this.nightIbls) refreshNightIbl(ibl, record, o)
     const rootCount = scene.primitives?.length ?? 0
     const color = o.sunColor
+    const moonDirection = o.moonDirectionWC, moonRadiance = o.moonRadiance || [0, 0, 0]
+    const nightSky = o.nightSkyRadiance || [0, 0, 0]
+    const moonActive = o.nightWeight > 0 && this.moon && moonDirection
     const key = [o.skyIntensity, o.sunIntensity, o.rayleighScale, o.mieScale,
       o.atmosphereIntensity, o.skyAtmosphereIntensity, o.daylight,
-      color?.red, color?.green, color?.blue, color?.alpha].join('|')
+      color?.red, color?.green, color?.blue, color?.alpha, o.nightWeight,
+      moonDirection?.x, moonDirection?.y, moonDirection?.z, ...moonRadiance, ...nightSky].join('|')
     const owned = this.changes.every(record => !record.owned || record.object[record.key] === record.applied)
     if (!this.applyDirty && owned && rootCount === this.applyRootCount && key === this.applyKey) return
-    write(this.changes, scene, 'light', this.sun)
+    write(this.changes, scene, 'light', moonActive ? this.moon : this.sun)
+    if (moonActive) {
+      const intensity = Math.max(...moonRadiance)
+      write(this.changes, this.moon, 'direction', C.Cartesian3.negate(moonDirection, new C.Cartesian3()))
+      write(this.changes, this.moon, 'intensity', intensity)
+      write(this.changes, this.moon, 'color', intensity > 0
+        ? new C.Color(...moonRadiance.map(v => v / intensity), 1) : new C.Color(0.65, 0.8, 1, 1))
+    }
     write(this.changes, this.sun, 'intensity', o.sunIntensity)
     if (o.sunColor && C.Color) write(this.changes, this.sun, 'color', C.Color.clone(o.sunColor))
     write(this.changes, scene.globe, 'enableLighting', true)
@@ -300,11 +335,26 @@ export default class EnvironmentLighting143 {
       const original = this.changes.find(item => item.object === scene.skyBox && item.key === 'show')
       write(this.changes, scene.skyBox, 'show', (original ? original.before : scene.skyBox.show) && o.daylight < 0.95)
     }
-    const seen = new Set()
+    const seen = new Set(), seenIbls = new Set()
     const visit = primitive => {
       if (!alive(primitive)) return
       if ((C.Cesium3DTileset && primitive instanceof C.Cesium3DTileset) ||
           (C.Model && primitive instanceof C.Model)) {
+        const ibl = primitive.imageBasedLighting
+        if (ibl && o.nightWeight > 0 && nightSky.some(v => v > 0)) {
+          let record = this.nightIbls.get(ibl)
+          if (!record && ibl.sphericalHarmonicCoefficients === undefined) {
+            const coefficients = Array.from({ length: 9 }, () => new C.Cartesian3())
+            record = { primitive, changes: [], coefficients }
+            this.nightIbls.set(ibl, record)
+            write(record.changes, ibl, 'sphericalHarmonicCoefficients', coefficients)
+          }
+          if (record) {
+            seenIbls.add(ibl)
+            record.primitive = primitive
+            refreshNightIbl(ibl, record, o)
+          }
+        }
         const manager = primitive.environmentMapManager
         if (!this.supported || !alive(manager) || manager.enabled === false) return
         seen.add(manager)
@@ -324,6 +374,11 @@ export default class EnvironmentLighting143 {
       }
     }
     visit(scene.primitives)
+    for (const [ibl, record] of this.nightIbls) {
+      if (seenIbls.has(ibl)) continue
+      restore(record.changes)
+      this.nightIbls.delete(ibl)
+    }
     for (const [manager, record] of this.managers) {
       if (seen.has(manager)) continue
       if (alive(record.primitive) && alive(manager) && restore(record.changes)) manager.position = undefined
@@ -336,7 +391,10 @@ export default class EnvironmentLighting143 {
 
   getDiagnostics() {
     return { supported: this.supported, enabled: this.enabled, managerCount: this.managers.size,
-      ownsLight: this.scene.light === this.sun, sunIntensity: this.sun.intensity }
+      ownsLight: this.scene.light === this.sun || !!this.moon && this.scene.light === this.moon,
+      activeLight: this.scene.light === this.sun ? 'sun' : this.moon && this.scene.light === this.moon ? 'moon' : 'external',
+      nightIblCount: [...this.nightIbls.values()].filter(record => record.changes[0].owned).length,
+      sunIntensity: this.sun.intensity, moonIntensity: this.moon?.intensity || 0 }
   }
 
   isDestroyed() { return this.destroyed }

@@ -71,7 +71,16 @@ compiler.run((error, stats) => {
     fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\ncesium-ez-tree / ' + name + '\n' + fs.readFileSync(path.join(root, 'vendor/cesium-ez-tree', name), 'utf8'))
   }
   fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nwebgpu-cesium / NOTICE\n' + fs.readFileSync(path.join(root, 'vendor/webgpu-cesium-NOTICE.md'), 'utf8'))
-  fs.copyFileSync(path.join(root, 'docs/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
+  for(const name of ['LICENSE','NOTICE.md']) fs.appendFileSync(path.join(output,'THIRD_PARTY_LICENSES.txt'),
+    '\n\nHillaire WebGL adaptation / '+name+'\n'+fs.readFileSync(path.join(root,'src/environment/reference/hillaire',name),'utf8'))
+  const atmosphereReference = fs.readFileSync(path.join(root, 'src/environment/reference/shadertoy_wlBXWK.glsl'), 'utf8')
+  fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nShadertoy wlBXWK / MIT\n'
+    + atmosphereReference.split(/\r?\n/).slice(0, 22).join('\n'))
+  for (const name of ['LICENSE', 'perlin.glsl', 'tileableNoise.glsl', 'cloudShape.frag', 'cloudShapeDetail.frag']) {
+    fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nthree-geospatial cloud noise / ' + name + '\n'
+      + fs.readFileSync(path.join(root, 'src/environment/reference/three-clouds', name), 'utf8'))
+  }
+  fs.copyFileSync(path.join(root, 'docs/01-architecture/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
   const hashes = {}
   const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
     const target = path.join(dir, item.name)
@@ -82,7 +91,7 @@ compiler.run((error, stats) => {
   walk(path.join(root, 'vendor/cesium-ez-tree'))
   const manifest = { name: library, version, cesiumVersion, format: 'UMD',
     runtimeDependencies: [`external Cesium ${cesiumVersion} distribution`, 'WebGL2 browser'],
-    embeddedAssets: Object.keys(lookups), bundledEngine: false, bundledBusinessUI: false,
+    embeddedAssets: [...Object.keys(lookups), 'cloud-noise-atlas-64x64x64'], bundledEngine: false, bundledBusinessUI: false,
     sourceCommit: sourceCommit(), sourceState: 'working-tree snapshot; source hashes are authoritative',
     sourceHashes: hashes,
     bytes: bytes.length, gzipBytes: gzip.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') }

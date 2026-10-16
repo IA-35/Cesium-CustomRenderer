@@ -62,7 +62,7 @@ shell 模式使用同心归一化球壳描述云底/云顶，CPU 双精度准备
 
 shell 在所有相机高度下均从12km开始降低覆盖率和消光密度，50km完全淡出；积分也在50km截断。2026-09-15按用户要求取消云上/高空范围扩展，云层在该视距之外时不进入云积分循环，避免高空绘制整片云层。局部云模式不受此规则影响。
 
-独立工程本轮验证运行 `node scripts/check-stage1.cjs`，默认测试服务器8877，需通过 CESIUM_PLAYWRIGHT 指定 Playwright。下面的旧宿主夹具说明作为历史记录，独立工程以本轮脚本与 docs/STAGE1_ENHANCEMENTS.md 为准。
+独立工程本轮验证运行 `node scripts/check-stage1.cjs`，默认测试服务器8877，需通过 CESIUM_PLAYWRIGHT 指定 Playwright。下面的旧宿主夹具说明作为历史记录，独立工程以本轮脚本与 docs/02-stage1/STAGE1_ENHANCEMENTS.md 为准。
 
 天气工具的新路径通过预设与环境交接；旧路径仍保留原行为。跨两种模式的取消/切换均有回归。MainMapView暴露 `setVisualEnvironmentOptions` / `getVisualEnvironmentState` action；渲染对象不进入Vue响应式data。
 

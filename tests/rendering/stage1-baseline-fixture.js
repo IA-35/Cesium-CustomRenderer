@@ -4,7 +4,7 @@
 // batch can be compared against it. It deliberately does not enable any deferred/experimental
 // feature: this is the reference the plan calls "现有增强基线".
 //
-// Rules enforced here (see docs/STAGE1_COMPLETION_PLAN.md B00):
+// Rules enforced here (see docs/02-stage1/STAGE1_COMPLETION_PLAN.md B00):
 //   * The camera, the clock, the cloud animation time and the viewport are frozen, so two runs
 //     of the same configuration must produce the same picture.
 //   * Every capture reports the *real* drawing buffer (`canvas.width/height`) rather than the CSS

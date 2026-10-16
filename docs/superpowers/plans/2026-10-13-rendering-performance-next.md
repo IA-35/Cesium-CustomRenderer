@@ -192,7 +192,7 @@ assert.equal(report.feedbackConflicts.length, 0)
 **Files:**
 - Modify: `src/diagnostics/capabilityMatrix143.js`
 - Modify: `src/VisualPipeline.js`
-- Modify: `docs/API.md`
+- Modify: `docs/01-architecture/API.md`
 - Create: `docs/RENDERING_PERFORMANCE_NEXT.md`
 
 - [ ] 增加 capability 字段：`graphTransientActive`、`renderItemDirectSubmit`、`materialBatchingActive`、`contextDrawDispatcherActive`，每项返回 requested/active/reason/generation。

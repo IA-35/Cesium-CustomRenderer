@@ -9,7 +9,7 @@
 // hidden, so the expected blended result is computed from measured inputs rather than from the
 // implementation under test.
 //
-// Geometry is generated, never loaded (docs/RENDERER_SCOPE.md): no campus asset, no external imagery.
+// Geometry is generated, never loaded (docs/01-architecture/RENDERER_SCOPE.md): no campus asset, no external imagery.
 
 export const DEFERRED_TRANSPARENCY_FIXTURE_VERSION = 1
 

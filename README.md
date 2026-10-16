@@ -2,9 +2,12 @@
 
 独立的 Cesium 1.143.0 渲染增强工程。浏览器统一命名空间为 **`window.CCR`**，UMD 文件为 **`CCR.min.js`**。源码演示也通过 `window.CCR` 暴露模块入口；不保留其他全局名称别名。
 
-校园场景入口：`/examples/campus.html`。2026-09-15新增FXAA/SMAA空间质量档、有效MSAA模式及校园画质/开销对比，见 [校园抗锯齿配置](docs/CAMPUS_ANTIALIASING.md)。TAA实现保持不变。
+> **文档入口**：[docs/README.md](./docs/README.md) —— 按「接入 / 调性能 / 改云大气 / 改植被车流」分组的索引，不必通读全部 53 篇。
+> 注意 `docs/verification/` 是**脚本输出目录**（截图、JSON、`.f32` 原始缓冲），不是文档；它被 `.gitignore` 忽略且可随时重建。
 
-独立车流模块提供 `CCR.createTrafficSystem`：车辆沿闭合路线跟车循环，或按有向路网分支行驶、路口让行，到死胡同销毁并在其他入口安全再生。独立计时，支持播放、暂停、显隐与速度倍率。`/examples/traffic.html` 默认使用用户提供的学校GeoJSON路网，所有道路统一双车道，不使用源WIDTH；原合成岔路为 `?mode=sample`，旧循环为 `?mode=loop`。校园页面通过 `?traffic=<清单URL>` 接入业务路网与车型。接口与验证边界见 [车流系统](docs/TRAFFIC_SYSTEM.md)。
+校园场景入口：`/examples/campus.html`。2026-09-15新增FXAA/SMAA空间质量档、有效MSAA模式及校园画质/开销对比，见 [校园抗锯齿配置](./docs/04-integration/CAMPUS_ANTIALIASING.md)。TAA实现保持不变。
+
+独立车流模块提供 `CCR.createTrafficSystem`：车辆沿闭合路线跟车循环，或按有向路网分支行驶、路口让行，到死胡同销毁并在其他入口安全再生。独立计时，支持播放、暂停、显隐与速度倍率。`/examples/traffic.html` 默认使用用户提供的学校GeoJSON路网，所有道路统一双车道，不使用源WIDTH；原合成岔路为 `?mode=sample`，旧循环为 `?mode=loop`。校园页面通过 `?traffic=<清单URL>` 接入业务路网与车型。接口与验证边界见 [车流系统](./docs/04-integration/TRAFFIC_SYSTEM.md)。
 
 ## 开发与构建
 
@@ -58,9 +61,9 @@ Cesium 引擎始终外置。开发时由 npm 依赖提供，浏览器仍需完�
 
 包含太阳阴影、HDR 局部云雾/球壳云、多尺度 HDR Bloom、SSAO/HBAO、Cube 环境反射、MRT/Hi-Z、SMAA/TAA、共享相机 UBO、性能调速与诊断。主颜色仍来自原生前向渲染；真实延迟照明、5000 光源、实际遮挡反馈、全球体积雾等尚未实现。
 
-2026-09-14 新增功能与验证见 [阶段一更新](docs/STAGE1_ENHANCEMENTS.md)。本地免 token 对比页为 `/examples/stage1.html`。原默认行为保留：AO 默认关闭，AO 算法默认 SSAO；多尺度 Bloom 默认关闭；云层默认 shell。
+2026-09-14 新增功能与验证见 [阶段一更新](./docs/02-stage1/STAGE1_ENHANCEMENTS.md)。本地免 token 对比页为 `/examples/stage1.html`。原默认行为保留：AO 默认关闭，AO 算法默认 SSAO；多尺度 Bloom 默认关闭；云层默认 shell。
 
-城市白模 HDR/Bloom/SSR 对比页：`/examples/white-city.html`，使用本地城市模型衍生资源；说明见 [白模与反射过渡](docs/WHITE_CITY_REVIEW.md)。
+城市白模 HDR/Bloom/SSR 对比页：`/examples/white-city.html`，使用本地城市模型衍生资源；说明见 [白模与反射过渡](./docs/archive/WHITE_CITY_REVIEW.md)。
 
 ```js
 pipeline.setScreenSpaceAO({ enabled: true, algorithm: 'hbao', radius: 3, strength: 1 });
@@ -72,7 +75,7 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 
 ## 工作区与当前验证入口
 
-测试结构和运行方式见 [tests/README.md](tests/README.md)，最近一次分支整合与二审见 [整合记录](docs/INTEGRATION_2026-09-18.md)。清理范围见 [工作区清理记录](docs/WORKSPACE_CLEANUP_2026-09-19.md)。
+测试结构和运行方式见 [tests/README.md](./tests/README.md)，最近一次分支整合与二审见 [整合记录](./docs/archive/INTEGRATION_2026-09-18.md)。清理范围见 [工作区清理记录](./docs/archive/WORKSPACE_CLEANUP_2026-09-19.md)。
 
 ## 初次抽取时的历史验证
 
@@ -82,15 +85,15 @@ pipeline.setOptions({ environment: true, clouds: true, cloudGeometry: 'shell' })
 - 本目录真实浏览器检查：源码/UMD 均只暴露 CCR，SMAA/TAA、原生恢复、重新启用通过；UMD 额外源码请求和 SMAA 图片请求均为 0。
 - 完整宿主 GPU 数值/画质夹具尚未迁移，因此上述基础检查不等于全部效果画质验收。
 
-审查细节及未关闭事项见 [docs/CCR_REVIEW.md](docs/CCR_REVIEW.md)。历史抽取说明保留在 [docs/EXTRACTION_HISTORY.md](docs/EXTRACTION_HISTORY.md)，不作为当前验证结论。
+审查细节及未关闭事项见 [docs/archive/CCR_REVIEW.md](./docs/archive/CCR_REVIEW.md)。历史抽取说明保留在 [docs/archive/EXTRACTION_HISTORY.md](./docs/archive/EXTRACTION_HISTORY.md)，不作为当前验证结论。
 
 基础浏览器回归：先运行开发服务器，再设置 `CESIUM_PLAYWRIGHT` 为已安装 Playwright 的模块路径，用 `node scripts/check-browser-sdk.cjs` 执行；默认测试端口为 8876，可通过 `CCR_TEST_PORT` 覆盖。脚本使用免 token 官方示例，不需要 ion token。
 
 ## 阶段一 B00/B01 基准与接点
 
-CCR面向通用Cesium场景。B00默认运行无外部资产的合成基准，校园仅作可选集成；资产专用修正放在examples/compat，SDK不按校园文件名修改材质。详见 [通用范围](docs/RENDERER_SCOPE.md)。
+CCR面向通用Cesium场景。B00默认运行无外部资产的合成基准，校园仅作可选集成；资产专用修正放在examples/compat，SDK不按校园文件名修改材质。详见 [通用范围](./docs/01-architecture/RENDERER_SCOPE.md)。
 
-已修复B00的基准覆盖、影像失败判定、源码内容hash，以及B01的目标绑定、透明混合验证、安装生命周期和资源释放。当前状态与范围见 [修复交接](docs/B00_B01_FIX_HANDOVER.md) 和 [验收说明](docs/STAGE1_ACCEPTANCE.md)。
+已修复B00的基准覆盖、影像失败判定、源码内容hash，以及B01的目标绑定、透明混合验证、安装生命周期和资源释放。当前状态与范围见 [修复交接](./docs/archive/B00_B01_FIX_HANDOVER.md) 和 [验收说明](./docs/archive/STAGE1_ACCEPTANCE.md)。
 
 - 五份已复比基准按目标/配置分别保存，未通过严格复比的校园高质量组合不发布golden；默认compare不改写，显式update要求两次冷启动一致。
 - 含外部影像的campus只做视觉/加载验收，不使用几何目标替代它。
@@ -112,6 +115,6 @@ node scripts/check-stage1-baseline.cjs --target fixtures --configuration ccr-def
 node scripts/check-frame-bridge.cjs
 ```
 
-校园示例需要自备 `assets/campus-assets/`。影像URL和Ion token通过服务器进程环境 `CCR_EXAMPLE_IMAGERY_URL` / `CCR_EXAMPLE_ION_TOKEN` 配置，示例源码与SDK不保存访问凭据。详细配置、其他基准命令和支持边界见 [API](docs/API.md)。
+校园示例需要自备 `assets/campus-assets/`。影像URL和Ion token通过服务器进程环境 `CCR_EXAMPLE_IMAGERY_URL` / `CCR_EXAMPLE_ION_TOKEN` 配置，示例源码与SDK不保存访问凭据。详细配置、其他基准命令和支持边界见 [API](./docs/01-architecture/API.md)。
 
-B03 已完成标准透明 PBR、Water/ParticleSystem 前向渲染及延迟 SSR 环境镜面替换；支持矩阵、明确兼容边界和验收入口见 [B03 完成交接](docs/B03_COMPLETION.md)。默认增强模式保持不变，延迟模式通过 `setLighting({ mode: "deferred" })` 显式开启。
+B03 已完成标准透明 PBR、Water/ParticleSystem 前向渲染及延迟 SSR 环境镜面替换；支持矩阵、明确兼容边界和验收入口见 [B03 完成交接](./docs/archive/B03_COMPLETION.md)。默认增强模式保持不变，延迟模式通过 `setLighting({ mode: "deferred" })` 显式开启。

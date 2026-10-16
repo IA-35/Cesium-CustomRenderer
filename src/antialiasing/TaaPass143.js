@@ -18,6 +18,23 @@ export function taaBlendWeights(settings = {}) {
     clamp(settings.taaDepthTolerance ?? 0.1, 0, 0.5)]
 }
 
+// Variance-clipping width, as a multiple of the neighbourhood standard deviation.
+//
+// Intel's TAA documents variance clipping as "the main algorithm for removing ghosting
+// artifacts" and exposes two gammas: a wide box for a still image (more history retained,
+// so the picture stays calm) and a narrow one under motion (less history retained, so
+// moving geometry and disocclusions do not smear). The resolve lerps between them with the
+// same motion confidence that picks the blend weight.
+//
+// Moving gamma stays below 1 so a moving pixel's history must sit inside roughly one sigma
+// of the current neighbourhood. The still value may exceed 1 because a settled camera has
+// no ghosting to trade against.
+export function taaVarianceGammas(settings = {}) {
+  return [0, 0,
+    clamp(settings.taaVarianceGammaStill ?? 1.5, 0.25, 4),
+    clamp(settings.taaVarianceGammaMoving ?? 0.75, 0.1, 3)]
+}
+
 // Temporal anti-aliasing for the Cesium 1.143 HDR chain.
 //
 // Each frame is rendered with a sub-pixel offset and resolved against the previous frame
@@ -60,6 +77,8 @@ export default class TaaPass143 {
     this.inverseView = new C.Matrix4()
     this.blend = new Float32Array(4)
     this.blendUniform = new C.Cartesian4()
+    this.variance = new Float32Array(4)
+    this.varianceUniform = new C.Cartesian4()
     this.jitterUv = new C.Cartesian2()
     // PostProcessStage.execute assigns this._colorTexture.sampler = this._sampler, so a
     // stage's sampleMode rewrites the sampler of the texture handed *into* it and never
@@ -109,6 +128,7 @@ export default class TaaPass143 {
       u_prevViewFromCurrent: () => this.prevViewFromCurrent,
       u_prevProjection: () => this.previousProjection,
       u_taaBlend: () => C.Cartesian4.fromArray(this.blend, 0, this.blendUniform),
+      u_taaVariance: () => C.Cartesian4.fromArray(this.variance, 0, this.varianceUniform),
       u_staticFrames: () => this.staticFrames,
       u_historyValid: () => this.historyValid ? 1 : 0
     }
@@ -364,6 +384,7 @@ export default class TaaPass143 {
       const settings = this.getOptions()
       this.blend.set(taaBlendWeights(settings))
       this.blend[0] = Math.max(this.blend[0], 1 / (this.historyAge + 1))
+      this.variance.set(taaVarianceGammas(settings))
 
       destination.collection.update(context, frame.useLogDepth, false)
       destination.collection.clear(context)
@@ -426,7 +447,8 @@ export default class TaaPass143 {
       enabled: this.enabled, supported: this.supported, valid: !!this.output,
       reason: this._scopeReason() || this.reason, error: this.error, failed: this.failed,
       stats: { ...this.stats }, historyValid: this.historyValid, historySize: this.historySize,
-      activeFrame: this.active, blend: [...this.blend], staticFrames: this.staticFrames,
+      activeFrame: this.active, blend: [...this.blend], variance: [...this.variance],
+      staticFrames: this.staticFrames,
       jitter: this.jitter ? this.jitter.getDiagnostics() : null,
       overlay: this.overlay?.getDiagnostics() || null,
       samplers: { historyColor: sampler(this.historyColor), historyDepth: sampler(this.historyDepth) },

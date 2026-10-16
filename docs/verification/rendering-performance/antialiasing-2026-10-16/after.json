@@ -1,0 +1,2011 @@
+{
+  "label": "after",
+  "width": 640,
+  "height": 420,
+  "reference": "3x3 SSAA, linear HDR box average followed by the same Cesium tonemap and CCR display grading",
+  "baselineSdk": null,
+  "sourceHashes": {
+    "taaShaders143.js": "c123c1686b60c546c13fede902f35d3bcebe7cf22cf9c4da435bffa6c7e7ffec",
+    "TaaPass143.js": "cd9f9336d4800771c104b3aee4a28546930d4b232e9dbdf1c94ab055a7b07e61",
+    "smaaShaders.js": "dadbaae253e951adc09e8aa0e4a3208307ac1c14d2715718b80205b18b54ed70",
+    "settings143.js": "714859067c997156cb1e8d45385f14d88125afe99465510da84b17652951fc9b"
+  },
+  "cases": [
+    {
+      "mode": "off",
+      "rmse": 11.614707348084098,
+      "edgeRmse": 37.84723276016316,
+      "edgeCount": 24495,
+      "stillFrameMeanDelta": 0,
+      "taa": {
+        "enabled": false,
+        "valid": false,
+        "reason": "Not requested",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "errors": [],
+      "glError": 0
+    },
+    {
+      "mode": "fxaa",
+      "rmse": 11.236513816988955,
+      "edgeRmse": 36.3173299762088,
+      "edgeCount": 24495,
+      "stillFrameMeanDelta": 0,
+      "taa": {
+        "enabled": false,
+        "valid": false,
+        "reason": "Not requested",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "errors": [],
+      "glError": 0
+    },
+    {
+      "mode": "smaa",
+      "rmse": 10.93328039856445,
+      "edgeRmse": 35.43238967140338,
+      "edgeCount": 24495,
+      "stillFrameMeanDelta": 0,
+      "taa": {
+        "enabled": false,
+        "valid": false,
+        "reason": "Not requested",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "spatial": {
+        "supported": true,
+        "enabled": true,
+        "ready": true,
+        "effective": "smaa",
+        "error": null,
+        "quality": "balanced",
+        "settings": {
+          "smaaThreshold": 0.05,
+          "smaaSearchSteps": 16,
+          "fxaaSubpix": 0.5,
+          "fxaaThreshold": 0.0833,
+          "fxaaThresholdMin": 0.0312
+        },
+        "preset": "high",
+        "lookupDimensions": {
+          "area": {
+            "width": 160,
+            "height": 560
+          },
+          "search": {
+            "width": 66,
+            "height": 33
+          }
+        },
+        "outputDimensions": {
+          "width": 640,
+          "height": 420
+        },
+        "resourceCounts": {
+          "collections": 1,
+          "stages": 3,
+          "lookupTextures": 2
+        }
+      },
+      "errors": [],
+      "glError": 0
+    },
+    {
+      "mode": "taa",
+      "rmse": 5.0601306690767265,
+      "edgeRmse": 15.946529009148438,
+      "edgeCount": 24495,
+      "stillFrameMeanDelta": 0.015058283730158852,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 181,
+          "bypasses": 0,
+          "resets": 1
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 1,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 179,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 180,
+          "holding": false,
+          "pixel": {
+            "x": -0.375,
+            "y": -0.05555555555555558
+          },
+          "applied": {
+            "xOffset": 0.0006765823467065926,
+            "yOffset": 0.00010023442173431007
+          },
+          "frames": 180,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 360,
+              "renormalized": 360,
+              "copied": 181,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0.0006765823467065926,
+              "yOffset": 0.00010023442173431007,
+              "pixelX": -0.37500000000002875,
+              "pixelY": -0.05555555555554499
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 2,
+          "unsupported": 0,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 11827200,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "spatial": {
+        "supported": true,
+        "enabled": false,
+        "ready": false,
+        "effective": "off",
+        "error": null,
+        "quality": "balanced",
+        "settings": {
+          "smaaThreshold": 0.05,
+          "smaaSearchSteps": 16,
+          "fxaaSubpix": 0.5,
+          "fxaaThreshold": 0.0833,
+          "fxaaThresholdMin": 0.0312
+        },
+        "preset": "high",
+        "lookupDimensions": {
+          "area": null,
+          "search": null
+        },
+        "outputDimensions": null,
+        "resourceCounts": {
+          "collections": 0,
+          "stages": 0,
+          "lookupTextures": 0
+        }
+      },
+      "errors": [],
+      "glError": 0
+    }
+  ],
+  "dynamic": [
+    {
+      "kind": "object",
+      "flatInteriorMae": 0.0011810824255530832,
+      "maxFlatError": 63.66666666666667,
+      "wrongFlatPixels": 6,
+      "flatPixels": 223806,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 303,
+          "bypasses": 0,
+          "resets": 2
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 1,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 120,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 301,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 602,
+              "renormalized": 602,
+              "copied": 303,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 1,
+          "errors": 0,
+          "reason": null,
+          "bytes": 4300800,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 16128000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": {
+        "expected": [
+          -0.010188534162762886,
+          0,
+          136,
+          136
+        ],
+        "actual": [
+          -0.010188519954681396,
+          0,
+          136,
+          136
+        ],
+        "pixelVelocityError": 0.000009093172153029627,
+        "currentDepthError": 0,
+        "previousDepthError": 0
+      },
+      "glError": 0,
+      "errors": []
+    },
+    {
+      "kind": "object-depth",
+      "flatInteriorMae": 0.0014726357502409767,
+      "maxFlatError": 63.66666666666667,
+      "wrongFlatPixels": 7,
+      "flatPixels": 224088,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 425,
+          "bypasses": 0,
+          "resets": 4
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 120,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 121,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 242,
+              "renormalized": 242,
+              "copied": 122,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 1,
+          "errors": 0,
+          "reason": null,
+          "bytes": 4300800,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 16128000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": {
+        "expected": [
+          -0.012290344064101011,
+          3.5931257968968566e-12,
+          117.40000000037253,
+          118
+        ],
+        "actual": [
+          -0.012286901473999023,
+          -0.000008106231689453125,
+          117.4000015258789,
+          118
+        ],
+        "pixelVelocityError": 0.004055338905703331,
+        "currentDepthError": 0.0000015255063772201538,
+        "previousDepthError": 0
+      },
+      "glError": 0,
+      "errors": []
+    },
+    {
+      "kind": "object-z",
+      "flatInteriorMae": 0.0014240054281837015,
+      "maxFlatError": 67.66666666666667,
+      "wrongFlatPixels": 6,
+      "flatPixels": 224016,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 547,
+          "bypasses": 0,
+          "resets": 6
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 120,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 121,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 242,
+              "renormalized": 242,
+              "copied": 122,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 1,
+          "errors": 0,
+          "reason": null,
+          "bytes": 4300800,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 16128000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": {
+        "expected": [
+          -3.4350300381902343e-12,
+          3.5931257968968566e-12,
+          117.40000000037253,
+          118
+        ],
+        "actual": [
+          -0.000003993511199951172,
+          -0.000008106231689453125,
+          117.4000015258789,
+          118
+        ],
+        "pixelVelocityError": 0.004257202462756857,
+        "currentDepthError": 0.0000015255063772201538,
+        "previousDepthError": 0
+      },
+      "glError": 0,
+      "errors": []
+    },
+    {
+      "kind": "object-rotate",
+      "flatInteriorMae": 0.0016832755826550986,
+      "maxFlatError": 63.66666666666667,
+      "wrongFlatPixels": 10,
+      "flatPixels": 223374,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 669,
+          "bypasses": 0,
+          "resets": 8
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 120,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 121,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 242,
+              "renormalized": 242,
+              "copied": 122,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 1,
+          "errors": 0,
+          "reason": null,
+          "bytes": 4300800,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 16128000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": {
+        "expected": [
+          -0.010188534162762886,
+          0,
+          136,
+          136
+        ],
+        "actual": [
+          -0.010173380374908447,
+          -2.980232238769531e-7,
+          136,
+          136
+        ],
+        "pixelVelocityError": 0.009699231925832623,
+        "currentDepthError": 0,
+        "previousDepthError": 0
+      },
+      "glError": 0,
+      "errors": []
+    },
+    {
+      "kind": "camera",
+      "flatInteriorMae": 0.0016772559316312846,
+      "maxFlatError": 74.33333333333333,
+      "wrongFlatPixels": 9,
+      "flatPixels": 223182,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 791,
+          "bypasses": 0,
+          "resets": 10
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 121,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 242,
+              "renormalized": 242,
+              "copied": 154,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 33
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 11827200,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": null,
+      "glError": 0,
+      "errors": []
+    },
+    {
+      "kind": "camera-object",
+      "flatInteriorMae": 0.0020293495800497953,
+      "maxFlatError": 74.33333333333333,
+      "wrongFlatPixels": 11,
+      "flatPixels": 223717,
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 913,
+          "bypasses": 0,
+          "resets": 12
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 121,
+          "holding": false,
+          "pixel": {
+            "x": 0,
+            "y": -0.16666666666666669
+          },
+          "applied": {
+            "xOffset": 0,
+            "yOffset": 0.00030070326520293013
+          },
+          "frames": 121,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 242,
+              "renormalized": 242,
+              "copied": 155,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": 0,
+              "yOffset": 0.00030070326520293013,
+              "pixelX": 0,
+              "pixelY": -0.16666666666666577
+            },
+            "touched": 34
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 3,
+          "unsupported": 0,
+          "draws": 1,
+          "errors": 0,
+          "reason": null,
+          "bytes": 4300800,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 16128000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "motionProbe": {
+        "expected": [
+          -0.006686225548668323,
+          4.518385665619462e-12,
+          136,
+          136
+        ],
+        "actual": [
+          -0.0066862404346466064,
+          0,
+          136,
+          136
+        ],
+        "pixelVelocityError": 0.000009527026290359447,
+        "currentDepthError": 0,
+        "previousDepthError": 0
+      },
+      "glError": 0,
+      "errors": []
+    }
+  ],
+  "lifecycle": {
+    "switches": [
+      {
+        "mode": "taa",
+        "taa": true,
+        "smaa": false,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "smaa",
+        "taa": false,
+        "smaa": true,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "taa",
+        "taa": true,
+        "smaa": false,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "fxaa",
+        "taa": false,
+        "smaa": false,
+        "fxaa": true,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "taa",
+        "taa": true,
+        "smaa": false,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "off",
+        "taa": false,
+        "smaa": false,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "smaa",
+        "taa": false,
+        "smaa": true,
+        "fxaa": false,
+        "nativeFxaa": false
+      },
+      {
+        "mode": "taa",
+        "taa": true,
+        "smaa": false,
+        "fxaa": false,
+        "nativeFxaa": false
+      }
+    ],
+    "errors": [],
+    "glError": 0
+  },
+  "performanceRuns": [
+    {
+      "round": 1,
+      "mode": "off",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.7999999988824129,
+        "p95": 1
+      },
+      "gpu": {
+        "frame": {
+          "count": 300,
+          "p50": 0.077824,
+          "p95": 0.08192
+        },
+        "aa": {
+          "count": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "issued": {
+        "frame": 300,
+        "aa": 0
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": null
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 993,
+          "bypasses": 0,
+          "resets": 16
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.05263157933950424,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 1,
+      "mode": "smaa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.8000000007450581,
+        "p95": 1.1000000014901161
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.237568,
+          "p95": 0.869376
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.15872,
+          "p95": 0.86528
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 993,
+          "bypasses": 0,
+          "resets": 16
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.05263157933950424,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 1,
+      "mode": "taa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.900000000372529,
+        "p95": 1.300000000745058
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.310272,
+          "p95": 1.13664
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.222208,
+          "p95": 0.66048
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1383,
+          "bypasses": 0,
+          "resets": 17
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 388,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 389,
+          "holding": false,
+          "pixel": {
+            "x": 0.125,
+            "y": 0.2777777777777777
+          },
+          "applied": {
+            "xOffset": -0.00022552744890219756,
+            "yOffset": -0.00050117210867155
+          },
+          "frames": 389,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 778,
+              "renormalized": 778,
+              "copied": 390,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": -0.00022552744890219756,
+              "yOffset": -0.00050117210867155,
+              "pixelX": 0.1250000000000301,
+              "pixelY": 0.2777777777777865
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 2,
+          "unsupported": 0,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 11827200,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 2,
+      "mode": "off",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.8000000007450581,
+        "p95": 1.299999998882413
+      },
+      "gpu": {
+        "frame": {
+          "count": 300,
+          "p50": 0.100352,
+          "p95": 0.109568
+        },
+        "aa": {
+          "count": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "issued": {
+        "frame": 300,
+        "aa": 0
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": null
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1383,
+          "bypasses": 0,
+          "resets": 17
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 2,
+      "mode": "smaa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.8000000007450581,
+        "p95": 1.1000000014901161
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.241664,
+          "p95": 0.990208
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.156672,
+          "p95": 0.924672
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1383,
+          "bypasses": 0,
+          "resets": 17
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 2,
+      "mode": "taa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 1.200000001117587,
+        "p95": 1.800000000745058
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.29696,
+          "p95": 1.135616
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.232448,
+          "p95": 1.18272
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1773,
+          "bypasses": 0,
+          "resets": 18
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 388,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 389,
+          "holding": false,
+          "pixel": {
+            "x": 0.125,
+            "y": 0.2777777777777777
+          },
+          "applied": {
+            "xOffset": -0.00022552744890219756,
+            "yOffset": -0.00050117210867155
+          },
+          "frames": 389,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 778,
+              "renormalized": 778,
+              "copied": 390,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": -0.00022552744890219756,
+              "yOffset": -0.00050117210867155,
+              "pixelX": 0.1250000000000301,
+              "pixelY": 0.2777777777777865
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 2,
+          "unsupported": 0,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 11827200,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 3,
+      "mode": "off",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.6999999992549419,
+        "p95": 1
+      },
+      "gpu": {
+        "frame": {
+          "count": 300,
+          "p50": 0.099328,
+          "p95": 0.106496
+        },
+        "aa": {
+          "count": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "issued": {
+        "frame": 300,
+        "aa": 0
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": null
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1773,
+          "bypasses": 0,
+          "resets": 18
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 3,
+      "mode": "smaa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 0.8000000007450581,
+        "p95": 1.200000001117587
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.236544,
+          "p95": 0.801792
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.15872,
+          "p95": 1.024
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 1773,
+          "bypasses": 0,
+          "resets": 18
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    },
+    {
+      "round": 3,
+      "mode": "taa",
+      "frames": 300,
+      "cpu": {
+        "count": 300,
+        "p50": 1.099999999627471,
+        "p95": 1.700000001117587
+      },
+      "gpu": {
+        "frame": {
+          "count": 150,
+          "p50": 0.311296,
+          "p95": 1.240064
+        },
+        "aa": {
+          "count": 150,
+          "p50": 0.22016,
+          "p95": 1.086464
+        }
+      },
+      "issued": {
+        "frame": 150,
+        "aa": 150
+      },
+      "queryAvailability": {
+        "frame": 1,
+        "aa": 1
+      },
+      "pending": 0,
+      "disjointFrames": [],
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 2163,
+          "bypasses": 0,
+          "resets": 19
+        },
+        "historyValid": true,
+        "historySize": "640x420",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 388,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 389,
+          "holding": false,
+          "pixel": {
+            "x": 0.125,
+            "y": 0.2777777777777777
+          },
+          "applied": {
+            "xOffset": -0.00022552744890219756,
+            "yOffset": -0.00050117210867155
+          },
+          "frames": 389,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 778,
+              "renormalized": 778,
+              "copied": 390,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 1,
+              "xOffset": -0.00022552744890219756,
+              "yOffset": -0.00050117210867155,
+              "pixelX": 0.1250000000000301,
+              "pixelY": 0.2777777777777865
+            },
+            "touched": 1
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 2,
+          "unsupported": 0,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 5376000,
+        "rhiHistoryBytes": 6451200,
+        "bytes": 11827200,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "glError": 0
+    }
+  ],
+  "errors": []
+}

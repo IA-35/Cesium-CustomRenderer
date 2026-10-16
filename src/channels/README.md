@@ -2,7 +2,7 @@
 
 `ScreenSpaceGeometry143` 已纳入 `VisualPipeline` 的生命周期管理，为 AO/反射提供前置数据；它仍不是完整材质 GBuffer、AO 或 SSR。默认禁用且不创建通道；首次请求启用时才创建。能力不足时保留请求并返回不支持的诊断，不修改默认画质。
 
-需要材质法线、粗糙度、金属度、自发光和模型多视锥数据时，使用后续新增的 [不透明材质通道V1](MATERIAL_CHANNELS.md)。两个模块拥有不同来源和有效范围，不可混用编码；当前不会自动共享或去重纹理。
+需要材质法线、粗糙度、金属度、自发光和模型多视锥数据时，使用后续新增的 [不透明材质通道V1](./MATERIAL_CHANNELS.md)。两个模块拥有不同来源和有效范围，不可混用编码；当前不会自动共享或去重纹理。
 
 ```js
 pipeline.setGeometry({ enabled: true, debugMode: 'normal' })

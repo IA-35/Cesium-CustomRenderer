@@ -1,0 +1,930 @@
+{
+  "sdkSha256": "e034d4b55398c9dd38a578dc5fe9d9744bc7f1bd2d85d027bf69c15c76761558",
+  "cases": [
+    {
+      "mode": "taa",
+      "aa": {
+        "mode": "taa",
+        "msaaSamples": 1,
+        "resolutionMode": "native",
+        "resolutionScale": 1,
+        "quality": "balanced",
+        "msaa": {
+          "requested": 1,
+          "selected": 1,
+          "supported": true,
+          "reason": null,
+          "maxSamples": 8,
+          "colorFormat": "RGBA16F",
+          "colorSamples": [
+            8,
+            4,
+            2,
+            1
+          ],
+          "depthSamples": [
+            8,
+            4,
+            2,
+            1
+          ],
+          "combined": false,
+          "policy": "Temporal anti-aliasing owns coverage"
+        },
+        "configuredMsaaSamples": 1,
+        "allocatedAttachments": {
+          "scene": {
+            "configured": 1,
+            "colorRenderbufferSamples": null,
+            "depthRenderbufferSamples": null
+          },
+          "globe": {
+            "configured": 1,
+            "colorRenderbufferSamples": null,
+            "depthRenderbufferSamples": null
+          }
+        },
+        "postProcess": {
+          "effective": "taa"
+        }
+      },
+      "taa": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 454,
+          "bypasses": 7,
+          "resets": 2
+        },
+        "historyValid": true,
+        "historySize": "1200x720",
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 119,
+        "jitter": {
+          "enabled": true,
+          "samples": 8,
+          "index": 119,
+          "holding": false,
+          "pixel": {
+            "x": 0.375,
+            "y": 0.05555555555555558
+          },
+          "applied": {
+            "xOffset": -0.00003608439182435161,
+            "yOffset": -0.000005345835825829871
+          },
+          "frames": 453,
+          "reason": null,
+          "bridge": {
+            "attached": true,
+            "reason": null,
+            "stats": {
+              "published": 906,
+              "renormalized": 906,
+              "copied": 496,
+              "skipped": 0
+            },
+            "drawn": {
+              "near": 0.1,
+              "xOffset": -0.00003608439182435161,
+              "yOffset": -0.000005345835825829871,
+              "pixelX": 0.37499999999997774,
+              "pixelY": 0.05555555555554692
+            },
+            "touched": 36
+          }
+        },
+        "overlay": {
+          "active": true,
+          "skipped": 0,
+          "drawn": 0,
+          "bytes": 0
+        },
+        "motion": {
+          "active": true,
+          "failed": false,
+          "supported": 300,
+          "unsupported": 1,
+          "draws": 0,
+          "errors": 0,
+          "reason": null,
+          "bytes": 0,
+          "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+          "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+        },
+        "samplers": {
+          "historyColor": {
+            "minificationFilter": 9729,
+            "magnificationFilter": 9729
+          },
+          "historyDepth": {
+            "minificationFilter": 9728,
+            "magnificationFilter": 9728
+          }
+        },
+        "stageBytes": 17280000,
+        "rhiHistoryBytes": 20736000,
+        "bytes": 38016000,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": true,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "frustums": 1,
+      "environment": {
+        "enabled": true,
+        "lighting": {
+          "supported": true,
+          "enabled": true,
+          "managerCount": 72,
+          "ownsLight": true,
+          "activeLight": "sun",
+          "nightIblCount": 0,
+          "sunIntensity": 2.2,
+          "moonIntensity": 0
+        },
+        "nativeMoon": {
+          "supported": true,
+          "active": false,
+          "adapter": "Cesium 1.143 Moon._ellipsoidPrimitive.material",
+          "lighting": "solar Lambert emission"
+        },
+        "globeNight": {
+          "supported": true,
+          "enabled": true,
+          "draws": 0,
+          "variants": 0,
+          "lighting": "native GlobeFS imagery albedo times night sky irradiance"
+        },
+        "reflection": {
+          "enabled": true,
+          "valid": true,
+          "mode": "cube-map",
+          "source": "static-ktx2",
+          "sceneReflections": false,
+          "map": "/assets/environment/98_ibl.ktx2",
+          "strength": 1,
+          "modelCount": 29,
+          "readyCount": 29,
+          "reason": null
+        },
+        "hdr": {
+          "enabled": true,
+          "supported": true,
+          "valid": true,
+          "reason": null,
+          "error": null,
+          "frustumCount": 1,
+          "stats": {
+            "executions": 461,
+            "bypasses": 0,
+            "failures": 0
+          },
+          "cloudTemporal": {
+            "supported": true,
+            "enabled": true,
+            "valid": true,
+            "age": 120,
+            "resetReason": "camera-jump",
+            "size": "600x360",
+            "error": null,
+            "stats": {
+              "frames": 461,
+              "resets": 2,
+              "bypasses": 0,
+              "failures": 0
+            },
+            "depthFormat": "r32f",
+            "transmittanceHistory": "resolved-color-alpha",
+            "bytes": 5184000,
+            "rejectionMetrics": "Per-pixel rejection is performed in the shader; no GPU rejection counter is collected."
+          }
+        },
+        "preset": "clear",
+        "quality": "balanced",
+        "sunAltitude": 0.7947778203748199,
+        "nightWeight": 0,
+        "moonPhase": 0.03339675241404485,
+        "moonHeight": 0.8551469818629971,
+        "moonDirectionWC": [
+          -0.10325928406287109,
+          0.9310947076374684,
+          0.3498573504506093
+        ],
+        "moonDirectionAtmo": [
+          -0.42649407943808143,
+          -0.29456883986495,
+          0.8551795126082482
+        ],
+        "moonRadiance": [
+          0,
+          0,
+          0
+        ],
+        "nightSkyRadiance": [
+          0,
+          0,
+          0
+        ],
+        "withinRegion": true,
+        "volumeRadius": 100000,
+        "cloudGeometry": "shell",
+        "cloudScope": "WGS84 height-corrected tangent sphere; single-frustum depth",
+        "cloudModel": "cumulus",
+        "cloudCoverage": 0.42,
+        "fogDensity": 0.000025,
+        "cloudHorizonBlend": 1,
+        "windOffset": [
+          0,
+          0
+        ],
+        "effectSize": null,
+        "mediumOcclusion": {
+          "valid": false,
+          "texture": null,
+          "reason": "No medium output for the current frame"
+        },
+        "atmosphereLut": {
+          "supported": true,
+          "ready": true,
+          "valid": true,
+          "destroyed": false,
+          "model": "Hillaire-2020-2D",
+          "radiance": "per-unit-incoming-solar-radiance",
+          "sizes": {
+            "transmittance": [
+              256,
+              64
+            ],
+            "multipleScattering": [
+              32,
+              32
+            ],
+            "skyView": [
+              192,
+              108
+            ]
+          },
+          "format": "rgba16f",
+          "keys": {
+            "medium": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}",
+            "sky": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}|6371.036629,0.79472972"
+          },
+          "stats": {
+            "updates": 3,
+            "transmittance": 1,
+            "multipleScattering": 1,
+            "skyView": 3,
+            "failures": 0,
+            "cacheHits": 458
+          },
+          "error": null,
+          "bytes": 610304
+        },
+        "environmentGraph": {
+          "registered": true,
+          "transientActive": false,
+          "collections": 3,
+          "passes": [],
+          "scope": "Shared Graph owns temporary targets; cloud history and atmosphere LUTs remain external"
+        }
+      },
+      "readyModels": 70,
+      "glError": 0
+    },
+    {
+      "mode": "smaa",
+      "aa": {
+        "mode": "smaa",
+        "msaaSamples": 1,
+        "resolutionMode": "native",
+        "resolutionScale": 1,
+        "quality": "balanced",
+        "msaa": {
+          "requested": 1,
+          "selected": 1,
+          "supported": true,
+          "reason": null,
+          "maxSamples": 8,
+          "colorFormat": "RGBA16F",
+          "colorSamples": [
+            8,
+            4,
+            2,
+            1
+          ],
+          "depthSamples": [
+            8,
+            4,
+            2,
+            1
+          ],
+          "combined": false,
+          "policy": "Post-process anti-aliasing owns coverage"
+        },
+        "configuredMsaaSamples": 1,
+        "allocatedAttachments": {
+          "scene": {
+            "configured": 1,
+            "colorRenderbufferSamples": null,
+            "depthRenderbufferSamples": null
+          },
+          "globe": {
+            "configured": 1,
+            "colorRenderbufferSamples": null,
+            "depthRenderbufferSamples": null
+          }
+        },
+        "postProcess": {
+          "supported": true,
+          "enabled": true,
+          "ready": true,
+          "effective": "smaa",
+          "error": null,
+          "quality": "balanced",
+          "settings": {
+            "smaaThreshold": 0.05,
+            "smaaSearchSteps": 16,
+            "fxaaSubpix": 0.5,
+            "fxaaThreshold": 0.0833,
+            "fxaaThresholdMin": 0.0312
+          },
+          "preset": "high",
+          "lookupDimensions": {
+            "area": {
+              "width": 160,
+              "height": 560
+            },
+            "search": {
+              "width": 66,
+              "height": 33
+            }
+          },
+          "outputDimensions": {
+            "width": 1200,
+            "height": 720
+          },
+          "resourceCounts": {
+            "collections": 1,
+            "stages": 3,
+            "lookupTextures": 2
+          }
+        }
+      },
+      "taa": {
+        "enabled": false,
+        "supported": true,
+        "valid": false,
+        "reason": "Not requested",
+        "error": null,
+        "failed": false,
+        "stats": {
+          "frames": 454,
+          "bypasses": 7,
+          "resets": 2
+        },
+        "historyValid": false,
+        "historySize": null,
+        "activeFrame": 0,
+        "blend": [
+          0.029999999329447746,
+          0.5,
+          12,
+          0.10000000149011612
+        ],
+        "variance": [
+          0,
+          0,
+          1.5,
+          0.75
+        ],
+        "staticFrames": 0,
+        "jitter": null,
+        "overlay": null,
+        "motion": null,
+        "samplers": {
+          "historyColor": null,
+          "historyDepth": null
+        },
+        "stageBytes": 0,
+        "rhiHistoryBytes": 0,
+        "bytes": 0,
+        "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+        "requested": {
+          "enabled": false,
+          "jitterSamples": 8,
+          "historyBlend": 0.03,
+          "motionBlend": 0.5,
+          "velocityThreshold": 12,
+          "depthTolerance": 0.1,
+          "varianceGammaStill": 1.5,
+          "varianceGammaMoving": 0.75
+        }
+      },
+      "frustums": 1,
+      "environment": {
+        "enabled": true,
+        "lighting": {
+          "supported": true,
+          "enabled": true,
+          "managerCount": 72,
+          "ownsLight": true,
+          "activeLight": "sun",
+          "nightIblCount": 0,
+          "sunIntensity": 2.2,
+          "moonIntensity": 0
+        },
+        "nativeMoon": {
+          "supported": true,
+          "active": false,
+          "adapter": "Cesium 1.143 Moon._ellipsoidPrimitive.material",
+          "lighting": "solar Lambert emission"
+        },
+        "globeNight": {
+          "supported": true,
+          "enabled": true,
+          "draws": 0,
+          "variants": 0,
+          "lighting": "native GlobeFS imagery albedo times night sky irradiance"
+        },
+        "reflection": {
+          "enabled": true,
+          "valid": true,
+          "mode": "cube-map",
+          "source": "static-ktx2",
+          "sceneReflections": false,
+          "map": "/assets/environment/98_ibl.ktx2",
+          "strength": 1,
+          "modelCount": 29,
+          "readyCount": 29,
+          "reason": null
+        },
+        "hdr": {
+          "enabled": true,
+          "supported": true,
+          "valid": true,
+          "reason": null,
+          "error": null,
+          "frustumCount": 1,
+          "stats": {
+            "executions": 581,
+            "bypasses": 0,
+            "failures": 0
+          },
+          "cloudTemporal": {
+            "supported": true,
+            "enabled": true,
+            "valid": true,
+            "age": 120,
+            "resetReason": "initial",
+            "size": "600x360",
+            "error": null,
+            "stats": {
+              "frames": 120,
+              "resets": 0,
+              "bypasses": 0,
+              "failures": 0
+            },
+            "depthFormat": "r32f",
+            "transmittanceHistory": "resolved-color-alpha",
+            "bytes": 5184000,
+            "rejectionMetrics": "Per-pixel rejection is performed in the shader; no GPU rejection counter is collected."
+          }
+        },
+        "preset": "clear",
+        "quality": "balanced",
+        "sunAltitude": 0.7947778203748199,
+        "nightWeight": 0,
+        "moonPhase": 0.03339675241404485,
+        "moonHeight": 0.8551469818629971,
+        "moonDirectionWC": [
+          -0.10325928406287109,
+          0.9310947076374684,
+          0.3498573504506093
+        ],
+        "moonDirectionAtmo": [
+          -0.42649407943808143,
+          -0.29456883986495,
+          0.8551795126082482
+        ],
+        "moonRadiance": [
+          0,
+          0,
+          0
+        ],
+        "nightSkyRadiance": [
+          0,
+          0,
+          0
+        ],
+        "withinRegion": true,
+        "volumeRadius": 100000,
+        "cloudGeometry": "shell",
+        "cloudScope": "WGS84 height-corrected tangent sphere; single-frustum depth",
+        "cloudModel": "cumulus",
+        "cloudCoverage": 0.42,
+        "fogDensity": 0.000025,
+        "cloudHorizonBlend": 1,
+        "windOffset": [
+          0,
+          0
+        ],
+        "effectSize": null,
+        "mediumOcclusion": {
+          "valid": false,
+          "texture": null,
+          "reason": "No medium output for the current frame"
+        },
+        "atmosphereLut": {
+          "supported": true,
+          "ready": true,
+          "valid": true,
+          "destroyed": false,
+          "model": "Hillaire-2020-2D",
+          "radiance": "per-unit-incoming-solar-radiance",
+          "sizes": {
+            "transmittance": [
+              256,
+              64
+            ],
+            "multipleScattering": [
+              32,
+              32
+            ],
+            "skyView": [
+              192,
+              108
+            ]
+          },
+          "format": "rgba16f",
+          "keys": {
+            "medium": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}",
+            "sky": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}|6371.036629,0.79472972"
+          },
+          "stats": {
+            "updates": 1,
+            "transmittance": 1,
+            "multipleScattering": 1,
+            "skyView": 1,
+            "failures": 0,
+            "cacheHits": 119
+          },
+          "error": null,
+          "bytes": 610304
+        },
+        "environmentGraph": {
+          "registered": true,
+          "transientActive": false,
+          "collections": 3,
+          "passes": [],
+          "scope": "Shared Graph owns temporary targets; cloud history and atmosphere LUTs remain external"
+        }
+      },
+      "readyModels": 70,
+      "glError": 0
+    }
+  ],
+  "errors": [],
+  "url": "http://127.0.0.1:8984/examples/campus.html?traffic=none&trees=none&grass=none&water=none&imagery=none&assets=http://localhost:8083/Dongda&glbAssets=http://localhost:8083/Dongda/DongdaModel_PBR/SM_NH/",
+  "default": {
+    "aa": {
+      "mode": "taa",
+      "msaaSamples": 1,
+      "resolutionMode": "native",
+      "resolutionScale": 1,
+      "quality": "balanced",
+      "msaa": {
+        "requested": 1,
+        "selected": 1,
+        "supported": true,
+        "reason": null,
+        "maxSamples": 8,
+        "colorFormat": "RGBA16F",
+        "colorSamples": [
+          8,
+          4,
+          2,
+          1
+        ],
+        "depthSamples": [
+          8,
+          4,
+          2,
+          1
+        ],
+        "combined": false,
+        "policy": "Temporal anti-aliasing owns coverage"
+      },
+      "configuredMsaaSamples": 1,
+      "allocatedAttachments": {
+        "scene": {
+          "configured": 1,
+          "colorRenderbufferSamples": null,
+          "depthRenderbufferSamples": null
+        },
+        "globe": {
+          "configured": 1,
+          "colorRenderbufferSamples": null,
+          "depthRenderbufferSamples": null
+        }
+      },
+      "postProcess": {
+        "effective": "taa"
+      }
+    },
+    "taa": {
+      "enabled": true,
+      "supported": true,
+      "valid": true,
+      "reason": null,
+      "error": null,
+      "failed": false,
+      "stats": {
+        "frames": 334,
+        "bypasses": 7,
+        "resets": 1
+      },
+      "historyValid": true,
+      "historySize": "1200x720",
+      "activeFrame": 0,
+      "blend": [
+        0.029999999329447746,
+        0.5,
+        12,
+        0.10000000149011612
+      ],
+      "variance": [
+        0,
+        0,
+        1.5,
+        0.75
+      ],
+      "staticFrames": 332,
+      "jitter": {
+        "enabled": true,
+        "samples": 8,
+        "index": 333,
+        "holding": false,
+        "pixel": {
+          "x": 0.125,
+          "y": 0.2777777777777777
+        },
+        "applied": {
+          "xOffset": -0.000012028130608117206,
+          "yOffset": -0.000026729179129149333
+        },
+        "frames": 333,
+        "reason": null,
+        "bridge": {
+          "attached": true,
+          "reason": null,
+          "stats": {
+            "published": 666,
+            "renormalized": 666,
+            "copied": 375,
+            "skipped": 0
+          },
+          "drawn": {
+            "near": 0.1,
+            "xOffset": -0.000012028130608117206,
+            "yOffset": -0.000026729179129149333,
+            "pixelX": 0.12500000000001663,
+            "pixelY": 0.2777777777778067
+          },
+          "touched": 35
+        }
+      },
+      "overlay": {
+        "active": true,
+        "skipped": 0,
+        "drawn": 0,
+        "bytes": 0
+      },
+      "motion": {
+        "active": true,
+        "failed": false,
+        "supported": 0,
+        "unsupported": 1,
+        "draws": 0,
+        "errors": 0,
+        "reason": null,
+        "bytes": 0,
+        "encoding": "rgba32f: previousStableUV-currentStableUV, currentEyeDepth, previousEyeDepth",
+        "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement"
+      },
+      "samplers": {
+        "historyColor": {
+          "minificationFilter": 9729,
+          "magnificationFilter": 9729
+        },
+        "historyDepth": {
+          "minificationFilter": 9728,
+          "magnificationFilter": 9728
+        }
+      },
+      "stageBytes": 17280000,
+      "rhiHistoryBytes": 20736000,
+      "bytes": 38016000,
+      "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage",
+      "requested": {
+        "enabled": true,
+        "jitterSamples": 8,
+        "historyBlend": 0.03,
+        "motionBlend": 0.5,
+        "velocityThreshold": 12,
+        "depthTolerance": 0.1,
+        "varianceGammaStill": 1.5,
+        "varianceGammaMoving": 0.75
+      }
+    },
+    "frustums": 1,
+    "environment": {
+      "enabled": true,
+      "lighting": {
+        "supported": true,
+        "enabled": true,
+        "managerCount": 72,
+        "ownsLight": true,
+        "activeLight": "sun",
+        "nightIblCount": 0,
+        "sunIntensity": 2.2,
+        "moonIntensity": 0
+      },
+      "nativeMoon": {
+        "supported": true,
+        "active": false,
+        "adapter": "Cesium 1.143 Moon._ellipsoidPrimitive.material",
+        "lighting": "solar Lambert emission"
+      },
+      "globeNight": {
+        "supported": true,
+        "enabled": true,
+        "draws": 0,
+        "variants": 0,
+        "lighting": "native GlobeFS imagery albedo times night sky irradiance"
+      },
+      "reflection": {
+        "enabled": true,
+        "valid": true,
+        "mode": "cube-map",
+        "source": "static-ktx2",
+        "sceneReflections": false,
+        "map": "/assets/environment/98_ibl.ktx2",
+        "strength": 1,
+        "modelCount": 29,
+        "readyCount": 29,
+        "reason": null
+      },
+      "hdr": {
+        "enabled": true,
+        "supported": true,
+        "valid": true,
+        "reason": null,
+        "error": null,
+        "frustumCount": 1,
+        "stats": {
+          "executions": 341,
+          "bypasses": 0,
+          "failures": 0
+        },
+        "cloudTemporal": {
+          "supported": true,
+          "enabled": true,
+          "valid": true,
+          "age": 120,
+          "resetReason": "reset-key",
+          "size": "600x360",
+          "error": null,
+          "stats": {
+            "frames": 341,
+            "resets": 1,
+            "bypasses": 0,
+            "failures": 0
+          },
+          "depthFormat": "r32f",
+          "transmittanceHistory": "resolved-color-alpha",
+          "bytes": 5184000,
+          "rejectionMetrics": "Per-pixel rejection is performed in the shader; no GPU rejection counter is collected."
+        }
+      },
+      "preset": "clear",
+      "quality": "balanced",
+      "sunAltitude": 0.7947778203748199,
+      "nightWeight": 0,
+      "moonPhase": 0.03339675241404485,
+      "moonHeight": 0.8551784184983542,
+      "moonDirectionWC": [
+        -0.1032574325017579,
+        0.9310950726645115,
+        0.34985692546098435
+      ],
+      "moonDirectionAtmo": [
+        -0.42649582602161584,
+        -0.2945686807747873,
+        0.8551786963510848
+      ],
+      "moonRadiance": [
+        0,
+        0,
+        0
+      ],
+      "nightSkyRadiance": [
+        0,
+        0,
+        0
+      ],
+      "withinRegion": true,
+      "volumeRadius": 100000,
+      "cloudGeometry": "shell",
+      "cloudScope": "WGS84 height-corrected tangent sphere; single-frustum depth",
+      "cloudModel": "cumulus",
+      "cloudCoverage": 0.42,
+      "fogDensity": 0.000025,
+      "cloudHorizonBlend": 0,
+      "windOffset": [
+        0,
+        0
+      ],
+      "effectSize": null,
+      "mediumOcclusion": {
+        "valid": false,
+        "texture": null,
+        "reason": "No medium output for the current frame"
+      },
+      "atmosphereLut": {
+        "supported": true,
+        "ready": true,
+        "valid": true,
+        "destroyed": false,
+        "model": "Hillaire-2020-2D",
+        "radiance": "per-unit-incoming-solar-radiance",
+        "sizes": {
+          "transmittance": [
+            256,
+            64
+          ],
+          "multipleScattering": [
+            32,
+            32
+          ],
+          "skyView": [
+            192,
+            108
+          ]
+        },
+        "format": "rgba16f",
+        "keys": {
+          "medium": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}",
+          "sky": "{\"radii\":[6371000,6471000],\"densityScale\":[0.0008333333333333334,0.000125],\"mie\":[0.65,0.9],\"rayleighBeta\":[0.0000055,0.000013,0.0000224],\"mieBeta\":[0.000021,0.000021,0.000021],\"absorptionBeta\":[0.0000204,0.0000497,0.00000195],\"ozone\":[30000,4000],\"groundAlbedo\":[0.3,0.3,0.3],\"modelVersion\":1}|6372.8,0.79477728"
+        },
+        "stats": {
+          "updates": 2,
+          "transmittance": 1,
+          "multipleScattering": 1,
+          "skyView": 2,
+          "failures": 0,
+          "cacheHits": 339
+        },
+        "error": null,
+        "bytes": 610304
+      },
+      "environmentGraph": {
+        "registered": true,
+        "transientActive": false,
+        "collections": 3,
+        "passes": [],
+        "scope": "Shared Graph owns temporary targets; cloud history and atmosphere LUTs remain external"
+      }
+    },
+    "readyModels": 70,
+    "glError": 0
+  },
+  "pick": {
+    "defined": true,
+    "model": true,
+    "glError": 0
+  }
+}

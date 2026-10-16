@@ -10,6 +10,18 @@ test('disabled medium consumers allocate no occlusion collection',()=>{
   assert.match(f.pass.occlusionReason,/No medium consumer/)
 })
 
+test('disabled clouds submit no cloud collection work or history resolve',()=>{
+  const f=fixture();let resets=0
+  f.pass._cloudComposite={ready:true};f.pass.cloudsActive=()=>false
+  f.pass.cloudTemporal={reset(){resets++}}
+  assert.equal(f.pass._executeClouds(f.context,{},null,null),true)
+  assert.equal(f.pass.cloudCollection,undefined)
+  assert.equal(f.events.length,0)
+  assert.equal(resets,1)
+  assert.equal(f.pass._executeClouds(f.context,{},null,null),true)
+  assert.equal(resets,1,'inactive frames must not repeatedly reset history')
+})
+
 const Cesium = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
 
 test('orthographic views bypass perspective-only volume rays', () => {

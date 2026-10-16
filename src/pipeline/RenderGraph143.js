@@ -33,6 +33,9 @@ export default class RenderGraph143 {
     if (!this.compiled.some(candidate => candidate.name === name)) return false
     for (const group of this.aliasGroups) {
       if (group.lastPass !== name) continue
+      // Outputs borrowed by native HDR/B09 consumers outlive the final declared
+      // producer. keepAlive is a frame lease, released by endFrame/finally.
+      if(group.resources.some(resource=>resource.descriptor.keepAlive)) continue
       const lease = this.activeFrame.groupLeases?.get(group.index); if (!lease) continue
       try { this.transientAllocator ? this.transientAllocator.release(lease, group) : lease.release() } finally { this.activeFrame.groupLeases.delete(group.index); for (const resource of group.resources) this.activeFrame.resourceValues.delete(resource.id) }
     }

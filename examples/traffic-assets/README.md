@@ -6,4 +6,4 @@
 
 默认 `network.json` 包含十字和 T 字路口、10 条有向车道、6 个节点及4个入口；车辆到达无合法后继的尽头时销毁，在其他安全入口重新生成。`network-ground.glb` 是这张路网的演示路面。原 `traffic.json` 与 `ground.glb` 保留为双向闭合跟车路线，使用 `?mode=loop` 查看。
 
-重新生成：`node scripts/prepare-traffic-demo.cjs`；只更新路网示例用 `--network-only`。查看：`/examples/traffic.html`。独立模块使用方式见 `docs/TRAFFIC_SYSTEM.md`。
+重新生成：`node scripts/prepare-traffic-demo.cjs`；只更新路网示例用 `--network-only`。查看：`/examples/traffic.html`。独立模块使用方式见 `docs/04-integration/TRAFFIC_SYSTEM.md`。

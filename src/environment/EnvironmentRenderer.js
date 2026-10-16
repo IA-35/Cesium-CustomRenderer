@@ -1,21 +1,34 @@
 import HdrEnvironmentPass143 from './HdrEnvironmentPass143.js'
 import EnvironmentLighting143 from './EnvironmentLighting143.js'
+import NativeMoonLighting143 from './NativeMoonLighting143.js'
+import GlobeNightLighting143 from './GlobeNightLighting143.js'
 import { resolveEnvironmentState } from './environmentState.js'
-import { createEnvironmentStages } from './environmentStages.js'
+import { createEnvironmentStages, environmentScale } from './environmentStages.js'
 import { ATMOSPHERE_RADIUS_M, PLANET_RADIUS_M, MIE_SCALE_HEIGHT, RAYLEIGH_SCALE_HEIGHT } from './atmosphereScattering143.js'
 import createNoiseAtlas from './noiseAtlas.js'
+import { resolveCloudMotion } from './cloudMotion143.js'
+import { cloudHorizonBlend } from './cloudHorizon143.js'
+import { cloudTier } from './volumetricClouds143.js'
+import AtmosphereLut143 from './AtmosphereLut143.js'
+import EnvironmentGraph143 from './EnvironmentGraph143.js'
 import UniformBuffer143,{uniformBuffersSupported} from '../buffers/UniformBuffer143.js'
 
 export default class EnvironmentRenderer {
-  constructor(C, viewer, getOptions, getShadow) {
+  constructor(C, viewer, getOptions, getShadow, integrations = {}) {
     Object.assign(this, { C, viewer, scene: viewer.scene, getOptions, getShadow, enabled: false, destroyed: false })
     this.lighting = new EnvironmentLighting143(C, this.scene)
+    this.nativeMoonLighting = new NativeMoonLighting143(C, this.scene)
     this.epoch = C.JulianDate.fromIso8601('2026-01-01T00:00:00Z')
     this.fixedRotation = new C.Matrix3()
     this.sunInertial = new C.Cartesian3()
     this.sunWorld = new C.Cartesian3()
     this.sunLocal = new C.Cartesian3(0, 0, 1)
+    this.moonInertial = new C.Cartesian3()
+    this.moonWorld = new C.Cartesian3()
+    this.moonLocal = new C.Cartesian3(0, 0, -1)
     this.eyeToLocal = new C.Matrix4()
+    this.atmosphereOrigin = new C.Cartesian3()
+    this.cloudNoiseOrigin = new C.Cartesian3()
     this.localToShadow = new C.Matrix4()
     this.sourceSize = new C.Cartesian2()
     this.eyeToShell = new C.Matrix3()
@@ -25,21 +38,39 @@ export default class EnvironmentRenderer {
     this.sunDirectionShell = new C.Cartesian3()
     this.shellRotation = new C.Matrix3()
     this.state = resolveEnvironmentState(getOptions())
+    this.globeNightLighting = new GlobeNightLighting143(C, this.scene, () => this.state)
     this.withinRegion = true
+    this.integrations=integrations
     this.hdr = new HdrEnvironmentPass143(C, this.scene, () => {
       if (!this.noise) this.noise = createNoiseAtlas(C, this.scene.context)
+      if(this.scene.context.webgl2) {
+        this.environmentGraph=new EnvironmentGraph143(C,this.scene)
+        this.atmosphereLut=new AtmosphereLut143(C,this.scene,{rhi:integrations.rhi,
+          runPass:(key,draw)=>this.environmentGraph.run(key,draw)})
+        this.hdr.environmentGraph=this.environmentGraph
+        this.hdr.prepareAtmosphere=context=>{
+          this.updateAtmosphereCamera()
+          return this.atmosphereLut.update(context,{atmoOrigin:this.atmosphereOrigin,sunLocal:this.sunLocal,
+            atmosphereParams:new C.Cartesian4(PLANET_RADIUS_M,ATMOSPHERE_RADIUS_M,1/MIE_SCALE_HEIGHT,1/RAYLEIGH_SCALE_HEIGHT),
+            atmosphereMieParameters:new C.Cartesian2(this.state.mieScale,this.scene.skyAtmosphere?.atmosphereMieAnisotropy??0.9)})
+        }
+      }
       const uniforms = {
         originalHdr: () => this.hdr.inputColor,
         surfaceDepthTexture: () => this.surfaceDepth() || this.scene.context.defaultTexture,
         surfaceDepthAvailable: () => !!this.surfaceDepth(),
         eyeToLocal: () => C.Matrix4.multiply(this.inverseFrame, viewer.camera.inverseViewMatrix, this.eyeToLocal),
-        // The atmosphere integral expects planet-centred positions. eyeToLocal yields ENU, whose
-        // origin sits on the ellipsoid, so the ray is carried into ECEF with the ENU frame this
-        // renderer already builds in update().
-        enuToEcef: () => this.frame || C.Matrix4.IDENTITY,
+        atmosphereOrigin: () => { this.updateAtmosphereCamera(); return this.atmosphereOrigin },
+        cloudNoiseOrigin: () => { this.updateAtmosphereCamera(); return this.cloudNoiseOrigin },
         sunDirectionLocal: () => this.sunLocal,
         sunRadiance: () => new C.Cartesian3(...this.state.sunRadiance),
+        atmosphereSunRadiance: () => new C.Cartesian3(...this.state.atmosphereSunRadiance),
+        moonDirectionAtmo: () => this.moonLocal,
+        moonRadiance: () => new C.Cartesian3(...this.state.moonRadiance),
+        nightSkyRadiance: () => new C.Cartesian3(...this.state.nightSkyRadiance),
+        atmosphereMieParameters: () => new C.Cartesian2(this.state.mieScale, this.scene.skyAtmosphere?.atmosphereMieAnisotropy ?? 0.9),
         skyRadiance: () => new C.Cartesian3(...this.state.skyRadiance),
+        environmentSkyScale: () => this.state.skyLightIntensity/3.2,
         fogParams: () => new C.Cartesian4(this.state.fogDensity, this.state.fogScaleHeight, this.state.fogNoise, 5),
         fogBaseHeight: () => this.state.fogBaseHeight,
         // B08：局部参考原点的椭球高度。着色器用 (局部 z - 本值) 得到椭球高度。
@@ -58,6 +89,13 @@ export default class EnvironmentRenderer {
         // stays zero unless a caller supplies one.
         windOffset: () => new C.Cartesian3(this.state.windOffset[0], this.state.windOffset[1], 0),
         cloudModel: () => this.state.cloudModel === 'stratus' ? 1 : 0,
+        cloudFrame: () => new C.Cartesian2(this.scene.frameState.frameNumber,this.hdr.cloudJitterActive?1:0),
+        cloudHorizonBlend: () => this.cloudHorizon(),
+        cloudColor: () => this.hdr.cloudOutput || this.stages.cloudStage.outputTexture || this.scene.context.defaultTexture,
+        cloudDepth: () => this.stages.cloudDepthStage.outputTexture || this.scene.context.defaultTexture,
+        cloudWeatherOffset: () => new C.Cartesian3(...this.cloudMotion().weather),
+        cloudShapeOffset: () => new C.Cartesian3(...this.cloudMotion().shape),
+        cloudDetailOffset: () => new C.Cartesian3(...this.cloudMotion().detail),
         effectFlags: () => new C.Cartesian4(getOptions().fog && this.withinRegion ? 1 : 0, this.state.clouds ? 1 : 0,
           this.state.sunScattering ? 1 : 0, this.state.volumetricFog ? 1 : 0),
         noiseTexture: () => this.noise,
@@ -69,6 +107,12 @@ export default class EnvironmentRenderer {
           return this.shadowReady() ? new C.Cartesian4(1, 1 / shadow.target.size, 0.25 / shadow.light.depthSpan, 0) : C.Cartesian4.ZERO
         },
         sourceSize: () => { this.sourceSize.x = viewer.canvas.width; this.sourceSize.y = viewer.canvas.height; return this.sourceSize }
+      }
+      if(this.atmosphereLut) {
+        uniforms.atmosphereLutReady=()=>this.atmosphereLut.ready
+        for(const [name,read]of Object.entries(this.atmosphereLut.getUniformMap())) {
+          uniforms[name]=name.startsWith('u_atmosphere')?()=>read()||this.scene.context.defaultTexture:read
+        }
       }
       if (this.state.cloudGeometry === 'shell') {
         uniforms.shellEmptyScene = () => this.scene._view.frustumCommandsList.length === 0
@@ -82,6 +126,14 @@ export default class EnvironmentRenderer {
       this.stages = createEnvironmentStages(C, uniforms, this.state.environmentQuality, this.state.cloudGeometry,!!this.frameUniforms)
       // B08：把介质遮挡 stage 交给 HDR pass，在它的执行上下文里产出数据。
       this.hdr._occlusionStage = this.stages.occlusionStage
+      this.hdr._cloudComposite = this.stages.cloudComposite
+      this.hdr._cloudColorStage = this.stages.cloudStage
+      this.hdr._cloudDepthStage = this.stages.cloudDepthStage
+      this.hdr.cloudFrame = () => this.temporalFrame()
+      this.hdr.cloudsActive = () => this.state.clouds && this.state.cloudCoverage>0
+      this.environmentGraph?.configure({stages:this.stages,cloudTemporal:()=>this.hdr.cloudTemporal,
+        atmosphereLut:()=>this.atmosphereLut})
+      this.graphDirty=true
       return this.stages.composite
     }, () => this.state.cloudGeometry === 'shell',context=>{
       if(!this.frameUniforms)return []
@@ -92,7 +144,8 @@ export default class EnvironmentRenderer {
       }
       this.frameUniforms.update(data)
       return [{name:'CCREnvironmentFrame',buffer:this.frameUniforms}]
-    },()=>{this.frameUniforms?.destroy();this.frameUniforms=null;this.frameInputs=null;this.frameData=null})
+    },()=>{this.frameUniforms?.destroy();this.frameUniforms=null;this.frameInputs=null;this.frameData=null
+      this.atmosphereLut?.destroy();this.atmosphereLut=null;this.environmentGraph=null;this.graphDirty=true})
     this.removeUpdate = this.scene.preUpdate.addEventListener(() => this.update())
   }
 
@@ -100,6 +153,33 @@ export default class EnvironmentRenderer {
     const options=this.getOptions()
     return !!((options.lightShaftEnabled&&options.lightShaftStrength>0)||
       (options.sunFlareEnabled&&options.sunFlareStrength>0))
+  }
+
+  temporalFrame() {
+    const C=this.C,camera=this.viewer.camera
+    const projection=camera.frustum.projectionMatrix
+    const viewProjection=C.Matrix4.multiply(projection,camera.viewMatrix,new C.Matrix4())
+    // Noise uses p+wind: a positive texture offset moves visible clouds in the
+    // negative world direction. Temporal reprojection tracks that displacement.
+    const wind=new C.Cartesian3(...this.cloudMotion().displacement)
+    const windOffsetWC=C.Matrix4.multiplyByPointAsVector(this.frame,wind,new C.Cartesian3())
+    return {viewProjection,inverseViewProjection:C.Matrix4.inverse(viewProjection,new C.Matrix4()),
+      positionWC:camera.positionWC,directionWC:camera.directionWC,windOffsetWC,
+      simulationSeconds:C.JulianDate.secondsDifference(this.viewer.clock.currentTime,this.epoch),
+      frameNumber:this.scene.frameState.frameNumber,cloudsActive:this.state.clouds && this.state.cloudCoverage>0,
+      resetKey:[this.origin.x,this.origin.y,this.origin.z,
+        this.state.environmentPreset,this.state.environmentQuality,this.state.cloudBase,this.state.cloudTop,
+        this.state.cloudCoverage,this.state.cloudModel,this.getOptions().sunIntensity,this.state.environmentAnimation,
+        this.state.skyLightIntensity,this.atmosphereLut?.keys.medium||'analytic'].join(':')}
+  }
+
+  cloudMotion() {
+    const seconds=this.C.JulianDate.secondsDifference(this.viewer.clock.currentTime,this.epoch)
+    if(this.motionSeconds!==seconds || this.motionAnimated!==this.state.environmentAnimation) {
+      this.motionSeconds=seconds;this.motionAnimated=this.state.environmentAnimation
+      this.motion=resolveCloudMotion(seconds,this.motionAnimated)
+    }
+    return this.motion
   }
 
   useFrameUniforms() {
@@ -111,6 +191,28 @@ export default class EnvironmentRenderer {
   shadowReady() {
     const shadow = this.getShadow()
     return !!(shadow && shadow.enabled && shadow.ready && shadow.target && !shadow.target.depth.isDestroyed())
+  }
+
+  updateAtmosphereCamera() {
+    // Tangent reference sphere: exact WGS84 camera height and geodetic up, with
+    // directions in the existing ENU basis. Raw ECEF minus 6371 km is not altitude.
+    const C = this.C, position = this.viewer.camera.positionWC
+    const ellipsoid = this.scene.globe?.ellipsoid || C.Ellipsoid.WGS84
+    const height = ellipsoid.cartesianToCartographic(position).height
+    ellipsoid.geodeticSurfaceNormal(position, this.atmosphereOrigin)
+    C.Matrix4.multiplyByPointAsVector(this.inverseFrame, this.atmosphereOrigin, this.atmosphereOrigin)
+    C.Cartesian3.multiplyByScalar(this.atmosphereOrigin, PLANET_RADIUS_M + height, this.atmosphereOrigin)
+    C.Matrix4.multiplyByPoint(this.inverseFrame, position, this.cloudNoiseOrigin)
+  }
+
+  cloudHorizon() {
+    const C=this.C,camera=this.viewer.camera,frustum=camera?.frustum
+    if(!camera?.directionWC||!frustum)return 0
+    const ellipsoid=this.scene.globe?.ellipsoid||C.Ellipsoid.WGS84
+    const up=ellipsoid.geodeticSurfaceNormal(camera.positionWC,new C.Cartesian3())
+    const pitch=Math.asin(Math.max(-1,Math.min(1,C.Cartesian3.dot(camera.directionWC,up))))
+    return cloudHorizonBlend(pitch,frustum.fovy,ellipsoid.cartesianToCartographic(camera.positionWC).height,
+      PLANET_RADIUS_M,this.state.cloudBase,cloudTier(this.state.environmentQuality).maxDistance)
   }
 
   updateShellCamera() {
@@ -166,6 +268,7 @@ export default class EnvironmentRenderer {
     }
     const C = this.C, time = this.viewer.clock.currentTime
     let altitude = 1
+    let moonHeight = -1, moonPhase = 0
     if (this.frame) {
       C.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(time, this.sunInertial)
       const rotation = C.Transforms.computeIcrfToFixedMatrix(time, this.fixedRotation)
@@ -173,18 +276,43 @@ export default class EnvironmentRenderer {
       C.Matrix3.multiplyByVector(rotation, this.sunInertial, this.sunWorld)
       C.Cartesian3.normalize(this.sunWorld, this.sunWorld)
       C.Matrix4.multiplyByPointAsVector(this.inverseFrame, this.sunWorld, this.sunLocal)
+      C.Simon1994PlanetaryPositions.computeMoonPositionInEarthInertialFrame(time, this.moonInertial)
+      C.Matrix3.multiplyByVector(rotation, this.moonInertial, this.moonWorld)
+      // Geocentric elongation approximates the Sun-Moon-observer phase angle;
+      // Lambert brightness is 1 at opposition, 0 at conjunction, 1/pi at quarter.
+      const phaseAngle = Math.acos(Math.max(-1, Math.min(1,
+        -C.Cartesian3.dot(this.sunWorld, this.moonWorld) / C.Cartesian3.magnitude(this.moonWorld))))
+      moonPhase = Math.max(0, Math.min(1, (Math.sin(phaseAngle) + (Math.PI - phaseAngle) * Math.cos(phaseAngle)) / Math.PI))
+      if (phaseAngle === Math.PI) moonPhase = 0
       altitude = this.sunLocal.z
       const cameraPosition = this.viewer.camera && this.viewer.camera.positionWC
+      // Match native Moon parallax: light and atmosphere see the direction from
+      // the observer, while the phase approximation above remains geocentric.
+      if (cameraPosition) C.Cartesian3.subtract(this.moonWorld, cameraPosition, this.moonWorld)
+      C.Cartesian3.normalize(this.moonWorld, this.moonWorld)
+      C.Matrix4.multiplyByPointAsVector(this.inverseFrame, this.moonWorld, this.moonLocal)
+      moonHeight = this.moonLocal.z
+      if (cameraPosition) {
+        const ellipsoid = this.scene.globe?.ellipsoid || C.Ellipsoid.WGS84
+        const up = ellipsoid.geodeticSurfaceNormal(cameraPosition, new C.Cartesian3())
+        moonHeight = C.Cartesian3.dot(up, this.moonWorld)
+      }
       this.withinRegion = !cameraPosition || C.Cartesian3.distance(cameraPosition, this.origin) <= 100000
-      if (!this.withinRegion) altitude = C.Cartesian3.dot(C.Cartesian3.normalize(cameraPosition, new C.Cartesian3()), this.sunWorld)
+      if (!this.withinRegion) {
+        const up = C.Cartesian3.normalize(cameraPosition, new C.Cartesian3())
+        altitude = C.Cartesian3.dot(up, this.sunWorld)
+      }
     }
     const previousQuality = this.state.environmentQuality
     const previousGeometry = this.state.cloudGeometry
-    this.state = resolveEnvironmentState(this.getOptions(), altitude, C.JulianDate.secondsDifference(time, this.epoch))
+    this.state = resolveEnvironmentState(this.getOptions(), altitude, C.JulianDate.secondsDifference(time, this.epoch), { moonHeight, moonPhase })
     this.lighting.apply({ ...this.state, skyIntensity: this.state.skyLightIntensity,
+      moonDirectionWC: this.moonWorld,
       sunColor: new C.Color(...this.state.sunColor, 1) })
+    this.nativeMoonLighting?.setActive(this.state.nightWeight > 0)
     if (this.frame && (this.withinRegion || this.state.cloudGeometry === 'shell')) {
       if (previousQuality !== this.state.environmentQuality || previousGeometry !== this.state.cloudGeometry ||
+          (this.stages && this.stages.raymarchStage.textureScale !== environmentScale()) ||
           !!this.frameUniforms !== this.useFrameUniforms()) this.hdr.setEnabled(false)
       if (!this.hdr.error) this.hdr.setEnabled(true)
     } else if (this.hdr.enabled) {
@@ -195,7 +323,14 @@ export default class EnvironmentRenderer {
     if (this.stages?.occlusionStage) {
       this.stages.occlusionStage.enabled=this.mediumRequested()
     }
-    this.syncNativeFog(this.hdr.enabled && !this.hdr._scopeReason())
+    const hdrActive = this.hdr.enabled && !this.hdr._scopeReason()
+    this.syncNativeFog(hdrActive)
+    this.syncNativeAtmosphere(hdrActive && this.state.sunScattering)
+    this.syncNativeGroundAtmosphere(hdrActive &&
+      (this.state.sunScattering || this.state.volumetricFog || this.getOptions().fog))
+    if(this.graphDirty && !this.integrations.graph?.activeFrame) {
+      this.graphDirty=false;this.integrations.onGraphChanged?.()
+    }
   }
 
   syncNativeFog(active) {
@@ -206,6 +341,22 @@ export default class EnvironmentRenderer {
     state.applied = state.object.renderable
   }
 
+  syncNativeAtmosphere(active) {
+    const state = this.nativeAtmosphere
+    if (!state || state.released) return
+    if (state.object.show !== state.applied) { state.released = true; return }
+    state.object.show = active ? false : state.before
+    state.applied = state.object.show
+  }
+
+  syncNativeGroundAtmosphere(active) {
+    const state = this.nativeGroundAtmosphere
+    if (!state || state.released) return
+    if (state.object.showGroundAtmosphere !== state.applied) { state.released = true; return }
+    state.object.showGroundAtmosphere = active ? false : state.before
+    state.applied = state.object.showGroundAtmosphere
+  }
+
   setEnabled(enabled) {
     if (this.destroyed) return
     // A user off/on transition may retry once; updates and repeated enables
@@ -214,16 +365,28 @@ export default class EnvironmentRenderer {
       this.hdr.error = null
       const fog = this.scene.fog
       if (fog) this.nativeFog = { object: fog, before: fog.renderable, applied: fog.renderable }
+      const sky = this.scene.skyAtmosphere
+      if (sky) this.nativeAtmosphere = { object: sky, before: sky.show, applied: sky.show }
+      const globe = this.scene.globe
+      if (typeof globe?.showGroundAtmosphere === 'boolean') this.nativeGroundAtmosphere = {
+        object: globe, before: globe.showGroundAtmosphere, applied: globe.showGroundAtmosphere }
     }
     this.enabled = enabled === true
     if (this.enabled) {
+      this.globeNightLighting?.setActive(true)
       this.lighting.setEnabled(true)
       this.update()
     } else {
+      this.globeNightLighting?.setActive(false)
       this.hdr.setEnabled(false)
       this.syncNativeFog(false)
+      this.syncNativeAtmosphere(false)
+      this.nativeAtmosphere = undefined
+      this.syncNativeGroundAtmosphere(false)
+      this.nativeGroundAtmosphere = undefined
       this.nativeFog = undefined
       this.lighting.setEnabled(false)
+      this.nativeMoonLighting?.setActive(false)
       if (this.noise && !this.noise.isDestroyed()) this.noise.destroy()
       this.noise = undefined
       this.stages = undefined
@@ -232,15 +395,21 @@ export default class EnvironmentRenderer {
 
   getDiagnostics() {
     const texture = this.stages && !this.stages.raymarchStage.isDestroyed() && this.stages.raymarchStage.outputTexture
-    return { enabled: this.enabled, lighting: this.lighting.getDiagnostics(), reflection: this.lighting.getReflectionDiagnostics(), hdr: this.hdr.getDiagnostics(),
+    return { enabled: this.enabled, lighting: this.lighting.getDiagnostics(), nativeMoon: this.nativeMoonLighting?.getDiagnostics(), globeNight: this.globeNightLighting?.getDiagnostics(), reflection: this.lighting.getReflectionDiagnostics(), hdr: this.hdr.getDiagnostics(),
       preset: this.state.environmentPreset, quality: this.state.environmentQuality, sunAltitude: this.sunLocal.z,
+      nightWeight: this.state.nightWeight, moonPhase: this.state.moonPhase, moonHeight: this.state.moonHeight,
+      moonDirectionWC: [this.moonWorld.x, this.moonWorld.y, this.moonWorld.z],
+      moonDirectionAtmo: [this.moonLocal.x, this.moonLocal.y, this.moonLocal.z],
+      moonRadiance: this.state.moonRadiance.slice(), nightSkyRadiance: this.state.nightSkyRadiance.slice(),
       withinRegion: this.withinRegion, volumeRadius: 100000,
-      cloudGeometry: this.state.cloudGeometry, cloudScope: this.state.cloudGeometry === 'shell' ? 'ellipsoid-normalized shell; single-frustum depth' : 'local ENU',
+      cloudGeometry: this.state.cloudGeometry, cloudScope: this.state.cloudGeometry === 'shell' ? 'WGS84 height-corrected tangent sphere; single-frustum depth' : 'regional tangent sphere in ENU',
       cloudModel: this.state.cloudModel, cloudCoverage: this.state.cloudCoverage, fogDensity: this.state.fogDensity,
+      cloudHorizonBlend: this.cloudHorizon(),
       windOffset: this.state.windOffset.slice(), effectSize: texture && !texture.isDestroyed() ? [texture.width, texture.height] : null,
       // B08：介质遮挡数据的可用性契约。B09 消费前必须查这个字段，
       // 而不是假定纹理一定存在（未启用环境/未创建 stage 时它不存在）。
-      mediumOcclusion: this.getMediumOcclusionDiagnostics() }
+      mediumOcclusion: this.getMediumOcclusionDiagnostics(),atmosphereLut:this.atmosphereLut?.getDiagnostics()||{ready:false},
+      environmentGraph:this.environmentGraph?.getDiagnostics()||{registered:false} }
   }
 
   /**
@@ -259,20 +428,20 @@ export default class EnvironmentRenderer {
     const stage = this.stages && this.stages.occlusionStage
     if (!stage || stage.isDestroyed()) {
       return { valid: false, texture: null, reason: this.enabled ? 'Occlusion stage not created' : 'Environment disabled',
-        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic atmosphere and cloud extinction from Cesium scene depth' }
     }
     if (this.hdr && this.hdr.occlusionReason) {
       return { valid: false, texture: null, reason: this.hdr.occlusionReason,
-        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic atmosphere and cloud extinction from Cesium scene depth' }
     }
     const texture = stage.ready && stage.outputTexture
     if (!texture || texture.isDestroyed()) {
       return { valid: false, texture: null, reason: 'Occlusion stage not ready',
-        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic height fog from B02 material depth' }
+        contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance', source: 'analytic atmosphere and cloud extinction from Cesium scene depth' }
     }
     return { valid: true, texture, size: [texture.width, texture.height],
       contract: 'RGBA32F half-res: r=sun medium transmittance, g=sun visibility, b=view medium transmittance',
-      source: 'analytic height fog from B02 material depth' }
+      source: 'analytic atmosphere and cloud extinction from Cesium scene depth' }
   }
 
   destroy() {
@@ -281,6 +450,8 @@ export default class EnvironmentRenderer {
     this.removeUpdate()
     this.hdr.destroy()
     this.lighting.destroy()
+    this.nativeMoonLighting?.destroy()
+    this.globeNightLighting?.destroy()
     this.destroyed = true
   }
 }

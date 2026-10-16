@@ -1,6 +1,6 @@
 // B08：地理高度雾的解析指数积分，以及多视锥透明介质的 T/S 分段合并。
 //
-// 为什么需要这个模块（见 docs/B08_RECONNAISSANCE.md）：
+// 为什么需要这个模块（见 docs/02-stage1/B08_RECONNAISSANCE.md）：
 // 现有 `environmentStages.js` 的 `integrateFog` 是**逐样本数值步进**
 // （`FOG_STEPS` 次、步长按距离平方分布），而主计划 B08 要求基础档复用
 // 「解析指数积分思想及近零 Taylor 分支」。两者差异不是性能微调：

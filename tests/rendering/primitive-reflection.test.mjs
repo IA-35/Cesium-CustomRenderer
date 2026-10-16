@@ -128,7 +128,7 @@ void main() {
     out_FragColor =  finalColor;
 }`
 
-// --- 真实命令结构（浏览器 dump 得到，见 docs/B07_RECONNAISSANCE.md）-----------
+// --- 真实命令结构（浏览器 dump 得到，见 docs/02-stage1/B07_RECONNAISSANCE.md）-----------
 // 这是本轮修复的最重要一处认知偏差。真实命令的 sources 是**两段**，且
 // appearance 主体并不单独成段：Cesium 把材质定义与 appearance 主体拼进同一段，
 // 并把 main 改名为 czm_log_depth_main（log-depth 变体）。

@@ -42,6 +42,10 @@ uniform highp sampler2D u_historyDepth;
 uniform mat4 u_prevViewFromCurrent;
 uniform mat4 u_prevProjection;
 uniform vec4 u_taaBlend;
+// x,y: padding (unused). z: MAX_VARIANCE_GAMMA used on a still image (wider box, more
+// history retention). w: MIN_VARIANCE_GAMMA used under motion (narrower box, less ghosting).
+// The two are lerped by the same motion confidence that drives the blend weight.
+uniform vec4 u_taaVariance;
 uniform float u_historyValid;
 uniform float u_staticFrames;
 
@@ -87,16 +91,30 @@ void main() {
     vec4 wx = cubicWeights(fract(grid.x)), wy = cubicWeights(fract(grid.y));
     vec3 current = vec3(0.0);
     vec3 lower = vec3(1.0e20), upper = vec3(-1.0e20);
-    // Cover both sides of the cubic footprint throughout the jitter cycle.
-    // These bounds validate history; they do not blur the current image.
+    // First and second moments of the same neighbourhood, for variance clipping below.
+    // A plain min/max box is not enough: one bright outlier (a specular highlight, a wire
+    // against the sky) stretches the box until almost any history passes, which is what
+    // leaves ghost trails behind moving geometry. Intel's TAA documents variance clipping
+    // as "the main algorithm for removing ghosting artifacts", so the moments are gathered
+    // from the fetches that reconstruction already performs.
+    vec3 moment1 = vec3(0.0);
+    vec3 moment2 = vec3(0.0);
+    // Take an odd-sized cross plus the 4x4 footprint so the moments describe the same
+    // surface the reconstruction reads.
     for (int y = -2; y <= 2; ++y) for (int x = -2; x <= 2; ++x) {
         vec3 neighbour = texelFetch(colorTexture, clamp(sourcePixel + ivec2(x,y), ivec2(0), size-1), 0).rgb;
         lower = min(lower, neighbour); upper = max(upper, neighbour);
+        moment1 += neighbour;
+        moment2 += neighbour * neighbour;
         // Reuse this fetch for reconstruction instead of gathering another 4x4.
         ivec2 tap = sourcePixel + ivec2(x,y) - base + 1;
         if (all(greaterThanEqual(tap, ivec2(0))) && all(lessThan(tap, ivec2(4)))) current += neighbour * wx[tap.x] * wy[tap.y];
     }
     current = clamp(current, lower, upper);
+    // 5x5 = 25 taps; the same constant is used as the divisor for both moments.
+    const float NEIGHBOURHOOD_TAPS = 25.0;
+    vec3 mean = moment1 / NEIGHBOURHOOD_TAPS;
+    vec3 sigma = sqrt(max(moment2 / NEIGHBOURHOOD_TAPS - mean * mean, vec3(0.0)));
     bool background;
     vec3 eye = taaEyePosition(uv, background);
     vec4 previousEye = u_prevViewFromCurrent * vec4(eye, background ? 0.0 : 1.0);
@@ -117,13 +135,33 @@ void main() {
         return;
     }
     vec3 history = reconstruct(u_historyColor, previousUV);
-    float blend = mix(u_taaBlend.x, u_taaBlend.y, clamp(length(motion) / max(u_taaBlend.z, 1.0), 0.0, 1.0));
+    // Screen-space motion in pixels drives how much history is trusted, and it also selects
+    // the variance-clipping width: a still camera can afford a wide box (stable image), while
+    // a moving one needs a narrow box or the history smears. Intel exposes these as
+    // MAX_VARIANCE_GAMMA (still) / MIN_VARIANCE_GAMMA (moving).
+    float motionPixels = length(motion);
+    float motionConfidence = clamp(motionPixels / max(u_taaBlend.z, 1.0), 0.0, 1.0);
+    float blend = mix(u_taaBlend.x, u_taaBlend.y, motionConfidence);
     float contrast = max(max(upper.r-lower.r, upper.g-lower.g), upper.b-lower.b);
     if (stationary && contrast > 0.15) {
         // Longer accumulation only on settled high-contrast pixels. Camera
         // movement resets this confidence; fresh frames still ramp up quickly.
         blend = min(blend, max(u_taaBlend.x / 6.0, 1.0 / (u_staticFrames + 1.0)));
     }
-    out_FragColor = vec4(mix(clamp(history, lower, upper), current, blend), 1.0);
+    // Variance AABB, intersected with the neighbourhood min/max box. Intersecting (rather
+    // than replacing) keeps both guarantees: sigma rejects outliers that the raw box
+    // tolerates, and the box still bounds any case where sigma collapses to zero on a
+    // uniform neighbourhood.
+    float varianceGamma = mix(u_taaVariance.w, u_taaVariance.z, motionConfidence);
+    vec3 varianceMin = mean - varianceGamma * sigma;
+    vec3 varianceMax = mean + varianceGamma * sigma;
+    vec3 clippedHistory = clamp(history, max(varianceMin, lower), min(varianceMax, upper));
+    // A history sample that had to be pulled a long way was wrong about this pixel. That is
+    // exactly the disocclusion / moving-geometry case, so bias the result towards the current
+    // frame instead of trusting the (already rejected) history at full weight.
+    float rejection = length(clippedHistory - history);
+    float rejectionScale = 1.0 / max(length(upper - lower), 1.0e-4);
+    blend = mix(blend, 1.0, clamp(rejection * rejectionScale, 0.0, 1.0));
+    out_FragColor = vec4(mix(clippedHistory, current, blend), 1.0);
 }
 `

@@ -1,6 +1,6 @@
 # 不透明材质通道 V1（Cesium 1.143）
 
-显式开启的MRT通道，输出材质法线、粗糙度、金属度、线性自发光、有效位和米制视深度。布局V2增加第四个R8透明覆盖附件，详见 [透明覆盖契约](TRANSPARENCY.md)。它复用当前帧原生命令，额外绘制到自有 framebuffer；不替换主场景照明，也不等于延迟光照已实现。
+显式开启的MRT通道，输出材质法线、粗糙度、金属度、线性自发光、有效位和米制视深度。布局V2增加第四个R8透明覆盖附件，详见 [透明覆盖契约](./TRANSPARENCY.md)。它复用当前帧原生命令，额外绘制到自有 framebuffer；不替换主场景照明，也不等于延迟光照已实现。
 
 ## 使用
 
@@ -50,7 +50,7 @@ pipeline.setMaterialChannels({ enabled: false })
 
 自定义REPLACE允许省略原生MaterialStageFS，但必须匹配当前ModelFS。它可能只写diffuse而保留默认法线，所以不赋NORMAL_VALID。所有适用法线在最终输出前还会检查长度与有限性。
 
-不支持的普通不透明遮挡物保留原discard/gl_FragDepth执行，再把材质附件写零、eyeDepth写-1，阻止远处材质残留。`depthContractVersion:2`将它与背景0分开；未知像素仍没有可用距离，**本通道不是覆盖Globe/任意primitive的完整通用深度**。不要将负值当作空白。后续新增的 [共享Hi-Z](DEPTH_PYRAMID.md) 会逐级保留未知遮挡标记。
+不支持的普通不透明遮挡物保留原discard/gl_FragDepth执行，再把材质附件写零、eyeDepth写-1，阻止远处材质残留。`depthContractVersion:2`将它与背景0分开；未知像素仍没有可用距离，**本通道不是覆盖Globe/任意primitive的完整通用深度**。不要将负值当作空白。后续新增的 [共享Hi-Z](./DEPTH_PYRAMID.md) 会逐级保留未知遮挡标记。
 
 ## 绘制与所有权
 

@@ -8,6 +8,11 @@ Thumbs.db
 docs/verification/*
 # Phase 0 冻结基线是契约要求的可提交产物；其余 docs/verification 内容仍为脚本输出。
 !docs/verification/rendering-performance/
+# 该目录只保留文字记录与数据。截图、原始缓冲（.f32）与源码快照转储属于脚本输出，
+# 可由对应的 check-*.cjs 重新生成，不入库 —— 上面的例外原本会放行整个目录。
+docs/verification/rendering-performance/**/*.png
+docs/verification/rendering-performance/**/*.txt
+docs/verification/rendering-performance/**/*.f32
 
 # 私有本地内容，按 B04_B06_EXECUTION.md 规定不纳入提交：
 # 真实校园/城市资产（约 362 MB）、编辑器与外部工具状态。
@@ -18,3 +23,7 @@ assets/*
 !vendor/cesium-ez-tree/assets/**
 .vscode/
 .workbuddy/
+# 同类工具状态：本机调试脚本（硬编码了本机 playwright 路径）与 agent 学习记录。
+.probe-*.cjs
+.verify-*.cjs
+.learnings/

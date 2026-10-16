@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://localhost:8083/DongdaModel_PBR/SM_NH/",
+  "baseUrl": "http://localhost:8083/Dongda/DongdaModel_PBR/SM_NH/",
   "statistics": {
     "files": 70,
     "primitiveCount": 477,

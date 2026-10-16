@@ -17,11 +17,13 @@ function create(quality = 'balanced') {
     originalHdr,
     sunDirectionLocal: () => new C.Cartesian3(0, 0, 1),
     sunRadiance: () => new C.Cartesian3(1, 0.95, 0.85),
+    atmosphereSunRadiance: () => new C.Cartesian3(20, 20, 20),
+    atmosphereMieParameters: () => new C.Cartesian2(0.65, 0.9),
     skyRadiance: () => new C.Cartesian3(0.4, 0.5, 0.7),
     eyeToLocal: () => C.Matrix4.IDENTITY,
-    // The atmosphere integral is planet-centred, so the fixture supplies the same ENU-to-ECEF
-    // transform EnvironmentRenderer builds; identity is enough for shader-structure tests.
-    enuToEcef: () => C.Matrix4.IDENTITY,
+    atmosphereOrigin: () => new C.Cartesian3(0, 0, PLANET_RADIUS_M + 100),
+    cloudNoiseOrigin: () => new C.Cartesian3(0, 0, 100),
+    effectFlags: () => new C.Cartesian4(1, 1, 1, 1),
     cloudParams: () => new C.Cartesian4(0.42, 1600, 2800, 0.02),
     windOffset: () => new C.Cartesian3(0, 0, 0),
     noiseTexture: () => null,
@@ -31,25 +33,83 @@ function create(quality = 'balanced') {
     surfaceDepthAvailable: () => false,
     shellEmptyScene: () => false
   }
-  return { ...createEnvironmentStages(C, uniforms, quality), sourceSize, originalHdr }
+  const stages = createEnvironmentStages(C, uniforms, quality)
+  return { ...stages, sourceSize, originalHdr, destroy() {
+    for (const stage of [stages.composite, stages.cloudComposite, stages.occlusionStage]) {
+      if (!stage.isDestroyed()) stage.destroy()
+    }
+  } }
 }
 
-test('volume and resolve are float stages in a sequential composite with borrowed original HDR', () => {
+test('volume, RGB transmission and resolve are float stages with borrowed original HDR', () => {
   const s = create()
   assert.equal(s.composite.inputPreviousStageTexture, true)
   assert.equal(s.composite.get(0), s.raymarchStage)
-  assert.equal(s.composite.get(1), s.resolveStage)
-  for (const stage of [s.raymarchStage, s.resolveStage]) {
+  assert.equal(s.composite.length, 3)
+  assert.equal(s.composite.get(1), s.transmissionStage)
+  assert.equal(s.composite.get(2), s.resolveStage)
+  for (const stage of [s.raymarchStage, s.transmissionStage, s.resolveStage]) {
     assert.equal(stage.pixelFormat, C.PixelFormat.RGBA)
     assert.equal(stage.pixelDatatype, C.PixelDatatype.FLOAT)
   }
   assert.equal(s.raymarchStage.textureScale, 0.5)
+  assert.equal(s.transmissionStage.textureScale, 0.5)
   assert.equal(s.resolveStage.textureScale, 1)
   assert.equal(s.resolveStage.uniforms.originalHdr, s.originalHdr)
   assert.deepEqual(s.resolveStage.uniforms.effectSize(), new C.Cartesian2(401, 302))
   s.sourceSize.x = 1200
   assert.equal(s.resolveStage.uniforms.effectSize().x, 600)
-  s.composite.destroy()
+  s.destroy()
+})
+
+test('cloud color and weighted depth are independent float targets with separate ownership', () => {
+  const s = create()
+  try {
+    assert.equal(s.cloudComposite.inputPreviousStageTexture, false)
+    assert.equal(s.cloudComposite.length, 2)
+    assert.equal(s.cloudComposite.get(0), s.cloudStage)
+    assert.equal(s.cloudComposite.get(1), s.cloudDepthStage)
+    for (const stage of [s.cloudStage, s.cloudDepthStage]) {
+      assert.equal(stage.pixelFormat, C.PixelFormat.RGBA)
+      assert.equal(stage.pixelDatatype, C.PixelDatatype.FLOAT)
+      assert.equal(stage.textureScale, s.raymarchStage.textureScale)
+      assert.equal(stage.uniforms.cloudFrame, s.raymarchStage.uniforms.cloudFrame)
+      assert.match(stage.fragmentShader, /effectFlags\.y > 0\.5 \? ccrCloud/)
+    }
+    assert.match(s.cloudStage.fragmentShader, /ccrClouds\(atmosphereOrigin,direction,distance\)/)
+    assert.match(s.cloudDepthStage.fragmentShader, /ccrCloudGeometry\(atmosphereOrigin,direction,distance\)/)
+    assert.match(s.cloudDepthStage.fragmentShader, /geometry\.y >= 0\.99999\) geometry\.x = DEPTH_LIMIT/)
+    const color = { width: 401, height: 302 }, depth = { width: 401, height: 302 }
+    s.cloudStage._textureCache = { getFramebuffer: () => ({ getColorTexture: () => color }) }
+    s.cloudDepthStage._textureCache = { getFramebuffer: () => ({ getColorTexture: () => depth }) }
+    assert.equal(s.raymarchStage.uniforms.cloudColor(), color)
+    assert.equal(s.raymarchStage.uniforms.cloudDepth(), depth)
+    assert.equal(s.transmissionStage.uniforms.cloudColor(), color)
+    assert.equal(s.transmissionStage.uniforms.cloudDepth(), depth)
+    s.composite.destroy()
+    assert.equal(s.cloudComposite.isDestroyed(), false)
+    assert.equal(s.cloudStage.isDestroyed(), false)
+    assert.equal(s.cloudDepthStage.isDestroyed(), false)
+  } finally {
+    s.cloudStage._textureCache = undefined
+    s.cloudDepthStage._textureCache = undefined
+    s.destroy()
+  }
+  assert.equal(s.cloudStage.isDestroyed(), true)
+  assert.equal(s.cloudDepthStage.isDestroyed(), true)
+})
+
+test('production resolve reconstructs FLOAT RGB transmission without decoding packed alpha', () => {
+  const s = create()
+  try {
+    const transmission = { width: 401, height: 302 }
+    s.transmissionStage._textureCache = { getFramebuffer: () => ({ getColorTexture: () => transmission }) }
+    assert.equal(s.resolveStage.uniforms.environmentTransmission(), transmission)
+    assert.match(s.transmissionStage.fragmentShader, /out_FragColor = vec4\(transmission \* clouds\.a,1\.0\)/)
+    assert.match(s.resolveStage.fragmentShader, /transmittance \+= texture\(environmentTransmission,sampleUv\)\.rgb \* weight/)
+    assert.doesNotMatch(s.transmissionStage.fragmentShader, /ccrPackTransmittance|ccrUnpackTransmittance/)
+    assert.doesNotMatch(s.resolveStage.fragmentShader, /ccrPackTransmittance|ccrUnpackTransmittance|sampleMedium\.a/)
+  } finally { s.transmissionStage._textureCache = undefined; s.destroy() }
 })
 
 test('quality changes finite march budgets and stage instances never collide', () => {
@@ -61,37 +121,39 @@ test('quality changes finite march budgets and stage instances never collide', (
   assert.match(low.raymarchStage.fragmentShader, /#define ATMOS_OUTER_STEPS 8/)
   assert.match(low.raymarchStage.fragmentShader, /#define CLOUD_STEPS 24/)
   assert.match(high.raymarchStage.fragmentShader, /#define ATMOS_OUTER_STEPS 16/)
-  assert.match(high.raymarchStage.fragmentShader, /#define CLOUD_STEPS 80/)
-  low.composite.destroy()
-  high.composite.destroy()
+  assert.match(high.raymarchStage.fragmentShader, /#define CLOUD_STEPS 128/)
+  low.destroy()
+  high.destroy()
 })
 
-test('the cloud tier replaces the per-step density integral with a binary sun count', () => {
+test('the cloud tier integrates continuous sun extinction against the visible density field', () => {
   const balanced = create('balanced')
   const performance = create('performance')
   const shader = balanced.raymarchStage.fragmentShader
-  // Balanced and high keep six sun taps; performance halves them.
+  // The balanced tier uses six sun taps, while performance uses four.
   assert.match(shader, /#define CLOUD_LIGHT_STEPS 6/)
   assert.match(performance.raymarchStage.fragmentShader, /#define CLOUD_LIGHT_STEPS 4/)
-  // The article's count-then-transmit formulation is what replaced the optical depth integral:
-  // the sun march must not call the full density function at all.
-  const sunBody = shader.slice(shader.indexOf('float ccrCloudSunVisibility'), shader.indexOf('float ccrCloudJitter'))
-  assert.match(sunBody, /inside \+= 1\.0/)
-  assert.doesNotMatch(sunBody, /ccrCloudDensity\(/)
+  // The sun path delegates to the shared optical-depth integral over spherical intervals.
+  const sunBody = shader.slice(shader.indexOf('float ccrCloudSunOpticalDepth'), shader.indexOf('float ccrCloudSunVisibility'))
+  assert.match(sunBody, /ccrCloudShellIntervals\(position, sunDirectionAtmo, 1\.0e9\)/)
+  assert.match(sunBody, /return ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals\)/)
+  const opticalBody = shader.slice(shader.indexOf('float ccrCloudOpticalDepth'), shader.indexOf('float ccrCloudSunOpticalDepth'))
+  assert.match(opticalBody, /opticalDepth \+= ccrCloudDensity\(samplePosition\) \* stepLength/)
+  assert.doesNotMatch(sunBody, /inside \+=/)
   // The atmosphere must not texture-fetch anywhere on its scattering path. Slice only up to the
   // cloud module, which legitimately samples the noise atlas.
-  const atmosphereBody = shader.slice(shader.indexOf('vec3 ccrAtmosphere('), shader.indexOf('float ccrNoiseVoxel'))
+  const atmosphereBody = shader.slice(shader.indexOf('vec3 ccrAtmosphereIntegral('), shader.indexOf('vec3 ccrCloudNoise3D'))
   assert.ok(atmosphereBody.length > 200, 'the atmosphere body must be found')
   assert.doesNotMatch(atmosphereBody, /texture\(|texelFetch\(/)
-  balanced.composite.destroy()
-  performance.composite.destroy()
+  balanced.destroy()
+  performance.destroy()
 })
 
 test('real Cesium generates reconstruction builtins and the half-res resolve stays linear', () => {
   const s = create()
-  // Only the stages that read scene depth pull in the reconstruction builtins; the resolve stage
-  // is a plain full-screen copy of the environment colour.
-  for (const stage of [s.raymarchStage, s.occlusionStage]) {
+  // Depth-aware reconstruction is shared by cloud data, medium and full-resolution resolve.
+  for (const stage of [s.cloudStage, s.cloudDepthStage, s.raymarchStage,
+    s.transmissionStage, s.resolveStage, s.occlusionStage]) {
     for (const defines of [[], ['LOG_DEPTH']]) {
       const combined = new C.ShaderSource({ defines, sources: [stage.fragmentShader] })
         .createCombinedFragmentShader({ webgl2: true })
@@ -104,10 +166,12 @@ test('real Cesium generates reconstruction builtins and the half-res resolve sta
     assert.match(stage.fragmentShader, /uv \* czm_viewport\.zw \+ czm_viewport\.xy, rawDepth/)
     assert.doesNotMatch(stage.fragmentShader, /czm_windowToEyeCoordinates\(uv \* sourceSize/)
   }
-  // The resolve adds the premultiplied environment over the scene without touching its alpha.
-  assert.match(s.resolveStage.fragmentShader, /original\.rgb \+ environment\.rgb \* original\.a/)
+  // Cloud shadows affect the reconstructed surface; atmosphere/cloud view T is applied once.
+  assert.match(s.resolveStage.fragmentShader, /vec3 surface = original\.rgb/)
+  assert.match(s.resolveStage.fragmentShader, /surface \*= ccrCloudSurfaceTransmission/)
+  assert.match(s.resolveStage.fragmentShader, /radiance \+ surface \* transmittance, original\.a/)
   assert.match(s.resolveStage.fragmentShader, /original\.a/)
-  s.composite.destroy()
+  s.destroy()
 })
 
 test('noise atlas contains 64 periodic padded slices and a caller-owned linear RGBA texture', () => {
@@ -140,4 +204,15 @@ test('noise atlas contains 64 periodic padded slices and a caller-owned linear R
     samples.add(pixel(x + 2, y + 2))
   }
   assert.ok(samples.size > 32, 'z slices must contain different spatial samples')
+})
+
+test('resolve dimensions follow the actual volume target, including a diagnostic scale change', () => {
+  const s = create()
+  const texture = { width: 399, height: 299 }
+  s.raymarchStage._textureCache = { getFramebuffer: () => ({ getColorTexture: () => texture }) }
+  try {
+    assert.deepEqual(s.resolveStage.uniforms.effectSize(), new C.Cartesian2(399, 299))
+    texture.width = 801; texture.height = 603
+    assert.deepEqual(s.resolveStage.uniforms.effectSize(), new C.Cartesian2(801, 603))
+  } finally { s.raymarchStage._textureCache = undefined; s.destroy() }
 })

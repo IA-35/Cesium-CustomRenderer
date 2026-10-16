@@ -1,34 +1,40 @@
+import { cloudTransportDensityGLSL } from './reference/three-clouds/cloudTransportDensity.js'
+import { nightLightUniformsGLSL } from './nightLighting143.js'
+import { cloudSpatialGLSL } from './cloudSpatial143.js'
+import { cloudHorizonGLSL } from './cloudHorizon143.js'
+
 /**
  * Volumetric clouds following the reference article:
  * https://www.liaomz.top/2023/12/18/cesium-zhong-shi-xian-quan-qiu-ti-ji-yun/
  *
- * Three ideas from that article drive this implementation:
- *
- * 1. Density is accumulated along the ray with an early exit at a maximum, rather than being
- *    evaluated as an independent analytic field at every sample.
- * 2. Sun light uses a binary occlusion count ("how many of the N steps toward the sun land
- *    inside cloud"), not a physical optical-depth integral. The article's worked example is
- *    (1+1+1+0+0+0+0+0)/8 = 0.375. This is what removes the previous implementation's cost
- *    explosion: it used to run a full noise-based density four times per main step.
- * 3. A blue-noise offset jitters the march start so a low step count does not band.
- *
- * The cloud volume is bounded by two ellipsoid shells (cloud base and cloud top), normalised to
- * the WGS84 shape, which is how the article adapts the technique to a GIS engine.
+ * Perlin-Worley shape and Worley erosion are prepared from the pinned three-geospatial
+ * reference. View and light rays sample the same density; dual HG phase and scattering
+ * octaves follow its lighting formulation. Sources and licences: reference/three-clouds.
+ * The host supplies a WGS84-height-corrected tangent sphere and stable ENU noise coordinates.
  */
 
 /**
- * Cloud quality tiers. `steps` is the view-ray march and `lightSteps` the sun march; the
- * product bounds the cost. `maxDistance` limits how far the march follows the ray.
+ * Cloud quality tiers. `steps` bounds view samples; `lightSteps` bounds each sun/ground
+ * density march. Lit samples additionally evaluate atmosphere light transmittance.
+ * `maxDistance` limits view rays, not the spherical sun optical-depth interval.
  */
 export const CLOUD_TIERS = Object.freeze({
   performance: { steps: 24, lightSteps: 4, maxDistance: 30000 },
-  balanced: { steps: 48, lightSteps: 6, maxDistance: 40000 },
-  high: { steps: 80, lightSteps: 8, maxDistance: 50000 }
+  balanced: { steps: 96, lightSteps: 6, maxDistance: 40000 },
+  high: { steps: 128, lightSteps: 8, maxDistance: 50000 }
 })
 
 export function cloudTier(quality) {
   return CLOUD_TIERS[quality] || CLOUD_TIERS.balanced
 }
+
+// Fade optical density, not composited colour: L tends to zero and T to one.
+// The zero endpoint slope also keeps the receiver shadow range continuous.
+export const cloudDistanceFadeGLSL = `
+float ccrCloudDistanceFade(float distance, float maxDistance) {
+  return 1.0 - smoothstep(maxDistance * 0.7, maxDistance, distance);
+}
+`
 
 const glslNumber = value => Number.isFinite(value)
   ? (Number.isInteger(value) ? `${value}.0` : String(value))
@@ -37,16 +43,21 @@ const glslNumber = value => Number.isFinite(value)
 /**
  * GLSL for the cloud pass. The caller must supply:
  *   uniforms: cloudParams (vec4: coverage, baseAltitude, topAltitude, densityScale)
- *             cloudWind (vec3), noiseTexture (sampler2D atlas)
- *             atmosphereParams, sunDirectionAtmo (declared by atmosphereScattering143)
- *   functions: ccrSkyRadiance() and ccrSunRadiance(), both returning vec3. Keeping them as
- *              functions lets the host decide whether the cloud is lit by the analytic
- *              atmosphere, by an IBL probe, or by a constant, without this module knowing.
- *   helpers:   ccrNoise3D / ccrNoiseVoxel are declared here; ccrAtmosphereIntersect comes from
- *              atmosphereScattering143.
+ *             cloudWeatherOffset, cloudShapeOffset, cloudDetailOffset (metric vec3 offsets)
+ *             cloudFrame (vec2: frame, temporalActive)
+ *             noiseTexture (sampler2D atlas), atmosphereOrigin, cloudNoiseOrigin (vec3)
+ *             atmosphereParams, atmosphereSunRadiance, sunDirectionAtmo and
+ *             ATMOS_LIGHT_STEPS (declared by atmosphereScattering143)
+ *   functions: ccrSkyRadiance() returns representative sky radiance in the shared linear
+ *              HDR scale. Directional sunlight uses the unattenuated atmosphereSunRadiance
+ *              source and sample-altitude atmospheric transmittance, applied once.
+ *   helpers:   ccrAtmosphereIntersect / ccrAtmosphereLightTransmittance come from
+ *              atmosphereScattering143. ccrCloudNoise3D is declared here.
  *
  * It exposes `vec4 ccrClouds(vec3 origin, vec3 direction, float maxDistance)`, returning
  * premultiplied rgb in .rgb and the residual transmittance in .a.
+ * The out-distance overload and ccrCloudGeometry return extinction-contribution-weighted
+ * metric depth (sceneDistance on a miss); geometry.y is residual transmittance.
  */
 export function cloudGLSL(tier) {
   const { steps, lightSteps, maxDistance } = cloudTier(tier)
@@ -54,178 +65,309 @@ export function cloudGLSL(tier) {
 #define CLOUD_STEPS ${steps}
 #define CLOUD_LIGHT_STEPS ${lightSteps}
 #define CLOUD_MAX_DISTANCE ${glslNumber(maxDistance)}
-// Growth factor applied when a step lands in empty space. A value close to 1 keeps the march
-// near-uniform; larger values skip empty air faster at the cost of a coarser slab entry.
-#define CLOUD_STEP_GROWTH 1.35
-
+#define CLOUD_SCATTERING_OCTAVES 8
+${cloudSpatialGLSL}
+${nightLightUniformsGLSL}
+${cloudDistanceFadeGLSL}
 uniform vec4 cloudParams;    // coverage, baseAltitude, topAltitude, densityScale
 uniform vec3 cloudWind;
+uniform vec3 cloudWeatherOffset;
+uniform vec3 cloudShapeOffset;
+uniform vec3 cloudDetailOffset;
+uniform vec2 cloudFrame; // frameIndex, temporalActive; midpoint sampling while inactive
 uniform sampler2D noiseTexture;
+uniform vec3 atmosphereOrigin;
+uniform vec3 cloudNoiseOrigin;
+uniform int cloudModel;
+${cloudHorizonGLSL}
 
-// The noise atlas holds 64 periodic z slices laid out as 8x8 tiles, each padded by one wrapped
-// texel on all sides. Hardware filtering cannot be used across the padding, so the trilinear
-// interpolation is explicit; the article's technique also relies on a single-channel lookup.
-float ccrNoiseVoxel(ivec3 p) {
-  p = ivec3(mod(vec3(p), 64.0));
-  ivec2 tile = ivec2(p.z % 8, p.z / 8) * 66;
-  return texelFetch(noiseTexture, tile + p.xy + 1, 0).r;
-}
-
-float ccrNoise3D(vec3 point) {
+// R=Perlin-Worley shape, G=Worley detail, B=weather. The 64 periodic Z slices
+// have wrapped gutters, allowing bilinear XY filtering without bleeding between slices.
+vec3 ccrCloudNoise3D(vec3 point) {
   vec3 p = mod(point, 64.0);
   ivec3 base = ivec3(floor(p));
   vec3 f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
-  float x00 = mix(ccrNoiseVoxel(base), ccrNoiseVoxel(base + ivec3(1, 0, 0)), f.x);
-  float x10 = mix(ccrNoiseVoxel(base + ivec3(0, 1, 0)), ccrNoiseVoxel(base + ivec3(1, 1, 0)), f.x);
-  float x01 = mix(ccrNoiseVoxel(base + ivec3(0, 0, 1)), ccrNoiseVoxel(base + ivec3(1, 0, 1)), f.x);
-  float x11 = mix(ccrNoiseVoxel(base + ivec3(0, 1, 1)), ccrNoiseVoxel(base + ivec3(1, 1, 1)), f.x);
-  return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
+  // The wrapped gutter makes bilinear XY filtering safe, including x/y=63.
+  // Interpolate only the two Z slices explicitly; this is the same trilinear field.
+  ivec2 lower = ivec2(base.z % 8, base.z / 8) * 66;
+  int nextZ = (base.z + 1) % 64;
+  ivec2 upper = ivec2(nextZ % 8, nextZ / 8) * 66;
+  vec2 xy = vec2(base.xy) + f.xy + 1.5;
+  vec3 a = textureLod(noiseTexture, (vec2(lower) + xy) / 528.0, 0.0).rgb;
+  vec3 b = textureLod(noiseTexture, (vec2(upper) + xy) / 528.0, 0.0).rgb;
+  return mix(a, b, f.z);
 }
 
 // Altitude above the planet surface, in the planet-centred frame the caller now supplies.
 // Using the sphere radius rather than an ellipsoid is deliberate: it matches the atmosphere
-// module, which also carries the reference's spherical planet. The flattening difference is
-// recorded as an open item in reference/PORTING_DIFFERENCES.md.
+// module, with exact camera height supplied by the ellipsoid adapter.
 float ccrCloudAltitude(vec3 position) {
   return length(position - CCR_PLANET_POS) - atmosphereParams.x;
 }
 
-// Height inside the cloud slab, normalised to 0..1, with a soft profile so the slab does not
-// read as a hard-edged box.
+${cloudTransportDensityGLSL}
+
+// Retain the profile helpers for callers inspecting the cloud layer.
 float ccrCloudProfileAtAltitude(float altitude) {
   float t = (altitude - cloudParams.y) / max(cloudParams.z - cloudParams.y, 1.0);
   if (t <= 0.0 || t >= 1.0) return 0.0;
-  return smoothstep(0.0, 0.18, t) * (1.0 - smoothstep(0.62, 1.0, t));
+  return ccrCloudHeightScale(cloudModel==1?t:t*t);
 }
 
 float ccrCloudProfile(vec3 position) {
   return ccrCloudProfileAtAltitude(ccrCloudAltitude(position));
 }
 
-// Coverage-shaped noise: a low-frequency field carves the cloud mass, a higher-frequency one
-// adds the wispy detail. Both are single noise lookups, which is what keeps a step cheap.
+// Offsets evolve and wrap independently in cloudMotion143; deriving one field from
+// another wrapped offset would reset its phase at nonmatching texture periods.
 float ccrCloudDensity(vec3 position) {
-  float profile = ccrCloudProfile(position);
-  if (profile <= 0.0) return 0.0;
-  vec3 p = position + cloudWind;
-  float shape = ccrNoise3D(p / 9000.0);
-  float detail = ccrNoise3D(p / 3200.0);
-  float threshold = mix(0.72, 0.18, clamp(cloudParams.x, 0.0, 1.0));
-  float mass = smoothstep(threshold, threshold + 0.28, shape * 0.68 + detail * 0.32);
-  return mass * profile * max(cloudParams.w, 0.0);
+  if (cloudParams.x <= 0.0 || cloudParams.w <= 0.0) return 0.0;
+  float t = (ccrCloudAltitude(position) - cloudParams.y) / max(cloudParams.z - cloudParams.y, 1.0);
+  if (t <= 0.0 || t >= 1.0) return 0.0;
+  vec3 p = (position - atmosphereOrigin) + cloudNoiseOrigin;
+  vec3 weatherPosition = p + cloudWeatherOffset;
+  float localWeather = ccrCloudNoise3D(vec3(weatherPosition.xy * (64.0 / CCR_CLOUD_WEATHER_PERIOD), 0.0)).b;
+  // The reference's .35 bias peaks at 14% of the layer: with one low-coverage
+  // layer it collapses cumulus into thin sheets. t^2 gives a .7 weather bias
+  // (peak 37%) while media density and altitude still use the true height.
+  // Preserve the low, broad stratus profile.
+  float weatherHeight=cloudModel==1?t:t*t;
+  float weather = ccrCloudWeatherDensity(weatherHeight, localWeather, clamp(cloudParams.x, 0.0, 1.0));
+  if (weather <= 0.0) return 0.0;
+  // Body offset includes vertical evolution, in the noise field's ENU frame.
+  vec3 shapePosition = p + cloudShapeOffset;
+  float shape = ccrCloudNoise3D(shapePosition * (64.0 / CCR_CLOUD_SHAPE_PERIOD)).r;
+  // Restore upstream shapeAmount for a single cumulus layer: its prepared
+  // shape field has mean .8, so amount=1 leaves nearly every vertical column
+  // occupied. Strengthen carving without changing coverage or extinction.
+  if(cloudModel!=1) shape=1.0-(1.0-shape)*1.25;
+  float detail = ccrCloudNoise3D((p + cloudDetailOffset) * (64.0 / CCR_CLOUD_DETAIL_PERIOD)).g;
+  float detailAmount = cloudModel == 1 ? 0.32 : 1.0;
+  return ccrCloudMediaDensity(t, weather, shape, detail, detailAmount) * cloudParams.w;
 }
 
-// Binary sun occlusion, per the article: count how many samples toward the sun sit inside the
-// cloud, then convert that fraction into a transmission. Deliberately not an optical-depth
-// integral: this is the change that makes the light march affordable.
-float ccrCloudSunVisibility(vec3 position) {
-  float altitude = ccrCloudAltitude(position);
-  // The planet-centred frame has no global "up": vertical is the local surface normal. Using the
-  // sun direction's z component here would only be correct on the equatorial plane.
-  vec3 up = normalize(position - CCR_PLANET_POS);
-  float sunVertical = dot(sunDirectionAtmo, up);
-  // Distance to the top or bottom of the slab along the sun direction, so the samples stay inside.
-  float distanceToTop = 4000.0;
-  if (abs(sunVertical) > 1.0e-4) {
-    float boundary = sunVertical > 0.0 ? cloudParams.z : cloudParams.y;
-    distanceToTop = clamp((boundary - altitude) / sunVertical, 0.0, 6000.0);
-  }
-  float stepLength = distanceToTop / float(CLOUD_LIGHT_STEPS);
-  float inside = 0.0;
+// The forward shell can have two lobes at the limb. Keep both, clip against the
+// first planet hit, and use this exact interval for view, depth, sun and ground rays.
+// ccrAtmosphereIntersect uses the stable (r-R)*(r+R) quadratic constant.
+vec4 ccrCloudShellIntervals(vec3 origin, vec3 direction, float distanceLimit) {
+  vec3 centredOrigin = origin - CCR_PLANET_POS;
+  vec2 outer = ccrAtmosphereIntersect(centredOrigin, direction, atmosphereParams.x + cloudParams.z);
+  float start = max(outer.x, 0.0);
+  float finish = min(outer.y, distanceLimit);
+  vec2 ground = ccrAtmosphereIntersect(centredOrigin, direction, atmosphereParams.x);
+  if (ground.x >= 0.0 && ground.y >= ground.x) finish = min(finish, ground.x);
+  if (finish <= start) return vec4(0.0);
+  vec2 inner = ccrAtmosphereIntersect(centredOrigin, direction, atmosphereParams.x + cloudParams.y);
+  if (inner.y <= start || inner.x >= finish || inner.y < inner.x) return vec4(start, finish, 0.0, 0.0);
+  vec4 intervals = vec4(0.0);
+  if (inner.x > start) intervals.xy = vec2(start, min(finish, inner.x));
+  if (inner.y < finish) intervals.zw = vec2(max(start, inner.y), finish);
+  return intervals;
+}
+
+float ccrCloudIntervalLength(vec4 intervals) {
+  return max(intervals.y - intervals.x, 0.0) + max(intervals.w - intervals.z, 0.0);
+}
+
+float ccrCloudIntervalDistance(vec4 intervals, float pathDistance) {
+  float firstLength = max(intervals.y - intervals.x, 0.0);
+  return pathDistance < firstLength ? intervals.x + pathDistance : intervals.z + pathDistance - firstLength;
+}
+
+float ccrCloudOpticalDepth(vec3 position, vec3 direction, vec4 intervals) {
+  float stepLength = ccrCloudIntervalLength(intervals) / float(CLOUD_LIGHT_STEPS);
+  if (stepLength <= 0.0) return 0.0;
+  float opticalDepth = 0.0;
   for (int l = 0; l < CLOUD_LIGHT_STEPS; l++) {
-    vec3 samplePosition = position + sunDirectionAtmo * ((float(l) + 0.5) * stepLength);
-    float sampleAltitude = ccrCloudAltitude(samplePosition);
-    if (ccrCloudProfileAtAltitude(sampleAltitude) > 0.0
-        && ccrNoise3D((samplePosition + cloudWind) / 9000.0) > 0.35) inside += 1.0;
+    float distance = ccrCloudIntervalDistance(intervals, (float(l) + 0.5) * stepLength);
+    vec3 samplePosition = position + direction * distance;
+    opticalDepth += ccrCloudDensity(samplePosition) * stepLength;
   }
-  return exp(-(inside / float(CLOUD_LIGHT_STEPS)) * 6.0);
+  return opticalDepth;
 }
 
-// Blue-noise style per-pixel offset. Using the same golden-ratio hash as the reference keeps the
-// banding break-up stable without requiring a blue-noise texture.
+// No planar grazing-angle approximation or kilometre truncation: a horizontal
+// sun ray can cross tens of kilometres of the spherical layer.
+float ccrCloudLightOpticalDepth(vec3 position,vec3 lightDirection) {
+  vec4 intervals = ccrCloudShellIntervals(position, lightDirection, 1.0e9);
+  return ccrCloudOpticalDepth(position, lightDirection, intervals);
+}
+float ccrCloudSunOpticalDepth(vec3 position) {
+  vec4 intervals = ccrCloudShellIntervals(position, sunDirectionAtmo, 1.0e9);
+  return ccrCloudOpticalDepth(position, sunDirectionAtmo, intervals);
+}
+
+float ccrCloudSunVisibility(vec3 position) { return exp(-ccrCloudSunOpticalDepth(position)); }
+
+vec3 ccrCloudLightTransmittance(vec3 position,vec3 lightDirection) {
+  vec2 hit = ccrAtmosphereIntersect(position - CCR_PLANET_POS, lightDirection, atmosphereParams.y);
+  float stepLength = max(hit.y, 0.0) / float(ATMOS_LIGHT_STEPS);
+  return ccrAtmosphereLightTransmittance(position, lightDirection, stepLength);
+}
+vec3 ccrCloudAtmosphereSunTransmittance(vec3 position) {
+  vec2 hit = ccrAtmosphereIntersect(position - CCR_PLANET_POS, sunDirectionAtmo, atmosphereParams.y);
+  float stepLength = max(hit.y, 0.0) / float(ATMOS_LIGHT_STEPS);
+  return ccrAtmosphereLightTransmittance(position, sunDirectionAtmo, stepLength);
+}
+
+vec3 ccrCloudGroundBounce(vec3 position, vec3 skyIrradiance, vec3 sunIrradiance) {
+  vec3 up = normalize(position - CCR_PLANET_POS);
+  vec4 intervals = ccrCloudShellIntervals(position, -up, 1.0e9);
+  float opticalDepth = ccrCloudOpticalDepth(position, -up, intervals);
+  // Upstream Lambertian albedo=0.3, with direct ground irradiance reduced by coverage.
+  // skyIrradiance is an analytic hemispherical estimate (see TRANSPORT_PORT.md).
+  vec3 groundIrradiance = skyIrradiance + (1.0 - clamp(cloudParams.x, 0.0, 1.0))
+    * sunIrradiance * max(dot(up, sunDirectionAtmo), 0.0);
+  vec3 bouncedRadiance = (0.3 / 3.14159265359) * groundIrradiance * exp(-opticalDepth);
+  return bouncedRadiance * 0.0795774715459;
+}
+
+// Dual HG phase and bounded multiple-scattering octaves, following the reference's
+// optical-depth formulation. Never treat radiance as independent of scattering density.
+float ccrCloudPhase(float mu, float g) {
+  return (1.0 - g * g) / (12.5663706144 * pow(max(1.0 + g * g - 2.0 * g * mu, 0.001), 1.5));
+}
+float ccrCloudScattering(float opticalDepth, float mu) {
+  float result = 0.0, weight = 1.0, attenuation = 1.0;
+  for (int i = 0; i < CLOUD_SCATTERING_OCTAVES; i++) {
+    float phase = mix(ccrCloudPhase(mu, 0.7 * attenuation), ccrCloudPhase(mu, -0.2 * attenuation), 0.5);
+    result += weight * exp(-opticalDepth * attenuation) * phase;
+    weight *= 0.5; attenuation *= 0.5;
+  }
+  return result;
+}
+
+// Psi is already mean radiance: isotropic scattering integrates 4*pi*Psi
+// against 1/(4*pi). The hemispherical pi*Psi used for ground/fog lighting
+// cannot be fed through that same normalization or it loses a factor of four.
+vec3 ccrCloudSkyScatteringSource(vec3 hemisphereIrradiance) {
+#ifdef CCR_ATMOSPHERE_LUT
+  if(atmosphereLutReady)return hemisphereIrradiance/3.14159265359;
+#endif
+  return hemisphereIrradiance*0.0795774715459;
+}
+
+// Two vertical rays represent the upper and lower 2*pi hemispheres. Retain
+// indirect ambient penetration with the same bounded scattering octaves;
+// normalize so an unobstructed environment stays exactly unchanged.
+float ccrCloudAmbientVisibility(vec2 opticalDepth) {
+  vec2 transmission=vec2(0.0);
+  float weight=1.0,attenuation=1.0,totalWeight=0.0;
+  for(int i=0;i<CLOUD_SCATTERING_OCTAVES;i++) {
+    transmission+=weight*exp(-max(opticalDepth,vec2(0.0))*attenuation);
+    totalWeight+=weight;
+    weight*=0.5;attenuation*=0.5;
+  }
+  return 0.5*(transmission.x+transmission.y)/totalWeight;
+}
+vec2 ccrCloudAmbientOpticalDepth(vec3 position) {
+  vec3 up=normalize(position-CCR_PLANET_POS);
+  float above=ccrCloudOpticalDepth(position,up,ccrCloudShellIntervals(position,up,1.0e9));
+  float below=ccrCloudOpticalDepth(position,-up,ccrCloudShellIntervals(position,-up,1.0e9));
+  return vec2(above,below);
+}
+
+// Hash jitter is activated only when the cloud-specific reconstruction accepts history.
 float ccrCloudJitter() {
-  return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  if (cloudFrame.y < 0.5) return 0.5;
+  vec3 p = fract(vec3(gl_FragCoord.xy, cloudFrame.x) * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
 }
 
-vec4 ccrClouds(vec3 origin, vec3 direction, float sceneDistance) {
-  // The slab bounds are altitudes above the ellipsoid, so the containing shells sit at
-  // planetRadius + altitude. Intersecting the exact ellipsoid per ray is not worth it here:
-  // the atmosphere's radius carries the same flattening correction and the slab is thin
-  // relative to it, so a sphere at the corrected radius keeps the boundary consistent.
-  //
-  // Every exit below sets start/limit so the function has a single return path; early
-  // returns made the driver warn that the result could be uninitialised.
-  float cameraAltitude = ccrCloudAltitude(origin);
-  float start = 0.0;
-  float limit = min(sceneDistance, CLOUD_MAX_DISTANCE);
-  bool visible = true;
-  if (cameraAltitude > cloudParams.z) {
-    // Above the slab: enter where the ray crosses the top shell.
-    vec2 topHit = ccrAtmosphereIntersect(origin, direction, atmosphereParams.x + cloudParams.z);
-    if (topHit.y < 0.0 || topHit.y < topHit.x) visible = false;
-    else {
-      start = max(topHit.x, 0.0);
-      vec2 baseHit = ccrAtmosphereIntersect(origin, direction, atmosphereParams.x + cloudParams.y);
-      if (baseHit.y > 0.0 && baseHit.x > start) limit = min(limit, baseHit.x);
-    }
-  } else if (cameraAltitude < cloudParams.y) {
-    // Below the slab: enter where the ray crosses the base shell.
-    vec2 baseHit = ccrAtmosphereIntersect(origin, direction, atmosphereParams.x + cloudParams.y);
-    if (baseHit.y < 0.0 || baseHit.y < baseHit.x) visible = false;
-    else {
-      start = max(baseHit.x, 0.0);
-      vec2 topHit = ccrAtmosphereIntersect(origin, direction, atmosphereParams.x + cloudParams.z);
-      if (topHit.y > 0.0 && topHit.x > start) limit = min(limit, topHit.x);
-    }
-  } else {
-    // Inside the slab already.
-    vec2 topHit = ccrAtmosphereIntersect(origin, direction, atmosphereParams.x + cloudParams.z);
-    if (topHit.y > 0.0 && topHit.x > 0.0) limit = min(limit, topHit.x);
-  }
-  if (!visible || limit <= start) return vec4(0.0);
-
-  // Adaptive stepping, following the approach used by @takram/three-clouds:
-  // - the step grows geometrically as the ray advances, so near-field detail keeps small steps
-  //   while the far field is sampled coarsely;
-  // - a sample that lands in empty space advances by an extra step instead of only skipping,
-  //   which is what keeps the march affordable when most of the ray misses the cloud.
-  // CLOUD_STEPS remains an upper bound on iterations, not a fixed sample count.
-  float baseStep = (limit - start) / float(CLOUD_STEPS);
-  float stepLength = baseStep;
+// Shared density quadrature gives the radiance and geometry passes identical depth/T.
+// Geometry mode skips all atmospheric and secondary light marches.
+vec4 ccrCloudMarch(vec3 origin, vec3 direction, float sceneDistance, bool integrateLighting, out float cloudDistance) {
+  cloudDistance = sceneDistance;
+  if (cloudParams.x <= 0.0 || cloudParams.w <= 0.0) return vec4(0.0, 0.0, 0.0, 1.0);
+  float viewRange = ccrCloudViewRange(origin);
+  float limit = min(max(sceneDistance, 0.0), viewRange);
+  vec4 intervals = ccrCloudShellIntervals(origin, direction, limit);
+  float pathLength = ccrCloudIntervalLength(intervals);
+  if (pathLength <= 0.0) return vec4(0.0, 0.0, 0.0, 1.0);
+  float sampleCount = float(CLOUD_STEPS) * (1.0 + cloudHorizonBlend * clamp(pathLength/CLOUD_MAX_DISTANCE-1.0,0.0,1.0));
+  bool extendedSampling=cloudHorizonBlend>0.0&&pathLength>CLOUD_MAX_DISTANCE;
+  float stepLength = pathLength / float(CLOUD_STEPS);
   float jitter = ccrCloudJitter();
   vec3 accumulated = vec3(0.0);
   float transmittance = 1.0;
-  float distanceAlongRay = start + stepLength * jitter;
-
-  for (int i = 0; i < CLOUD_STEPS; i++) {
-    if (distanceAlongRay > limit) break;
+  float weightedDistance = 0.0, weightSum = 0.0;
+  for (int i = 0; i < CLOUD_STEPS * 2; i++) {
+    if(float(i)>=ceil(sampleCount))break;
+    float start=ccrCloudViewPathDistance(float(i)/ceil(sampleCount),pathLength);
+    float finish=ccrCloudViewPathDistance(float(i+1)/ceil(sampleCount),pathLength);
+    // Preserve the accepted uniform quadrature exactly while looking down.
+    if(extendedSampling)stepLength=finish-start;
+    float pathDistance=extendedSampling?mix(start,finish,jitter):(float(i)+jitter)*stepLength;
+    float distanceAlongRay = ccrCloudIntervalDistance(intervals, pathDistance);
     vec3 position = origin + direction * distanceAlongRay;
-    float density = ccrCloudDensity(position);
-    if (density <= 0.0) {
-      // Empty space: take a longer stride rather than a normal one and re-test.
-      stepLength *= CLOUD_STEP_GROWTH;
-      distanceAlongRay += stepLength;
-      continue;
+    float density = ccrCloudDensity(position) * ccrCloudDistanceFade(distanceAlongRay, viewRange);
+    if (density <= 0.0) continue;
+    float stepTransmittance = exp(-density * stepLength);
+    float sampleWeight = transmittance * (1.0 - stepTransmittance);
+    weightedDistance += distanceAlongRay * sampleWeight;
+    weightSum += sampleWeight;
+    if (integrateLighting) {
+      float sunDepth = ccrCloudSunOpticalDepth(position);
+      float heightFraction = clamp((ccrCloudAltitude(position) - cloudParams.y) / max(cloudParams.z - cloudParams.y, 1.0), 0.0, 1.0);
+      // atmosphereSunRadiance is the unattenuated directional source used by the
+      // atmosphere, never the camera-altitude ccrSunRadiance estimate. The sky input
+      // is representative radiance: pi*L estimates hemispherical sky irradiance.
+      vec3 sunIrradiance = atmosphereSunRadiance * ccrCloudAtmosphereSunTransmittance(position);
+      vec3 skyIrradiance = ccrSkyRadiance() * 3.14159265359;
+#ifdef CCR_ATMOSPHERE_LUT
+      if(atmosphereLutReady) skyIrradiance=ccrLutSkyIrradiance(position,sunDirectionAtmo)
+        *atmosphereSunRadiance*environmentSkyScale;
+#endif
+      vec3 lighting = sunIrradiance * ccrCloudScattering(sunDepth, dot(direction, sunDirectionAtmo));
+      float skyGradient=heightFraction*0.5+0.5;
+      float ambientVisibility=ccrCloudAmbientVisibility(ccrCloudAmbientOpticalDepth(position));
+      lighting += ccrCloudSkyScatteringSource(skyIrradiance) * skyGradient * ambientVisibility;
+#ifdef CCR_ATMOSPHERE_LUT
+      // M already includes the ground hemisphere. Do not add a second diffuse
+      // ground term to its full-sphere mean radiance.
+      if(!atmosphereLutReady) lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance);
+#else
+      lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance);
+#endif
+      lighting += nightSkyRadiance * (heightFraction * 0.5 + 0.5);
+      if(max(max(moonRadiance.r,moonRadiance.g),moonRadiance.b)>0.0) {
+        vec3 moonIrradiance = moonRadiance * ccrCloudLightTransmittance(position, moonDirectionAtmo);
+        float moonDepth = ccrCloudLightOpticalDepth(position, moonDirectionAtmo);
+        lighting += moonIrradiance * ccrCloudScattering(moonDepth,dot(direction,moonDirectionAtmo));
+#ifdef CCR_ATMOSPHERE_LUT
+        if(atmosphereLutReady) lighting += ccrLutMultipleScattering(position,moonDirectionAtmo)
+          * moonRadiance * (heightFraction * 0.5 + 0.5);
+#endif
+      }
+      // Upstream powder defaults, extinction measured in inverse metres. This is
+      // a local material term, independent of view step length or quality tier.
+      lighting *= 1.0 - 0.8 * exp(-density * 150.0);
+      // Unit scattering albedo: sigma_s cancels sigma_t in the analytical integral.
+      // No division by density, which would turn low-density edges into speckles.
+      accumulated += lighting * sampleWeight;
     }
-    float extinction = density * stepLength;
-    float visibility = ccrCloudSunVisibility(position);
-    // Light reaching this sample: sun contribution shaped by the phase toward the view ray,
-    // plus a share of the sky so the shadowed side is not black.
-    vec3 lighting = ccrSkyRadiance() * 0.55 + ccrSunRadiance() * visibility;
-    // Energy-conserving analytical integration of the scattered light over the step, which is
-    // more accurate than multiplying by (1 - exp(-extinction)) and also keeps the result stable
-    // when the step length changes between iterations.
-    float stepTransmittance = exp(-extinction);
-    vec3 scatteringIntegral = (lighting - lighting * stepTransmittance) / max(density, 1e-6);
-    accumulated += transmittance * scatteringIntegral;
     transmittance *= stepTransmittance;
     if (transmittance < 0.01) break;
-    // Advance by the current step, then let it grow for the next iteration.
-    distanceAlongRay += stepLength;
-    stepLength *= CLOUD_STEP_GROWTH;
   }
+  cloudDistance = weightSum > 0.0 ? weightedDistance / weightSum : sceneDistance;
   return vec4(accumulated, transmittance);
+}
+
+vec2 ccrCloudGeometry(vec3 origin, vec3 direction, float sceneDistance) {
+  float cloudDistance;
+  vec4 transport = ccrCloudMarch(origin, direction, sceneDistance, false, cloudDistance);
+  return vec2(cloudDistance, transport.a);
+}
+
+vec4 ccrClouds(vec3 origin, vec3 direction, float sceneDistance, out float cloudDistance) {
+  return ccrCloudMarch(origin, direction, sceneDistance, true, cloudDistance);
+}
+
+vec4 ccrClouds(vec3 origin, vec3 direction, float sceneDistance) {
+  float cloudDistance;
+  return ccrClouds(origin, direction, sceneDistance, cloudDistance);
 }
 `
 }

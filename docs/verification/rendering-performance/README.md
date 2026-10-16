@@ -1,6 +1,6 @@
 # CCR 渲染管线优化：基线与限制
 
-> 更新：2026-10-14 · 对照契约 `docs/RENDERING_PERFORMANCE_NEXT_v3.md`
+> 更新：2026-10-14 · 对照契约 `docs/03-rendering-perf/RENDERING_PERFORMANCE_NEXT_v3.md`
 
 ## 一、这份文档说明什么
 

@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process')
 function parseArgs(argv = process.argv.slice(2)) {
   const result = { case: 'enhanced-current', warmup: 30, sample: 300, repeat: 3,
     port: Number(process.env.CCR_BASELINE_PORT || 8878), output: null, url: null,
-    headless: true, noServer: false }
+    headless: true, noServer: false, environment: null }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     const [key, inline] = arg.split('=', 2)
@@ -24,6 +24,7 @@ function parseArgs(argv = process.argv.slice(2)) {
     else if (key === '--url') result.url = value
     else if (key === '--headed') result.headless = false
     else if (key === '--no-server') result.noServer = true
+    else if (key === '--environment') result.environment = value === 'off' ? false : value === 'on' ? true : null
     else if (key === '--help' || key === '-h') result.help = true
     else throw new Error(`Unknown option: ${arg}`)
   }
@@ -148,6 +149,11 @@ async function run() {
         }
         if (options.case === 'native' && pipeline?.setEnabled) pipeline.setEnabled(false)
         else if (pipeline?.setEnabled) pipeline.setEnabled(true)
+        // Phase 0 A/B: measure what the volumetric environment pass actually costs.
+        if (typeof options.environment === 'boolean' && pipeline?.setOptions) {
+          pipeline.setOptions({ environment: options.environment, clouds: options.environment, volumetricFog: options.environment })
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
         const gpuExtension = scene.context?._gl?.getExtension?.('EXT_disjoint_timer_query_webgl2')
         const gpuSupported = !!gpuExtension
         const ledger = new PassCostLedger143({

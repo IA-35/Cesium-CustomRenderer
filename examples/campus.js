@@ -89,7 +89,7 @@ const previewWhiteModelUrl = contextParam === 'none' ? null
 
 const viewer = new Cesium.Viewer('scene', {
   baseLayer: false, baseLayerPicker: false, geocoder: false, navigationHelpButton: false,
-  timeline: false, animation: false, sceneModePicker: false, homeButton: false,
+  timeline: true, animation: false, sceneModePicker: false, homeButton: false,
   requestRenderMode: false
 })
 viewer.scene.globe.show = true
@@ -100,6 +100,9 @@ viewer.scene.screenSpaceCameraController.zoomEventTypes = [Cesium.CameraEventTyp
 if (previewImageryUrl) viewer.imageryLayers.add(new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({ url: previewImageryUrl })))
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601('2026-09-08T03:00:00Z')
 viewer.clock.shouldAnimate = false
+viewer.timeline.zoomTo(
+  Cesium.JulianDate.fromIso8601('2026-09-07T16:00:00Z'),
+  Cesium.JulianDate.fromIso8601('2026-09-08T16:00:00Z'))
 // Explicit bounded experiment, applied equally to both measurements. The default
 // full-globe camera can span multiple frusta and must remain unsupported.
 const singleFrustumSample = query.get('singleFrustum') === '1'
@@ -167,8 +170,9 @@ const ui = {
   trees: { visible: true, source: treeSource === 'glb' ? (lightweightVegetation ? 'EZ-Tree 松树／松柏' : '原 GLB 四级 LOD') : 'ez-tree 程序化松树', state: treeEnabled ? '等待加载' : '未启用', instances: 0, batches: 0, lods: '0 / 0 / 0 / 0' },
   grass: { visible: true, state: grassEnabled ? '等待加载' : '未启用', polygons: 0, area: 0, instances: 0, draws: 0 },
   water: { visible: true, state: waterEnabled ? '等待加载' : '未启用', features: 0, heights: '' },
-  environment: { on: false, high: false, playing: false }
+  environment: { on: false, high: false, playing: false, cloudCoverage: 0, cloudThickness: 1200 }
 }
+viewer.clock.onTick.addEventListener(clock => { ui.environment.playing = clock.shouldAnimate })
 const aaNotes = {
   off: '关闭所有抗锯齿，用于对照。',
   fxaa: '单次颜色过滤，开销较低；平滑档会更柔和。',
@@ -207,6 +211,9 @@ const syncUI = () => {
   ui.environment.on = options.environment === true
   ui.environment.high = options.environmentQuality === 'high'
   ui.environment.playing = viewer.clock.shouldAnimate
+  const environment = pipeline.environmentRenderer.state
+  ui.environment.cloudCoverage = options.cloudCoverage ?? environment.cloudCoverage
+  ui.environment.cloudThickness = options.cloudThickness ?? (environment.cloudTop - environment.cloudBase)
   aaExplanation.textContent = aaNotes[aa.mode] || ''
   if (spatialQualityController) spatialQualityController.enable(['smaa', 'fxaa'].includes(aa.mode))
 }
@@ -256,6 +263,10 @@ environmentFolder.add(ui.environment, 'on').name('环境').listen()
   .onChange(value => { pipeline.setOptions({ environment: value }); syncUI() })
 environmentFolder.add(ui.environment, 'high').name('高质量环境').listen()
   .onChange(value => { pipeline.setOptions({ environmentQuality: value ? 'high' : 'balanced' }); syncUI() })
+environmentFolder.add(ui.environment, 'cloudCoverage', 0, 0.95, 0.01).name('云量').listen()
+  .onChange(value => pipeline.setOptions({ cloudCoverage: value })).onFinishChange(() => syncUI())
+environmentFolder.add(ui.environment, 'cloudThickness', 100, 6000, 50).name('云层厚度（米）').listen()
+  .onChange(value => pipeline.setOptions({ cloudThickness: value })).onFinishChange(() => syncUI())
 const setClock = time => { viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(time); viewer.scene.requestRender() }
 const clockFolder = environmentFolder.addFolder('时间')
 action(clockFolder, '6:30', () => setClock('2026-09-07T22:30:00Z'))
@@ -568,6 +579,7 @@ if (query.get('vegetationCheck') === '1') {
 const stats = new Stats()
 // Stats 自带样式只有 bottom:12px，横向靠静态位置落在最左边；这里与左侧 HUD 的 12px 边距对齐。
 stats.dom.style.left = '12px'
+stats.dom.style.bottom = '40px'
 document.body.appendChild(stats.dom)
 viewer.scene.preRender.addEventListener(() => stats.begin())
 viewer.scene.postRender.addEventListener(() => stats.end())
@@ -591,6 +603,15 @@ viewer.scene.postRender.addEventListener(() => {
   aaActual.textContent = `后处理：${d.postProcess.effective === 'off' ? '关闭' : d.postProcess.effective.toUpperCase()} · MSAA ${actual && actual.colorRenderbufferSamples || 1}× · ${viewer.canvas.width}×${viewer.canvas.height}`
 })
 
+// Each asset group loads inside its own guarded block, so one unavailable source (an
+// unreachable GLB host, a missing model file) cannot stop the others. Previously the building
+// GLB load ran inside the single outer try, so its failure skipped the procedural vegetation,
+// water and traffic along with it — even though those share no assets with the buildings.
+const reportFailure = (label, error) => {
+  errors.push(`${label}加载失败：${error.message}`)
+  return `${label}加载失败：${error.message}`
+}
+
 try {
   if (previewWhiteModelUrl) {
     contextTilesReady = Cesium.Cesium3DTileset.fromUrl(previewWhiteModelUrl, { maximumScreenSpaceError: 32 })
@@ -598,25 +619,35 @@ try {
         if (viewer.isDestroyed()) { whiteModel.destroy(); return }
         viewer.scene.primitives.add(whiteModel); contextTiles.push(whiteModel)
       })
-      .catch(error => { errors.push(`周边白模加载失败：${error.message}`); status.textContent = errors.at(-1) })
+      .catch(error => { status.textContent = reportFailure('周边白模', error) })
   }
   look(-0.65, 1800)
   for (const asset of activeTilesets) {
-    const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${asset.url}`, {
-      maximumScreenSpaceError: 32, shadows: Cesium.ShadowMode.ENABLED
-    })
-    const cartographic = Cesium.Cartographic.fromCartesian(tile.boundingSphere.center)
-    const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0)
-    const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, asset.height)
-    tile.modelMatrix = Cesium.Matrix4.fromTranslation(
-      Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3())
-    )
-    tile.name = asset.name
-    viewer.scene.primitives.add(tile)
-    tiles.push(tile)
+    try {
+      const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${asset.url}`, {
+        maximumScreenSpaceError: 32, shadows: Cesium.ShadowMode.ENABLED
+      })
+      const cartographic = Cesium.Cartographic.fromCartesian(tile.boundingSphere.center)
+      const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0)
+      const offset = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, asset.height)
+      tile.modelMatrix = Cesium.Matrix4.fromTranslation(
+        Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3())
+      )
+      tile.name = asset.name
+      viewer.scene.primitives.add(tile)
+      tiles.push(tile)
+    } catch (error) {
+      status.textContent = reportFailure(`地形 ${asset.name || asset.url}`, error)
+    }
   }
   pipeline.setCampusOrigin(cameraCenter)
-  if (modelMode === 'glb') {
+} catch (error) { errors.push(error.message); status.textContent = `地形加载失败：${error.message}` }
+
+// Building models. Isolated from everything below: a GLB host that is down must not prevent the
+// procedural vegetation from being generated, since those are independent data sources.
+let glbFailure = null
+if (modelMode === 'glb') {
+  try {
     // Fail once, with an actionable message, instead of once per missing GLB.
     const resolvedGlbBase = await assertCampusGlbBase(
       glbBaseCandidates.map(candidate => `${candidate.replace(/\/$/, '')}/${glbManifest.models[0].file}`))
@@ -626,63 +657,70 @@ try {
       status.textContent = `建筑 GLB 加载中 ${done}/${total}`
     }, sharedGlbTextures)
     window.campus.sharedGlbTextures = sharedGlbTextures
-    console.log(glbManifest);
     const reflectionFiles = new Set(glbManifest.models.filter(asset => asset.environmentReflection).map(asset => asset.file))
-    console.log(reflectionFiles);
     for (const model of models) {
       if (reflectionFiles.has(model.id?.file)) pipeline.setEnvironmentReflectionIncluded(model, true)
     }
+  } catch (error) {
+    glbFailure = error
+    status.textContent = reportFailure('建筑模型', error)
   }
+}
+
+// Viewer-level setup. `look` and the status line must not be able to abort the asset loads below,
+// so this block is separate from them.
+try {
   look(-0.65, 1800)
-  status.textContent = modelMode === 'glb'
-    ? `已加载建筑 GLB ${models.length}/${glbManifest.models.length}，地形 ${tiles.length} 组；原生/增强使用同一时间、相机与资产。`
-    : `已加载原始 3D Tiles ${tiles.length}/${BUSINESS_TILESETS.length}；可与默认 GLB 模式对照。`
-  if (treeEnabled) {
-    window.campus.treeReady = loadTrees()
-    try {
-      await window.campus.treeReady
-      status.textContent += ` 已加载固定树木 ${trees.getDiagnostics().instances} 株。`
-    } catch (error) {
-      errors.push(`固定树木加载失败：${error.message}`)
-      status.textContent = errors.at(-1)
-    }
+  status.textContent = glbFailure
+    ? `建筑模型不可用（${glbFailure.message.split('。')[0]}）`
+    : modelMode === 'glb'
+      ? `已加载建筑 GLB ${models.length}/${glbManifest.models.length}，地形 ${tiles.length} 组；原生/增强使用同一时间、相机与资产。`
+      : `已加载原始 3D Tiles ${tiles.length}/${BUSINESS_TILESETS.length}；可与默认 GLB 模式对照。`
+} catch (error) { errors.push(error.message); status.textContent = `初始化失败：${error.message}` }
+
+// Procedural vegetation. Independent of the building models above: it has its own manifest and
+// generates geometry at runtime, so an unreachable GLB host must not suppress it.
+if (treeEnabled) {
+  window.campus.treeReady = loadTrees()
+  try {
+    await window.campus.treeReady
+    status.textContent += ` 已加载固定树木 ${trees.getDiagnostics().instances} 株。`
+  } catch (error) {
+    status.textContent = reportFailure('固定树木', error)
   }
-  // if (grassEnabled) {
-  //   window.campus.grassReady = loadGrass()
-  //   try {
-  //     await window.campus.grassReady
-  //     const diagnostics = grass.getDiagnostics()
-  //     status.textContent += ` 已生成面内草地 ${diagnostics.instances} 簇 / ${diagnostics.polygons} 个面（${diagnostics.areaHectares} 公顷）。`
-  //   } catch (error) {
-  //     errors.push(`草地加载失败：${error.message}`)
-  //     status.textContent = errors.at(-1)
-  //   }
-  // }
-  if (waterEnabled) {
-    window.campus.waterReady = loadWater()
-    try {
-      await window.campus.waterReady
-      const diagnostics = water.getDiagnostics()
-      status.textContent += ` 已加载动态水面 ${diagnostics.features} 处。`
-    } catch (error) {
-      errors.push(`水面加载失败：${error.message}`)
-      status.textContent = errors.at(-1)
-    }
+}
+// if (grassEnabled) {
+//   window.campus.grassReady = loadGrass()
+//   try {
+//     await window.campus.grassReady
+//     const diagnostics = grass.getDiagnostics()
+//     status.textContent += ` 已生成面内草地 ${diagnostics.instances} 簇 / ${diagnostics.polygons} 个面（${diagnostics.areaHectares} 公顷）。`
+//   } catch (error) {
+//     status.textContent = reportFailure('草地', error)
+//   }
+// }
+if (waterEnabled) {
+  window.campus.waterReady = loadWater()
+  try {
+    await window.campus.waterReady
+    const diagnostics = water.getDiagnostics()
+    status.textContent += ` 已加载动态水面 ${diagnostics.features} 处。`
+  } catch (error) {
+    status.textContent = reportFailure('水面', error)
   }
-  campusAssetsLoaded = true
-  if (trafficManifestUrl) {
-    status.textContent += ' 正在准备道路车流…'
-    window.campus.trafficReady = loadTraffic()
-    try {
-      await window.campus.trafficReady
-      status.textContent += ` 已加载车流 ${traffic.getDiagnostics().vehicles} 辆。`
-      lookAtTraffic(350)
-    } catch (error) {
-      errors.push(`车流加载失败：${error.message}`)
-      status.textContent = errors.at(-1)
-    }
+}
+campusAssetsLoaded = true
+if (trafficManifestUrl) {
+  status.textContent += ' 正在准备道路车流…'
+  window.campus.trafficReady = loadTraffic()
+  try {
+    await window.campus.trafficReady
+    status.textContent += ` 已加载车流 ${traffic.getDiagnostics().vehicles} 辆。`
+    lookAtTraffic(350)
+  } catch (error) {
+    status.textContent = reportFailure('车流', error)
   }
-} catch (error) { errors.push(error.message); status.textContent = `模型加载失败：${error.message}` }
+}
 
 async function measure() {
   if (window.campus.measuring) return

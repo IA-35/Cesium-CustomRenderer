@@ -370,6 +370,7 @@ export default class VisualPipeline {
     } else graph.addPass('present', pass => pass.read(screen), null, { phase: 'present', sideEffect: true })
     const pooledCaches = [this.screenSpaceAO?.pooled, this.hdrBloom?.pooled].filter(Boolean)
     for (const cache of pooledCaches) cache.declareGraph(graph)
+    this.environmentRenderer?.environmentGraph?.declareGraph(graph)
     return graph.describe()
   }
 
@@ -532,7 +533,8 @@ export default class VisualPipeline {
   }
   ensureEnvironmentRenderer() {
     if (!this.environmentRenderer) {
-      this.environmentRenderer = new EnvironmentRenderer(this.Cesium, this.viewer, () => this.options, () => this.customShadow)
+      this.environmentRenderer = new EnvironmentRenderer(this.Cesium, this.viewer, () => this.options, () => this.customShadow,
+        {graph:this.renderGraph,rhi:this.rhi,onGraphChanged:()=>this.rebuildRenderGraph()})
       if (this.campusOrigin) this.environmentRenderer.setOrigin(this.campusOrigin)
     }
     return this.environmentRenderer

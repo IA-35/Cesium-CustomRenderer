@@ -1,6 +1,6 @@
 # 图像质量接口与空间抗锯齿（Cesium 1.143）
 
-2026-09-15：默认SMAA均衡档，MSAA请求1，设备原生像素。FXAA/SMAA位于最终显示颜色阶段，TAA实现不变。完整配置、校园图像对比与计时口径见 [校园抗锯齿说明](../../docs/CAMPUS_ANTIALIASING.md)。
+2026-09-15：默认SMAA均衡档，MSAA请求1，设备原生像素。FXAA/SMAA位于最终显示颜色阶段，TAA实现不变。完整配置、校园图像对比与计时口径见 [校园抗锯齿说明](../../docs/04-integration/CAMPUS_ANTIALIASING.md)。
 
 ```js
 pipeline.setAntiAliasing({ mode: 'smaa', quality: 'balanced', msaaSamples: 1, msaaCombine: false });
@@ -36,7 +36,7 @@ pipeline.setTaa({ enabled: false }) // 返回SMAA
 
 抖动桥限定主相机派生视锥，按其near重新计算偏移；相机替换、外部包装和原偏移在释放时保留。该桥是静态1.143的内部适配，并非跨版本公共API。样本数运行时改变会重启历史。
 
-2026-09-18 交互修补：偏移只在 preRender/postRender 之间存在，避免被误判为相机移动而阻断 hover；轮廓 ID 使用稳定投影。单视锥 HDR、MSAA=1 下，Billboard/Label/PointPrimitive 在 TAA 后单独合成，不进入历史。额外 UI 目标和 ID 绘制的性能边界、验证结果见 `docs/TAA_INTERACTION_FIX_2026-09-18.md`；诊断 `overlay` 报告本帧延后/重绘命令和额外内存。
+2026-09-18 交互修补：偏移只在 preRender/postRender 之间存在，避免被误判为相机移动而阻断 hover；轮廓 ID 使用稳定投影。单视锥 HDR、MSAA=1 下，Billboard/Label/PointPrimitive 在 TAA 后单独合成，不进入历史。额外 UI 目标和 ID 绘制的性能边界、验证结果见 `docs/04-integration/TAA_INTERACTION_FIX_2026-09-18.md`；诊断 `overlay` 报告本帧延后/重绘命令和额外内存。
 
 当前TAA只接受单视锥透视HDR深度，多视锥时丢弃历史并回退FXAA；不把不可靠深度用于混合。1080p两张RGBA16F历史颜色与一张R32F历史深度约39.55MiB，不含上游场景/环境/反射资源。没有速度缓冲或透明Reactive Mask，复杂透明/变形物体仍有边界；不等同于TSR或上采样。
 

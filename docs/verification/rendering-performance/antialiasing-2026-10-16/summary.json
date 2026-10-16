@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-16",
+  "status": "rolled-back",
+  "userVisualAcceptance": "rejected: severe window and thin-line flicker",
+  "sdk": "e034d4b55398c9dd38a578dc5fe9d9744bc7f1bd2d85d027bf69c15c76761558",
+  "oldSdk": "e0fffa070861e9eb5173d4761ad9199e05a6b202f782ff3e230ff8ad2db9679f",
+  "defaults": {
+    "mode": "taa",
+    "spatialAlternative": "smaa",
+    "msaaSamples": 1,
+    "stacked": false
+  },
+  "tests": {
+    "total": 1031,
+    "passed": 1028,
+    "skipped": 3,
+    "failed": 0
+  },
+  "referenceSha256": "3125aac8aa190626e5eec9081071c7796b2ed39f61a5b2b3deccd428cdaa9211",
+  "quality": {
+    "taaEdgeRmseBefore": 20.155470770319344,
+    "taaEdgeRmseAfter": 15.946529009148438,
+    "taaEdgeImprovementPercent": 20.882378829716707,
+    "smaaEdgeRmseBefore": 34.93179615504594,
+    "smaaEdgeRmseAfter": 35.43238967140338,
+    "smaaUniversalQualityImprovementProven": false
+  },
+  "motion": {
+    "scope": "ordinary opaque rigid Model commands; no skin, morph, instancing or custom displacement",
+    "maxVelocityErrorPixels": 0.009699231925832623,
+    "extraBytesPerPixel": 16,
+    "staticTargetBytes": 0
+  },
+  "gpuSampling": {
+    "resolution": [
+      640,
+      420
+    ],
+    "roundsPerMode": 3,
+    "framesPerRound": 300,
+    "queryAvailability": 1,
+    "disjointRounds": 0,
+    "fullCampusPerformanceMilestoneComplete": false
+  },
+  "campus": {
+    "defaultEffective": "taa",
+    "defaultValid": true,
+    "defaultFrustums": 1,
+    "readyModels": 70,
+    "picking": {
+      "defined": true,
+      "model": true,
+      "glError": 0
+    }
+  },
+  "review": {
+    "unresolvedBlockingFindings": 0,
+    "unsupportedFallback": "fixed",
+    "unsupportedCacheExpiry": "fixed",
+    "newModelFullHistoryReset": "removed",
+    "staticMotionAllocation": "lazy"
+  },
+  "currentSdk": "e0fffa070861e9eb5173d4761ad9199e05a6b202f782ff3e230ff8ad2db9679f",
+  "candidateSdk": "e034d4b55398c9dd38a578dc5fe9d9744bc7f1bd2d85d027bf69c15c76761558",
+  "historicalResultsOnly": true,
+  "currentDefaults": {
+    "mode": "smaa",
+    "spatialAaQuality": "balanced",
+    "msaaSamples": 1
+  },
+  "rollbackValidation": {
+    "tests": {
+      "total": 1005,
+      "passed": 1002,
+      "skipped": 3,
+      "failed": 0
+    },
+    "glslFiles": 134,
+    "selection": "passed: stable native ID and presented outline across jitter, camera movement and reenable",
+    "sdkExactMatch": true
+  }
+}

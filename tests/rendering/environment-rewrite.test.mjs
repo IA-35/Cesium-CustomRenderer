@@ -64,7 +64,7 @@ test('cloud tiers keep steps times light steps bounded and expose a distance lim
   for (const name of ['performance', 'balanced', 'high']) {
     const tier = cloudTier(name)
     assert.ok(tier.steps > 0 && tier.lightSteps > 0 && tier.maxDistance > 0)
-    assert.ok(tier.steps * tier.lightSteps <= 640, `${name} product too large`)
+    assert.ok(tier.steps * tier.lightSteps <= 1024, `${name} product too large`)
   }
   // Higher tiers must actually cost more, otherwise the tier is decorative.
   assert.ok(cloudTier('performance').steps < cloudTier('balanced').steps)
@@ -72,50 +72,77 @@ test('cloud tiers keep steps times light steps bounded and expose a distance lim
   assert.deepEqual(cloudTier('unknown'), CLOUD_TIERS.balanced)
 })
 
-test('cloud shader replaces the previous per-step optical depth integral', () => {
+test('cloud sunlight integrates the same density field as the view ray', () => {
   const shader = cloudGLSL('balanced')
-  assert.match(shader, /#define CLOUD_STEPS 48/)
+  assert.match(shader, /#define CLOUD_STEPS 96/)
   assert.match(shader, /#define CLOUD_LIGHT_STEPS 6/)
-  // The binary occlusion count from the article must be present...
-  assert.match(shader, /inside \+= 1\.0/)
-  // ...and the old approach of re-running a full density per light step must be gone.
-  const sunBody = shader.slice(shader.indexOf('float ccrCloudSunVisibility'), shader.indexOf('float ccrCloudJitter'))
-  assert.doesNotMatch(sunBody, /ccrCloudDensity\(/)
+  // Integrate continuous optical depth rather than counting occupied light samples.
+  assert.match(shader, /opticalDepth \+= ccrCloudDensity\(samplePosition\) \* stepLength/)
+  const sunBody = shader.slice(shader.indexOf('float ccrCloudSunOpticalDepth'), shader.indexOf('float ccrCloudSunVisibility'))
+  assert.match(sunBody, /ccrCloudShellIntervals\(position, sunDirectionAtmo, 1\.0e9\)/)
+  assert.match(sunBody, /ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals\)/)
+  assert.doesNotMatch(sunBody, /inside \+=|> 0\.35/)
 })
 
-test('cloud slab boundaries use planet-centred altitude, not raw z', () => {
+test('cloud spherical boundaries use planet-centred altitude and local ground normals', () => {
   const shader = cloudGLSL('balanced')
   // The atmosphere and the cloud now share one planet-centred frame, so altitude is the distance
   // from the planet centre minus the radius. A raw z comparison would only hold on the equator.
   assert.match(shader, /float ccrCloudAltitude\(vec3 position\)/)
   assert.match(shader, /return length\(position - CCR_PLANET_POS\) - atmosphereParams\.x/)
-  assert.match(shader, /ccrCloudProfileAtAltitude\(sampleAltitude\)/)
+  assert.match(shader, /ccrCloudDensity\(samplePosition\)/)
   assert.doesNotMatch(shader, /cloudParams\.y\s*<\s*position\.z|position\.z\s*>\s*cloudParams\.z/)
-  // The sun march must measure "vertical" against the local surface normal, not the frame's z.
+  assert.match(shader, /ccrAtmosphereIntersect\(centredOrigin, direction, atmosphereParams\.x \+ cloudParams\.z\)/)
+  assert.match(shader, /ccrAtmosphereIntersect\(centredOrigin, direction, atmosphereParams\.x \+ cloudParams\.y\)/)
+  // Ground bounce uses the local normal; sunlight follows the spherical interval.
   assert.match(shader, /vec3 up = normalize\(position - CCR_PLANET_POS\)/)
-  assert.match(shader, /float sunVertical = dot\(sunDirectionAtmo, up\)/)
+  assert.match(shader, /ccrCloudShellIntervals\(position, -up, 1\.0e9\)/)
+  assert.doesNotMatch(shader, /sunVertical|distanceToTop/)
 })
 
-test('cloud march skips empty space with a growing step and integrates energy conservatively', () => {
+test('cloud march covers clipped shell intervals and weights radiance by extinction', () => {
   const shader = cloudGLSL('balanced')
-  // Adapted from @takram/three-clouds: an empty sample must advance the ray by more than the
-  // nominal step, otherwise most of the budget is spent re-testing air.
-  assert.match(shader, /#define CLOUD_STEP_GROWTH 1\.35/)
-  const emptyBranch = shader.slice(shader.indexOf('if (density <= 0.0)'), shader.indexOf('float extinction'))
-  assert.match(emptyBranch, /stepLength \*= CLOUD_STEP_GROWTH/)
-  assert.match(emptyBranch, /distanceAlongRay \+= stepLength/)
-  // The step must advance on a hit too, and grow for the next iteration.
-  assert.match(shader, /distanceAlongRay \+= stepLength;\s*\n\s*stepLength \*= CLOUD_STEP_GROWTH;/)
-  // Energy-conserving form: (L - L*T)/sigma rather than L*(1 - T).
-  assert.match(shader, /scatteringIntegral = \(lighting - lighting \* stepTransmittance\) \/ max\(density, 1e-6\)/)
+  assert.match(shader, /float limit = min\(max\(sceneDistance, 0\.0\), viewRange\)/)
+  assert.match(shader, /float stepLength = pathLength \/ float\(CLOUD_STEPS\)/)
+  assert.match(shader, /ccrCloudIntervalDistance\(intervals, pathDistance\)/)
+  assert.match(shader, /if \(density <= 0\.0\) continue/)
+  assert.doesNotMatch(shader, /stepLength \*=/)
+  // The source term is sigma_s * L. With unit albedo sigma_s/sigma_t cancels.
+  assert.match(shader, /float sampleWeight = transmittance \* \(1\.0 - stepTransmittance\)/)
+  assert.match(shader, /accumulated \+= lighting \* sampleWeight/)
+  assert.match(shader, /transmittance \*= stepTransmittance/)
 })
 
-test('every tier keeps the adaptive step so the iteration budget stays a ceiling', () => {
+test('every tier covers the whole interval within its finite sampling budget', () => {
   const performance = cloudGLSL('performance')
   const high = cloudGLSL('high')
-  // The tier bounds the iteration count; the adaptive step is what changes the actual sampling
-  // density, so both tiers must carry the growth factor rather than a fixed step.
+  // Each tier divides the entire occupied path by its finite sample count.
   assert.match(performance, /#define CLOUD_STEPS 24/)
-  assert.match(high, /#define CLOUD_STEPS 80/)
-  for (const shader of [performance, high]) assert.match(shader, /#define CLOUD_STEP_GROWTH 1\.35/)
+  assert.match(high, /#define CLOUD_STEPS 128/)
+  for (const shader of [performance, high]) {
+    assert.match(shader, /stepLength = pathLength \/ float\(CLOUD_STEPS\)/)
+    assert.match(shader, /for \(int i = 0; i < CLOUD_STEPS \* 2; i\+\+\)/)
+  }
+})
+
+test('empty spherical intervals return identity transport without dividing by a zero path', () => {
+  const shader = cloudGLSL('balanced')
+  assert.match(shader, /if \(finish <= start\) return vec4\(0\.0\)/)
+  assert.match(shader, /return max\(intervals\.y - intervals\.x, 0\.0\) \+ max\(intervals\.w - intervals\.z, 0\.0\)/)
+  assert.match(shader, /if \(stepLength <= 0\.0\) return 0\.0/)
+  const march = shader.slice(shader.indexOf('vec4 ccrCloudMarch'), shader.indexOf('vec2 ccrCloudGeometry'))
+  assert.match(march, /cloudDistance = sceneDistance/)
+  assert.match(march, /if \(pathLength <= 0\.0\) return vec4\(0\.0, 0\.0, 0\.0, 1\.0\)/)
+  assert.ok(march.indexOf('if (pathLength <= 0.0)') < march.indexOf('pathLength / float(CLOUD_STEPS)'))
+})
+
+test('color and geometry share density, temporal jitter and extinction-weighted metric depth', () => {
+  const shader = cloudGLSL('balanced')
+  assert.match(shader, /if \(cloudFrame\.y < 0\.5\) return 0\.5/)
+  assert.match(shader, /float jitter = ccrCloudJitter\(\)/)
+  assert.match(shader, /ccrCloudMarch\(origin, direction, sceneDistance, false, cloudDistance\)/)
+  assert.match(shader, /ccrCloudMarch\(origin, direction, sceneDistance, true, cloudDistance\)/)
+  assert.match(shader, /weightedDistance \+= distanceAlongRay \* sampleWeight/)
+  assert.match(shader, /cloudDistance = weightSum > 0\.0 \? weightedDistance \/ weightSum : sceneDistance/)
+  assert.match(shader, /return vec2\(cloudDistance, transport\.a\)/)
 })

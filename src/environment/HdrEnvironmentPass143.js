@@ -1,5 +1,6 @@
 import { registerHdrEffect } from './HdrCoordinator143.js'
 import {withUniformBlocks} from '../buffers/UniformBuffer143.js'
+import CloudTemporal143 from './CloudTemporal143.js'
 
 // Cesium 1.143 adapter: execute independent float stages before native tone mapping.
 export default class HdrEnvironmentPass143 {
@@ -78,6 +79,14 @@ export default class HdrEnvironmentPass143 {
       this.collection.bloom.enabled = false
       this.composite = this.createComposite()
       this.collection.add(this.composite)
+      if(this.environmentGraph) {
+        this._ensureCloudCollection()
+        this._ensureOcclusionCollection()
+        this.environmentGraph.installCollection(this.collection,[
+          {key:'atmosphere.raymarch',stage:this.composite.get(0)},
+          {key:'atmosphere.transmission',stage:this.composite.get(1)},
+          {key:'environment.composite',stage:this.composite.get(2)}])
+      }
       this._detachHdr = registerHdrEffect(this.scene, 20,
         (context, color, depth, id) => this._execute(context, color, depth, id))
       this.enabled = true
@@ -93,6 +102,7 @@ export default class HdrEnvironmentPass143 {
     this.occlusionFrame = undefined
     const reason = this._scopeReason()
     if (reason) {
+      this.cloudTemporal?.reset('HDR bypass')
       this.reason = reason
       this.stats.bypasses++
       return color
@@ -105,12 +115,18 @@ export default class HdrEnvironmentPass143 {
     let output = color
     try {
       this.inputColor = color
+      this.environmentGraph?.beginFrame({color,depth})
+      this.prepareAtmosphere?.(context)
       if (this.allowEmptyFrustum() && this.scene._view.frustumCommandsList.length === 0) {
         // A sky-only frame has no native geometry pass to update the projection.
         // Its shaders explicitly ignore both depth textures for this frame.
         uniformState.updateFrustum(this.scene.camera.frustum)
       }
       const collection = this.collection
+      if (!this._executeClouds(context,color,depth,id)) {
+        this.reason='cloud stages not ready';this.stats.bypasses++
+        return color
+      }
       collection.update(context, this.scene.frameState.useLogDepth, false)
       collection.clear(context)
       if (collection.ready && this.composite.ready) {
@@ -137,10 +153,61 @@ export default class HdrEnvironmentPass143 {
     } catch (error) {
       this._fail(error)
     } finally {
+      this.environmentGraph?.endFrame()
       uniformState.viewport = viewport
     }
     if (!this._valid) this.stats.bypasses++
     return output
+  }
+
+  _executeClouds(context,color,depth,id) {
+    if(!this._cloudComposite) return true
+    if(this.cloudsActive && !this.cloudsActive()) {
+      if(!this._cloudsInactive) this.cloudTemporal?.reset('clouds disabled')
+      this._cloudsInactive=true;this.cloudOutput=undefined;this.cloudJitterActive=false
+      return true
+    }
+    this._cloudsInactive=false
+    this._ensureCloudCollection()
+    const collection = this.cloudCollection
+    collection.update(context,this.scene.frameState.useLogDepth,false)
+    collection.clear(context)
+    this.cloudOutput = undefined
+    const frame = this.cloudFrame?.()
+    const width = Math.ceil(context.drawingBufferWidth*this._cloudColorStage.textureScale)
+    const height = Math.ceil(context.drawingBufferHeight*this._cloudColorStage.textureScale)
+    this.cloudJitterActive = frame ? this.cloudTemporal.prepare(frame,width,height) : false
+    if(collection.ready && this._cloudComposite.ready) {
+      collection.execute(context,color,depth,id)
+      const cloudColor = this._cloudColorStage.outputTexture, cloudDepth = this._cloudDepthStage.outputTexture
+      const resolve=()=>frame ? this.cloudTemporal.execute(context,cloudColor,cloudDepth,frame) : cloudColor
+      this.cloudOutput = this.environmentGraph?this.environmentGraph.run('cloud.temporal',resolve):resolve()
+      return !!this.cloudOutput
+    }
+    this.cloudTemporal.reset('cloud stages not ready')
+    return false
+  }
+
+  _ensureCloudCollection() {
+    if(!this.cloudCollection && this._cloudComposite) {
+      this.cloudCollection = new this.C.PostProcessStageCollection()
+      this.cloudCollection.fxaa.enabled = false
+      this.cloudCollection.ambientOcclusion.enabled = false
+      this.cloudCollection.bloom.enabled = false
+      this.cloudCollection.add(this._cloudComposite)
+      this.cloudTemporal = new CloudTemporal143(this.C,this.scene)
+      this.environmentGraph?.installCollection(this.cloudCollection,[
+        {key:'cloud.march',stage:this._cloudColorStage},{key:'cloud.depth',stage:this._cloudDepthStage}])
+    }
+  }
+
+  _ensureOcclusionCollection() {
+    if(!this.occlusionCollection && this._occlusionStage) {
+      const collection=this.occlusionCollection=new this.C.PostProcessStageCollection()
+      collection.fxaa.enabled=false;collection.ambientOcclusion.enabled=false;collection.bloom.enabled=false
+      collection.add(this._occlusionStage)
+      this.environmentGraph?.installCollection(collection,[{key:'environment.medium',stage:this._occlusionStage}])
+    }
   }
 
   /**
@@ -157,14 +224,7 @@ export default class HdrEnvironmentPass143 {
     if (!stage) return
     if (!stage.enabled) { this.occlusionReason = 'No medium consumer requested'; return }
     try {
-      if (!this.occlusionCollection) {
-        const collection = new this.C.PostProcessStageCollection()
-        collection.fxaa.enabled = false
-        collection.ambientOcclusion.enabled = false
-        collection.bloom.enabled = false
-        collection.add(stage)
-        this.occlusionCollection = collection
-      }
+      this._ensureOcclusionCollection()
       const collection = this.occlusionCollection
       collection.update(context, this.scene.frameState.useLogDepth, false)
       collection.clear(context)
@@ -193,6 +253,15 @@ export default class HdrEnvironmentPass143 {
     const detachHdr = this._detachHdr
     this._detachHdr = undefined
     if (detachHdr) detachHdr()
+    this.environmentGraph?.destroy();this.environmentGraph=undefined;this.prepareAtmosphere=undefined
+    this.cloudTemporal?.destroy()
+    this.cloudTemporal = undefined
+    if(this.cloudCollection && !this.cloudCollection.isDestroyed()) this.cloudCollection.destroy()
+    // A failed creation can leave the independent composite outside a collection.
+    else if(this._cloudComposite && !this._cloudComposite.isDestroyed()) this._cloudComposite.destroy()
+    this.cloudCollection = undefined
+    this._cloudComposite = this._cloudColorStage = this._cloudDepthStage = undefined
+    this.cloudOutput = undefined; this.cloudJitterActive = false
     // B08：先释放独立的遮挡 collection，再释放主 collection。
     const occlusionCollection = this.occlusionCollection
     this.occlusionCollection = undefined
@@ -232,7 +301,8 @@ export default class HdrEnvironmentPass143 {
       reason: this._destroyed ? 'destroyed' : unsupported || scopeReason || this.reason,
       error: this.error,
       frustumCount: frustums ? frustums.length : 0,
-      stats: { ...this.stats }
+      stats: { ...this.stats },
+      cloudTemporal: this.cloudTemporal?.getDiagnostics() || {valid:false,reason:'cloud stages inactive'}
     }
   }
 

@@ -4,7 +4,7 @@
 // 关闭此项。因此这里必须**实测**像素级水掩码是否让水面成为反射接收端，并确认
 // 非水地面不被金属化、影像颜色不被改写。
 //
-// 关键构造一（见 docs/B07_RECONNAISSANCE.md）：只有自定义 TerrainProvider 且
+// 关键构造一（见 docs/02-stage1/B07_RECONNAISSANCE.md）：只有自定义 TerrainProvider 且
 // hasWaterMask === true 才会产生真实 u_waterMask；CustomHeightmapTerrainProvider
 // 的 hasWaterMask 硬编码为 false，不可用。
 //

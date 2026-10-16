@@ -23,7 +23,7 @@ export const PRIMITIVE_REFLECTION_VERSION = 1
 // 普通 Primitive 的 appearance 片元着色器。三者都提供 v_positionEC 与
 // v_normalEC（Ellipsoid 变体没有 v_normalEC 插值，但有 czm_materialInput）。
 //
-// 实测得到的真实结构（docs/B07_RECONNAISSANCE.md，浏览器 dump）：
+// 实测得到的真实结构（docs/02-stage1/B07_RECONNAISSANCE.md，浏览器 dump）：
 // 命令的 fragmentShaderSource.sources 是**两段**，且 appearance 主体并不单独成段——
 // Cesium 把材质定义（czm_getMaterial）与 appearance 主体**拼进了同一段 source**：
 //
@@ -280,7 +280,7 @@ void ccr_primitiveOutputs(czm_material material, vec4 nativeColor, float eyeDept
 /**
  * Globe water mask 的接收端契约来源。
  *
- * 实测（docs/B07_RECONNAISSANCE.md）：只有自定义 TerrainProvider 且
+ * 实测（docs/02-stage1/B07_RECONNAISSANCE.md）：只有自定义 TerrainProvider 且
  * `hasWaterMask === true` 时，globe 命令的 uniform map 才有真实的 `u_waterMask`
  * 纹理；`CustomHeightmapTerrainProvider` 的 `hasWaterMask` 硬编码为 false，不可用。
  * 采样必须照抄 GlobeFS 的 y 翻转，否则掩码上下颠倒。

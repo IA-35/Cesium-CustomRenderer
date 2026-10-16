@@ -11,7 +11,11 @@ export default class RenderProfiler143 {
     this.peakTextureBytes = 0
     this.peakUniformBufferBytes = 0
     this.timer = new GpuTimer(this.scene.context._gl)
-    pipeline.renderGraph?.setGpuTimer(this.timer)
+    const profiler=this
+    this.graphTimer={measure:(label,invoke)=>this._measure(label,invoke),
+      get supported(){return profiler.timer.supported},get pending(){return profiler.timer.pending},
+      get samples(){return profiler.timer.samples},get skipped(){return profiler.timer.skipped},get discarded(){return profiler.timer.discarded}}
+    pipeline.renderGraph?.setGpuTimer(this.graphTimer)
     this.frames = []
     this.cpu = []
     this.hooks = []
@@ -42,6 +46,7 @@ export default class RenderProfiler143 {
 
     this._wrap(this.scene, 'render', invoke => {
       this.timer.poll()
+      for(const pass of pipeline.renderGraph?.passes||[]){const label=`graph:${pass.name}`;if(!this.labels.includes(label))this.labels.push(label)}
       this.selected = this.labels[this.index++ % this.labels.length]
       this.drawCalls = 0
       const start = performance.now()
@@ -89,12 +94,14 @@ export default class RenderProfiler143 {
     const add = (name, texture) => {
       if (!texture || texture.isDestroyed() || seen.has(texture)) return
       seen.add(texture)
-      entries.push({ name, width: texture.width, height: texture.height, bytes: texture.sizeInBytes })
+      entries.push({ name, width: texture.width, height: texture.height, bytes: texture.sizeInBytes || 0 })
     }
     const stage = (name, value) => {
       if (value && !value.isDestroyed()) add(name, value.outputTexture)
     }
-    for(const entry of peekRenderTargetPool(this.scene.context)?.entries||[])add(`pool.${entry.id}`,entry.texture)
+    // A source-loaded diagnostic can inspect the UMD SDK. Prefer its actual RHI
+    // owner instead of relying on this module instance's WeakMap registry.
+    for(const entry of (p.rhi?.pool||peekRenderTargetPool(this.scene.context))?.entries||[])add(`pool.${entry.id}`,entry.texture)
     if (p.hdrBloom && p.hdrBloom.stages) p.hdrBloom.stages.forEach((value, index) => stage(`bloom.${index}`, value))
     if(p.customShadow?.levels) p.customShadow.levels.forEach((level,index)=>add(`shadow.${index}.depth`,level.target.depth))
     else add('shadow.depth', p.customShadow && p.customShadow.target && p.customShadow.target.depth)
@@ -117,11 +124,20 @@ export default class RenderProfiler143 {
     }
     if (env) {
       add('environment.noise', env.noise)
-      for (const name of ['raymarchStage', 'resolveStage']) stage(`environment.${name}`, env.stages && env.stages[name])
+      for (const name of ['cloudStage','cloudDepthStage','raymarchStage','transmissionStage','resolveStage','occlusionStage']) stage(`environment.${name}`, env.stages && env.stages[name])
+      for(const [index,target]of (env.hdr?.cloudTemporal?.targets||[]).entries())
+        for(const name of ['color','depth'])add(`environment.cloudHistory.${index}.${name}`,target[name])
+      const lut=env.atmosphereLut
+      // Both banks remain resident, including an unpublished staging bank after
+      // a failed update. Count physical textures, never estimates from LUT size.
+      for(const [index,target]of (lut?.targets||[]).entries())
+        for(const [name,attachment]of Object.entries(target))add(`environment.lut.${index}.${name}`,attachment?.texture)
+      for(const [name,texture]of Object.entries(lut?.getTextures?.()||lut?.published||{}))add(`environment.lut.published.${name}`,texture)
+      add('environment.cloudOutput',env.hdr?.cloudOutput)
     }
     const currentBytes = entries.reduce((sum, e) => sum + e.bytes, 0)
     this.peakTextureBytes = Math.max(this.peakTextureBytes, currentBytes)
-    return { scope: 'known pipeline textures only; excludes native MSAA, assets, driver storage and transient allocations',
+    return { scope: 'resident known pipeline textures, including pooled targets and environment history/LUT banks; excludes native MSAA, assets and driver storage',
       currentBytes, peakBytes: this.peakTextureBytes, entries }
   }
 
@@ -152,7 +168,7 @@ export default class RenderProfiler143 {
     }
     this.hooks = []
     this.dispatcherOff?.();this.dispatcherOff=null
-    this.pipeline.renderGraph?.setGpuTimer(null)
+    if(this.pipeline.renderGraph?.gpuTimer===this.graphTimer)this.pipeline.renderGraph.setGpuTimer(null)
     this.timer.destroy()
   }
 }

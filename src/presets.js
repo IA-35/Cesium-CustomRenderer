@@ -35,6 +35,10 @@ export const defaults = Object.freeze({
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
   screenSpaceReflectionTransparent: false,
   taaJitterSamples: 8, taaHistoryBlend: 0.03, taaMotionBlend: 0.5, taaVelocityThreshold: 12, taaDepthTolerance: 0.1,
+  // Variance-clipping width (multiples of the neighbourhood standard deviation). A still
+  // camera keeps a wide box for a calm image; motion narrows it so history cannot smear.
+  // See taaVarianceGammas in TaaPass143.js for why the moving value sits below 1.
+  taaVarianceGammaStill: 1.5, taaVarianceGammaMoving: 0.75,
   // B09: tone mapping and lens effects. All off/inert by default; `aces` keeps the native ACES
   // path that CCR already owned, so enabling tone mapping alone changes nothing.
   toneMappingCurve: 'aces',
@@ -52,6 +56,7 @@ const ranges = {
   environmentReflectionStrength: [0, 1],
   screenSpaceReflectionDistance: [1, 2000], screenSpaceReflectionThickness: [0.01, 20], screenSpaceReflectionStrength: [0, 1],
   taaHistoryBlend: [0.02, 0.5], taaMotionBlend: [0.1, 1], taaVelocityThreshold: [1, 64], taaDepthTolerance: [0, 0.5],
+  taaVarianceGammaStill: [0.25, 4], taaVarianceGammaMoving: [0.1, 3],
   lightingAoStrength: [0, 1], lightingDebugMode: [0, 7],
   // B09 镜头效果范围。
   tiltShiftFocus: [0, 1], tiltShiftWidth: [0.005, 0.5], tiltShiftRadius: [0, 32], tiltShiftStrength: [0, 1],

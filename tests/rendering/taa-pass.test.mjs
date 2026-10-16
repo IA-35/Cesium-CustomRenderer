@@ -1,8 +1,8 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import TaaJitter143 from '../../src/antialiasing/TaaJitter143.js'
-import TaaPass143, { taaBlendWeights } from '../../src/antialiasing/TaaPass143.js'
+import TaaPass143, { taaBlendWeights, taaVarianceGammas } from '../../src/antialiasing/TaaPass143.js'
 import { taaResolveShader, taaDepthShader, taaCommon } from '../../src/antialiasing/taaShaders143.js'
 
 const C = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
@@ -114,7 +114,8 @@ test('both TAA shaders assemble as Cesium GLSL3 with a single output and no self
   }
   const resolve = new C.ShaderSource({ sources: [taaResolveShader] }).createCombinedFragmentShader({ webgl2: true })
   for (const uniform of ['highp sampler2D u_historyColor', 'highp sampler2D u_historyDepth',
-    'mat4 u_prevViewFromCurrent', 'mat4 u_prevProjection', 'vec4 u_taaBlend', 'float u_historyValid']) {
+    'mat4 u_prevViewFromCurrent', 'mat4 u_prevProjection', 'vec4 u_taaBlend', 'vec4 u_taaVariance',
+    'float u_historyValid']) {
     assert.ok(resolve.includes(`uniform ${uniform};`), uniform)
   }
   // The resolve must not output the history's auxiliary channel into the HDR chain: every
@@ -126,7 +127,16 @@ test('both TAA shaders assemble as Cesium GLSL3 with a single output and no self
   assert.match(resolve, /czm_windowToEyeCoordinates\(uv \* czm_viewport.zw \+ czm_viewport.xy, depth\)/)
   assert.match(resolve, /texture\(u_historyDepth, previousUV\)\.r/)
   assert.match(resolve, /reconstruct\(u_historyColor, previousUV\)/)
-  assert.match(resolve, /mix\(clamp\(history, lower, upper\), current, blend\)/)
+  // History is bounded by the intersection of a variance AABB and the neighbourhood min/max
+  // box, then weighted by the blend factor. The min/max box alone let a single bright outlier
+  // stretch the bounds and keep stale history alive (ghosting).
+  assert.match(resolve, /uniform vec4 u_taaVariance;/)
+  assert.match(resolve, /vec3 sigma = sqrt\(max\(moment2 \/ NEIGHBOURHOOD_TAPS - mean \* mean, vec3\(0\.0\)\)\)/)
+  // Preserve the previous visual baseline while the replacement's temporal flicker
+  // is investigated; do not reintroduce the rejected raw-raster resolve implicitly.
+  assert.match(resolve, /float varianceGamma = mix\(u_taaVariance\.w, u_taaVariance\.z, motionConfidence\)/)
+  assert.match(resolve, /vec3 clippedHistory = clamp\(history, max\(varianceMin, lower\), min\(varianceMax, upper\)\)/)
+  assert.match(resolve, /out_FragColor = vec4\(mix\(clippedHistory, current, blend\), 1\.0\)/)
   assert.match(resolve, /u_prevViewFromCurrent \* vec4\(eye, background \? 0\.0 : 1\.0\)/)
   assert.match(resolve, /float expectedDepth = background \? 0\.0 : -previousEye\.z;/)
   assert.match(resolve, /clip.w > 0.0/)
@@ -295,6 +305,17 @@ test('the resolve blend block is configuration, including the motion threshold',
   // a tolerance wide enough to accept a silhouette as the same surface.
   assert.deepEqual(taaBlendWeights({ taaHistoryBlend: 0, taaMotionBlend: 2,
     taaVelocityThreshold: 0, taaDepthTolerance: 4 }), [0.02, 1, 1, 0.5])
+
+  // Variance gammas: slot z is the still-image width, w the moving one. Both are clamped so a
+  // caller cannot request a box so wide that ghosting returns or so narrow that history dies.
+  assert.deepEqual(taaVarianceGammas({}), [0, 0, 1.5, 0.75])
+  assert.deepEqual(taaVarianceGammas({ taaVarianceGammaStill: 3, taaVarianceGammaMoving: 0.4 }),
+    [0, 0, 3, 0.4])
+  assert.deepEqual(taaVarianceGammas({ taaVarianceGammaStill: 99, taaVarianceGammaMoving: 0 }),
+    [0, 0, 4, 0.1])
+  // The moving box must stay tighter than the still one, or motion would keep more history
+  // than a settled camera and the ghosting would invert.
+  assert.ok(taaVarianceGammas({})[3] < taaVarianceGammas({})[2])
 
   const f = passFixture()
   const pass = new TaaPass143(C, f.scene, () => ({ ...taaOptions(), taaHistoryBlend: 0.25 }))

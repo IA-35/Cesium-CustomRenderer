@@ -40,7 +40,7 @@ test('renderer retries a failed HDR allocation only after an explicit off-to-on 
   const execute = native.execute
   const preUpdate = new C.Event()
   const scene = { context: { depthTexture: true, floatingPointTexture: true, colorBufferFloat: true },
-    light: new C.SunLight(), globe: {}, fog: { renderable: true }, atmosphere: new C.Atmosphere(),
+    light: new C.SunLight(), globe: { showGroundAtmosphere: true }, fog: { renderable: true }, atmosphere: new C.Atmosphere(),
     primitives: new C.PrimitiveCollection(), postProcessStages: native, preUpdate,
     mode: C.SceneMode.SCENE3D, highDynamicRange: true, _view: { frustumCommandsList: [{}] },
     isDestroyed: () => false, requestRender() {} }
@@ -62,6 +62,7 @@ test('renderer retries a failed HDR allocation only after an explicit off-to-on 
     assert.equal(renderer.hdr.error, null)
     assert.equal(renderer.hdr.enabled, true)
     assert.equal(scene.fog.renderable, false, 'active volume replaces native fog')
+    assert.equal(scene.globe.showGroundAtmosphere, false, 'custom aerial perspective must not duplicate native ground haze')
     assert.notEqual(native.execute, execute)
     assert.ok(renderer.stages.raymarchStage instanceof C.PostProcessStage)
     for (let i = 0; i < 4; i++) preUpdate.raiseEvent()
@@ -70,11 +71,14 @@ test('renderer retries a failed HDR allocation only after an explicit off-to-on 
     renderer.update()
     assert.equal(renderer.hdr.enabled, false)
     assert.equal(scene.fog.renderable, true, 'regional fallback restores native aerial fog')
+    assert.equal(scene.globe.showGroundAtmosphere, true)
     viewer.camera.positionWC = C.Cartesian3.fromDegrees(123.42, 41.77, 100)
     renderer.update()
     assert.equal(renderer.hdr.enabled, true)
     assert.equal(scene.fog.renderable, false)
+    assert.equal(scene.globe.showGroundAtmosphere, false)
     scene.fog.renderable = true
+    scene.globe.showGroundAtmosphere = true
     renderer.update()
     assert.equal(scene.fog.renderable, true, 'external fog ownership must be retained')
     const texture = renderer.noise
@@ -83,6 +87,7 @@ test('renderer retries a failed HDR allocation only after an explicit off-to-on 
     assert.equal(native.execute, execute)
     assert.equal(preUpdate.numberOfListeners, 0)
     assert.equal(scene.fog.renderable, true)
+    assert.equal(scene.globe.showGroundAtmosphere, true)
   } finally {
     renderer.destroy()
     native.destroy()

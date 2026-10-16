@@ -1,6 +1,6 @@
 // B09：色调映射曲线选择与「只映射一次」契约。
 //
-// 为什么需要独立模块（见 docs/B09_RECONNAISSANCE.md）：
+// 为什么需要独立模块（见 docs/02-stage1/B09_RECONNAISSANCE.md）：
 // Cesium 1.143 自带 5 条曲线，但它们**全部内联 czm_inverseGamma**，属于
 // 显示阶段算子。CCR 已经把场景设为 HDR + ACES（VisualPipeline.js:120-122），
 // 原生 tonemap 由 PostProcessStageCollection 在链尾执行一次。
