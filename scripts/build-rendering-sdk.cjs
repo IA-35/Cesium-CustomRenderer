@@ -80,6 +80,8 @@ compiler.run((error, stats) => {
     fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nthree-geospatial cloud noise / ' + name + '\n'
       + fs.readFileSync(path.join(root, 'src/environment/reference/three-clouds', name), 'utf8'))
   }
+  fs.appendFileSync(path.join(output, 'THIRD_PARTY_LICENSES.txt'), '\n\nThree.js r186 TRAA / 9b4a2ac29c63ccb43fd51c5661f2f873ac2c39b8\n'
+    + fs.readFileSync(path.join(root, 'src/antialiasing/reference/three-r186/LICENSE'), 'utf8'))
   fs.copyFileSync(path.join(root, 'docs/01-architecture/ALGORITHM_REFERENCES.md'), path.join(output, 'ALGORITHM_REFERENCES.md'))
   const hashes = {}
   const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {

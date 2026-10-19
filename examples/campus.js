@@ -178,7 +178,7 @@ const aaNotes = {
   fxaa: '单次颜色过滤，开销较低；平滑档会更柔和。',
   smaa: '三阶段边缘处理，适合屋檐、窗框；可叠加MSAA改善几何轮廓。',
   msaa: '主要平滑模型轮廓，不能单独解决纹理、SSR和阴影中的锯齿。',
-  taa: '本轮保留原TAA实现；空间质量选项不作用于TAA。'
+  taa: 'Three.js r186 TRAA：运动重投影与亮度抗闪烁；空间质量选项不作用于TAA。'
 }
 // 只有 FXAA/SMAA 吃 spatialAaQuality，其余模式下把该控制器置灰（等价于原来的 disabled）。
 let spatialQualityController = null
@@ -305,7 +305,7 @@ aaFolder.add(ui.aa, 'msaaSamples', [1, 2, 4, 8]).name('MSAA 请求样本').liste
   .onChange(value => { pipeline.setAntiAliasing({ msaaSamples: Number(value) }); syncUI() })
 aaFolder.add(ui.aa, 'combinedMsaa').name('组合 MSAA').listen()
   .onChange(value => { pipeline.setAntiAliasing({ msaaCombine: value }); syncUI() })
-aaFolder.add(ui.aa, 'jitterSamples', [4, 8, 16]).name('TAA抖动样本').listen().onChange(value => {
+aaFolder.add(ui.aa, 'jitterSamples', [4, 8, 16, 32]).name('TAA抖动样本').listen().onChange(value => {
     // The sample count is read when the resolve stages are built, so re-arm the pass:
     // switching away tears the stages (and the jitter) down, switching back rebuilds them.
     pipeline.setTaa({ jitterSamples: Number(value), enabled: false })

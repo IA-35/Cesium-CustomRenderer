@@ -185,7 +185,7 @@ export default class VisualPipeline {
         this.fxaa.setQuality(o.spatialAaQuality)
         this.fxaa.setEnabled(true)
       } else if (o.antialiasing !== 'taa' || !this.taa || !this.taa.enabled) {
-        this.write(p.fxaa, 'enabled', o.antialiasing === 'fxaa' || o.antialiasing === 'smaa')
+        this.write(p.fxaa, 'enabled', ['fxaa', 'smaa', 'taa'].includes(o.antialiasing))
       }
     }
     // Temporal AA resolves the HDR chain itself, so it is mutually exclusive with both
@@ -576,7 +576,9 @@ export default class VisualPipeline {
       const antialiasing = input.enabled === true ? 'taa' : input.enabled === false ? 'smaa' : undefined
       this.setOptions({ antialiasing, taaJitterSamples: input.jitterSamples, taaHistoryBlend: input.historyBlend,
         taaMotionBlend: input.motionBlend, taaVelocityThreshold: input.velocityThreshold,
-        taaDepthTolerance: input.depthTolerance })
+        taaDepthTolerance: input.depthTolerance, taaDepthThreshold: input.depthThreshold,
+        taaEdgeDepthDiff: input.edgeDepthDiff, taaMaxVelocityLength: input.maxVelocityLength,
+        taaUseSubpixelCorrection: input.useSubpixelCorrection })
     }
     return this.getTaaDiagnostics()
   }
@@ -588,7 +590,9 @@ export default class VisualPipeline {
     const o = this.options
     const requested = { enabled: o.antialiasing === 'taa', jitterSamples: o.taaJitterSamples,
       historyBlend: o.taaHistoryBlend, motionBlend: o.taaMotionBlend,
-      velocityThreshold: o.taaVelocityThreshold, depthTolerance: o.taaDepthTolerance }
+      velocityThreshold: o.taaVelocityThreshold, depthTolerance: o.taaDepthTolerance,
+      depthThreshold: o.taaDepthThreshold, edgeDepthDiff: o.taaEdgeDepthDiff,
+      maxVelocityLength: o.taaMaxVelocityLength, useSubpixelCorrection: o.taaUseSubpixelCorrection }
     let reason = null
     if (this.destroyed) reason = 'Destroyed'
     else if (!requested.enabled) reason = 'Not requested'

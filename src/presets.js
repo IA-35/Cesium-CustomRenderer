@@ -35,9 +35,10 @@ export const defaults = Object.freeze({
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,
   screenSpaceReflectionTransparent: false,
   taaJitterSamples: 8, taaHistoryBlend: 0.03, taaMotionBlend: 0.5, taaVelocityThreshold: 12, taaDepthTolerance: 0.1,
-  // Variance-clipping width (multiples of the neighbourhood standard deviation). A still
-  // camera keeps a wide box for a calm image; motion narrows it so history cannot smear.
-  // See taaVarianceGammas in TaaPass143.js for why the moving value sits below 1.
+  // Three.js r186 controls; depth thresholds use perspective [0,1], not metres.
+  taaDepthThreshold: 0.0005, taaEdgeDepthDiff: 0.001, taaMaxVelocityLength: 128, taaUseSubpixelCorrection: true,
+  // Legacy inputs retained for compatibility; r186 uses its official gamma curve.
+  // These controls are listed in the TAA diagnostics' legacyIgnored array.
   taaVarianceGammaStill: 1.5, taaVarianceGammaMoving: 0.75,
   // B09: tone mapping and lens effects. All off/inert by default; `aces` keeps the native ACES
   // path that CCR already owned, so enabling tone mapping alone changes nothing.
@@ -57,6 +58,7 @@ const ranges = {
   screenSpaceReflectionDistance: [1, 2000], screenSpaceReflectionThickness: [0.01, 20], screenSpaceReflectionStrength: [0, 1],
   taaHistoryBlend: [0.02, 0.5], taaMotionBlend: [0.1, 1], taaVelocityThreshold: [1, 64], taaDepthTolerance: [0, 0.5],
   taaVarianceGammaStill: [0.25, 4], taaVarianceGammaMoving: [0.1, 3],
+  taaDepthThreshold: [0, 0.05], taaEdgeDepthDiff: [0, 0.05], taaMaxVelocityLength: [1, 1024],
   lightingAoStrength: [0, 1], lightingDebugMode: [0, 7],
   // B09 镜头效果范围。
   tiltShiftFocus: [0, 1], tiltShiftWidth: [0.005, 0.5], tiltShiftRadius: [0, 32], tiltShiftStrength: [0, 1],
@@ -90,7 +92,8 @@ export function normalizeOptions(input = {}, current = defaults) {
   if (typeof input.hdrBloomEnabled === 'boolean') result.hdrBloomEnabled = input.hdrBloomEnabled
   if (Number.isFinite(input.hdrBloomLevels)) result.hdrBloomLevels = Math.max(2, Math.min(6, Math.round(input.hdrBloomLevels)))
   if ([1, 3, 4].includes(input.shadowCascades)) result.shadowCascades = input.shadowCascades
-  if ([4, 8, 16].includes(input.taaJitterSamples)) result.taaJitterSamples = input.taaJitterSamples
+  if ([4, 8, 16, 32].includes(input.taaJitterSamples)) result.taaJitterSamples = input.taaJitterSamples
+  if (typeof input.taaUseSubpixelCorrection === 'boolean') result.taaUseSubpixelCorrection = input.taaUseSubpixelCorrection
   if (['native', 'custom'].includes(input.shadowMode)) result.shadowMode = input.shadowMode
   if (['ssao', 'hbao'].includes(input.screenSpaceAoAlgorithm)) result.screenSpaceAoAlgorithm = input.screenSpaceAoAlgorithm
   if (['off', 'normal', 'depth'].includes(input.geometryDebugMode)) result.geometryDebugMode = input.geometryDebugMode

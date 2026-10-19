@@ -327,7 +327,7 @@ viewer.destroy()
 | Cube 环境反射 | `environmentReflectionEnabled` | `false` | 布尔 |
 | | `environmentReflectionStrength` | `1` | `0 – 1` |
 | | `environmentReflectionMap` | `null` | 预过滤 CubeMap KTX2 URL |
-| TAA | `taaJitterSamples` | `8` | `4` / `8` / `16` |
+| TAA | `taaJitterSamples` | `8` | `4` / `8` / `16` / `32` |
 | | `taaHistoryBlend` | `0.03` | `0.02 – 0.5` |
 | | `taaMotionBlend` | `0.5` | `0.1 – 1` |
 | | `taaVelocityThreshold` | `12` | `1 – 64` px |
@@ -450,10 +450,12 @@ ALBEDO_VALID 256   STANDARD_PBR_VALID 512
 
 **TAA**：
 
-- `taaJitterSamples`（4/8/16）在 pass 创建时读取——切换模式会重建 resolve stage 并丢弃历史，改采样数需连同模式一起重设。
-- `taaBlendWeights(settings)` → `[静态帧权重, 运动帧权重, 速度阈值, 深度容差]`，clamp 区间分别为 `[0.02, 0.9]`、`[0.05, 1]`、`[1, 64]`、`[0, 0.5]`。
-- 历史缓冲：2 个 ping-pong 颜色 target（RGBA16F 或 RGBA32F）+ 1 个 R32F 视深度。抖动经 `TaaJitter143` + `FrustumJitterBridge143` 发布到实际绘制的（克隆）视锥。
-- `getTaaDiagnostics()` 关键键：`{ enabled, supported, valid, reason, error, failed, stats{frames,bypasses,resets}, historyValid, historySize, activeFrame, blend, staticFrames, jitter, samplers, bytes, scope, requested }`。
+本分支以固定Three.js r186 TRAA为上游，并包含经授权的CCR采样/历史接受适配；有效选项`taaDepthThreshold=.0005`、`taaEdgeDepthDiff=.001`、`taaMaxVelocityLength=128`、`taaUseSubpixelCorrection=true`。`setTaa`对应`depthThreshold/edgeDepthDiff/maxVelocityLength/useSubpixelCorrection`。旧blend/velocityThreshold/depthTolerance/Gamma仅保留解析，不影响resolve，以`algorithm/legacyIgnored`诊断为准。官方深度阈值为主相机perspective[0,1]域，另有前帧眼空间米制遮挡拒绝。TAA强制MSAA=1；其他模式组合规则保留。来源及偏离见`src/antialiasing/reference/three-r186/PORTING.md`。
+
+- `taaJitterSamples`默认8，可选4/8/16/32；运行时改变会重启历史，不必连同模式重设。更多相位不保证更稳定。
+- `taaBlendWeights(settings)`和`taaVarianceGammas(settings)`仅作源模块兼容helper，不代表实际帧权重。
+- 私有历史：2个RGBA32F颜色+1个R32F眼深；RHI只保留1个RGBA32F显示颜色目标，继续计入兼容字段`rhiHistoryBytes`，移动刚体另用RGBA32F motion。Graph直接绑定私有历史；显示拷贝将采样年龄alpha恢复为场景alpha后返回显示链。
+- `getTaaDiagnostics()`包括`algorithm.adaptation/legacyIgnored/motion/stageBytes/rhiHistoryBytes/bytes`；`staticFrames`是相机停稳时长，不能当所有像素的历史年龄。实际颜色、深度采样器也单独报告。
 - `resetTaaHistory()` 的适用场景：相机瞬移、场景内容突变之后（否则历史帧会残留拖影）。
 
 ### 5.7 性能调速器

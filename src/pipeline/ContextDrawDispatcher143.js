@@ -67,12 +67,12 @@ export default class ContextDrawDispatcher143 {
     if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 handler must be a function')
     const record = { fn, name, priority, enabled, active: true }
     this.handlers.push(record); this.handlers.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
-    return () => { record.active = false }
+    return () => { record.active = false; record.fn = null; this.handlers = this.handlers.filter(item => item !== record) }
   }
   addObserver(fn, { name = `observer-${this.observers.length}`, priority = 0, enabled = true } = {}) {
     if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 observer must be a function')
     const record = { fn, name, priority, enabled, active: true }; this.observers.push(record); this.observers.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
-    return () => { record.active = false }
+    return () => { record.active = false; record.fn = null; this.observers = this.observers.filter(item => item !== record) }
   }
   _dispatch(args) {
     if (this.bypassDepth > 0) return this.native.apply(this.context, args)

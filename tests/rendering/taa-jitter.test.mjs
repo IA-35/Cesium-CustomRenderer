@@ -322,7 +322,7 @@ test('temporal anti-aliasing owns coverage exactly like the other post-process m
     { requested: 1, effective: 1, combined: false, reason: 'Temporal anti-aliasing owns coverage' })
   // Temporal AA and a spatial post-process stage both consume the same coverage budget,
   // so an explicit combination request must not silently restore multisampling.
-  assert.equal(resolveMsaaPolicy({ antialiasing: 'taa', msaaSamples: 4, msaaCombine: true }).effective, 4)
+  assert.equal(resolveMsaaPolicy({ antialiasing: 'taa', msaaSamples: 4, msaaCombine: true }).effective, 1)
   assert.equal(normalizeAntiAliasing({ antialiasing: 'taa' }).antialiasing, 'taa')
   assert.equal(normalizeAntiAliasing({ antialiasing: 'TSR' }).antialiasing, 'smaa')
   assert.deepEqual(['fxaa', 'smaa', 'taa'].map(isPostProcessAntiAliasing), [true, true, true])

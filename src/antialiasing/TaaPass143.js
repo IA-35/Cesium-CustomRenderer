@@ -1,16 +1,17 @@
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
-import { taaResolveShader, taaDepthShader } from './taaShaders143.js'
+import { taaResolveShader, taaDepthShader, taaDisplayShader } from './taaShaders143.js'
 import TaaJitter143 from './TaaJitter143.js'
+import { DEFAULT_JITTER_SAMPLES } from './jitter143.js'
 import { attachTaaSelectionDepth } from './TaaSelectionDepth143.js'
 import TaaOverlay143 from './TaaOverlay143.js'
+import TaaMotion143 from './TaaMotion143.js'
 
 let nextId = 0
 
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 
-// The resolve's uniform block: current-frame weight for a static sample, current-frame
-// weight once the reprojected motion reaches the threshold, that threshold in pixels, and
-// the relative depth tolerance that separates a moved surface from a revealed one.
+// Deprecated source-level compatibility helpers. r186 does not call these or
+// upload the old controls; getDiagnostics().legacyIgnored makes that explicit.
 export function taaBlendWeights(settings = {}) {
   return [clamp(settings.taaHistoryBlend ?? 0.03, 0.02, 0.9),
     clamp(settings.taaMotionBlend ?? 0.5, 0.05, 1),
@@ -18,17 +19,7 @@ export function taaBlendWeights(settings = {}) {
     clamp(settings.taaDepthTolerance ?? 0.1, 0, 0.5)]
 }
 
-// Variance-clipping width, as a multiple of the neighbourhood standard deviation.
-//
-// Intel's TAA documents variance clipping as "the main algorithm for removing ghosting
-// artifacts" and exposes two gammas: a wide box for a still image (more history retained,
-// so the picture stays calm) and a narrow one under motion (less history retained, so
-// moving geometry and disocclusions do not smear). The resolve lerps between them with the
-// same motion confidence that picks the blend weight.
-//
-// Moving gamma stays below 1 so a moving pixel's history must sit inside roughly one sigma
-// of the current neighbourhood. The still value may exceed 1 because a settled camera has
-// no ghosting to trade against.
+// Deprecated along with taaBlendWeights; runtime gamma follows the documented CCR curve.
 export function taaVarianceGammas(settings = {}) {
   return [0, 0,
     clamp(settings.taaVarianceGammaStill ?? 1.5, 0.25, 4),
@@ -43,25 +34,21 @@ export function taaVarianceGammas(settings = {}) {
 // Cesium reuses a single depth buffer per frame, so the previous frame's depth has to be
 // stored to tell a moved surface apart from a revealed one.
 //
-// Motion comes from depth rather than a velocity buffer, so only static geometry
-// reprojects exactly. A reprojected/current depth mismatch, a reprojection outside the
-// frame, and a 3x3 neighbourhood clamp of the current colour all reject stale history
-// instead of smearing it. This is not Unreal's TSR: it does not upsample, has no velocity
-// or reactive mask, and needs no compute, subgroup or stencil support.
+// The resolve follows pinned Three.js r186 TRAANode/TAAUtils. Camera-relative
+// matrices adapt Cesium ECEF/log depth; rigid GLTF input follows VelocityNode.
 export default class TaaPass143 {
   constructor(C, scene, getOptions, rhi = null) {
     if (!/^1\.143(?:\.0)?$/.test(C.VERSION)) throw new Error('TaaPass143 requires Cesium 1.143')
     Object.assign(this, { C, scene, getOptions, rhi, enabled: false, destroyed: false, failed: false })
     const context = scene.context
     this.missing = ['webgl2', 'depthTexture', 'floatingPointTexture', 'colorBufferFloat'].filter(name => !context || !context[name])
-    if (context && !(context.halfFloatingPointTexture && context.colorBufferHalfFloat) && !context.colorBufferFloat) {
-      this.missing.push('halfFloatingPointTexture/colorBufferFloat')
-    }
+    if (!context?.textureFloatLinear) this.missing.push('textureFloatLinear')
     this.supported = this.missing.length === 0
     this.error = null
     this.reason = 'Disabled'
     this.healthy = false
     this.output = undefined
+    this.reconstructing = false
     this.outputFrame = undefined
     this.stats = { frames: 0, bypasses: 0, resets: 0 }
     this.historyValid = false
@@ -75,11 +62,12 @@ export default class TaaPass143 {
     this.previousProjection = new C.Matrix4()
     this.prevViewFromCurrent = new C.Matrix4()
     this.inverseView = new C.Matrix4()
-    this.blend = new Float32Array(4)
-    this.blendUniform = new C.Cartesian4()
-    this.variance = new Float32Array(4)
-    this.varianceUniform = new C.Cartesian4()
+    this.currentInverseRasterProjection = new C.Matrix4()
+    this.previousInverseRasterProjection = new C.Matrix4()
+    this.currentViewFromPreviousEye = new C.Matrix4()
+    this.cameraNearFar = new C.Cartesian2(1, 1000)
     this.jitterUv = new C.Cartesian2()
+    this.previousJitterUv = new C.Cartesian2()
     // PostProcessStage.execute assigns this._colorTexture.sampler = this._sampler, so a
     // stage's sampleMode rewrites the sampler of the texture handed *into* it and never
     // touches the stage's own output texture. The history colour is another stage's output,
@@ -98,6 +86,7 @@ export default class TaaPass143 {
     if (!this.enabled) return this.failed ? 'TAA failed; disable before retrying' : 'Disabled'
     if (this.scene.context._gl.isContextLost()) return 'Context lost'
     if (!this.scene.highDynamicRange) return 'Requires HDR'
+    if ((this.scene.msaaSamples ?? 1) !== 1) return 'Requires MSAA=1'
     // Cesium runs the post-process chain for picking and depth-only passes as well. Blending
     // those into the history would corrupt it, so only the colour render pass may resolve.
     const passes = this.scene.frameState.passes
@@ -113,32 +102,44 @@ export default class TaaPass143 {
     const C = this.C, scene = this.scene, name = `taa_${++nextId}`
     const context = scene.context
     const fallback = () => context.defaultTexture
-    const halfFloat = !!(context.halfFloatingPointTexture && context.colorBufferHalfFloat)
-    const datatype = halfFloat ? C.PixelDatatype.HALF_FLOAT : C.PixelDatatype.FLOAT
+    // Low-weight HDR accumulation needs float32: half-float rounding otherwise
+    // changes the mean while thin edges converge.
+    const datatype = C.PixelDatatype.FLOAT
     this.historyDatatype = datatype
     const depthUniforms = {
-      u_jitterUv: () => this.jitterUv,
       u_surfaceDepth: () => this.surfaceDepth() || fallback(),
-      u_hasSurfaceDepth: () => !!this.surfaceDepth()
+      u_hasSurfaceDepth: () => !!this.surfaceDepth(),
+      u_jitterUv: () => this.jitterUv
     }
     const uniforms = {
       ...depthUniforms,
       u_historyColor: () => this.historyColor || fallback(),
       u_historyDepth: () => this.historyDepth || fallback(),
-      u_prevViewFromCurrent: () => this.prevViewFromCurrent,
-      u_prevProjection: () => this.previousProjection,
-      u_taaBlend: () => C.Cartesian4.fromArray(this.blend, 0, this.blendUniform),
-      u_taaVariance: () => C.Cartesian4.fromArray(this.variance, 0, this.varianceUniform),
-      u_staticFrames: () => this.staticFrames,
+      u_previousJitterUv: () => this.previousJitterUv,
+      u_acquisitionAge: () => this.staticFrames > 0 ? Math.min(this.historyAge, this.staticFrames) : this.historyAge,
+      u_jitterSamples: () => this.jitter.samples,
+      u_cameraStill: () => this.staticFrames > 0,
+      u_currentInverseRasterProjection: () => this.currentInverseRasterProjection,
+      u_previousInverseRasterProjection: () => this.previousInverseRasterProjection,
+      u_currentProjection: () => this.projection,
+      u_previousProjection: () => this.previousProjection,
+      u_previousViewFromCurrentEye: () => this.prevViewFromCurrent,
+      u_currentViewFromPreviousEye: () => this.currentViewFromPreviousEye,
+      u_cameraNearFar: () => this.cameraNearFar,
+      u_motionTexture: () => this.motion?.textureForResolve || fallback(),
+      u_hasMotionTexture: () => !!this.motion?.textureForResolve,
+      u_depthThreshold: () => this.getOptions().taaDepthThreshold ?? 0.0005,
+      u_edgeDepthDiff: () => this.getOptions().taaEdgeDepthDiff ?? 0.001,
+      u_maxVelocityLength: () => this.getOptions().taaMaxVelocityLength ?? 128,
+      u_useSubpixelCorrection: () => this.getOptions().taaUseSubpixelCorrection !== false,
       u_historyValid: () => this.historyValid ? 1 : 0
     }
     const makeResolve = suffix => new C.PostProcessStage({
       name: `${name}_resolve_${suffix}`, fragmentShader: taaResolveShader, uniforms,
       textureScale: 1, pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype,
-      // NEAREST on purpose: sampleMode reaches the HDR chain's shared colour texture, which
-      // every other effect consumes, and the resolve reads its input with texelFetch anyway.
-      // The history's own filtering is set in _synchronizeHistorySamplers.
-      sampleMode: C.PostProcessStageSampleMode.NEAREST, clearColor: new C.Color(0, 0, 0, 0)
+      // Reconstruction explicitly fetches current/history texels. Keep the HDR
+      // sampler contract and restore the incoming sampler after this effect.
+      sampleMode: C.PostProcessStageSampleMode.LINEAR, clearColor: new C.Color(0, 0, 0, 0)
     })
     this.frames = ['a', 'b'].map((suffix, index) => ({ index, resolve: makeResolve(suffix) }))
     this.depth = {
@@ -151,6 +152,16 @@ export default class TaaPass143 {
     }
     for (const frame of this.frames) frame.collection = this._collection(name, frame.resolve)
     this.depth.collection = this._collection(name, this.depth.pack)
+    // The normal pipeline reuses its existing RHI colour copy for display.
+    // Direct users without an RHI need the same alpha restoration as one stage.
+    if (!this.rhi) {
+      const stage = new C.PostProcessStage({ name: `${name}_display`, fragmentShader: taaDisplayShader,
+        uniforms: { u_alphaSource: () => this.alphaSource, u_jitterUv: () => this.jitterUv,
+          u_reconstructColor: () => this.reconstructing },
+        pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype,
+        sampleMode: C.PostProcessStageSampleMode.NEAREST })
+      this.display = { stage, collection: this._collection(name, stage) }
+    }
   }
 
   // The history colour has to interpolate between texels: the reprojection lands anywhere
@@ -176,21 +187,18 @@ export default class TaaPass143 {
   declareGraph(graph) {
     this.graph = graph
     this.graphHistory = {
-      colorA: graph.importResource('taa.history.colorA', { format: 'rgba16f', history: true }),
-      colorB: graph.importResource('taa.history.colorB', { format: 'rgba16f', history: true }),
-      depthA: graph.importResource('taa.history.depthA', { format: 'r32f', history: true }),
-      depthB: graph.importResource('taa.history.depthB', { format: 'r32f', history: true }),
+      colorA: graph.importResource('taa.history.colorA', { format: 'rgba32f', history: true }),
+      colorB: graph.importResource('taa.history.colorB', { format: 'rgba32f', history: true }),
       depth: graph.importResource('taa.history.depth', { format: 'r32f', history: true })
     }
     return this.graphHistory
   }
 
   _releaseRhiHistory() {
-    for (const entry of this.rhiHistory || []) { entry.colorFramebuffer?.release(); entry.depthFramebuffer?.release(); entry.color?.release(); entry.depth?.release() }
+    for (const entry of this.rhiHistory || []) { entry.colorFramebuffer?.release(); entry.color?.release() }
     this.rhiHistory = undefined; this.rhiHistorySize = null
     if (this.rhiCopyColor?.shaderProgram && !this.rhiCopyColor.shaderProgram.isDestroyed()) this.rhiCopyColor.shaderProgram.destroy()
-    if (this.rhiCopyDepth?.shaderProgram && !this.rhiCopyDepth.shaderProgram.isDestroyed()) this.rhiCopyDepth.shaderProgram.destroy()
-    this.rhiCopyColor = this.rhiCopyDepth = undefined
+    this.rhiCopyColor = undefined
   }
 
   _ensureRhiHistory(width, height, datatype) {
@@ -200,17 +208,14 @@ export default class TaaPass143 {
     this._releaseRhiHistory()
     const C = this.C, context = this.scene.context
     try {
-      this.rhiHistory = [0, 1].map(() => {
-        const color = this.rhi.createTexture({ width, height, pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype,
-          sampler: this.linearSampler })
-        const depth = this.rhi.createTexture({ width, height, pixelFormat: C.PixelFormat.RED, pixelDatatype: C.PixelDatatype.FLOAT,
-          sampler: this.nearestSampler })
-        return { color, depth, colorFramebuffer: this.rhi.createFramebuffer([color.texture]), depthFramebuffer: this.rhi.createFramebuffer([depth.texture]) }
-      })
+      // Native stages own accumulation; this retained RHI slot only restores display alpha.
+      const entry = {}
+      this.rhiHistory = [entry]
+      entry.color = this.rhi.createTexture({ width, height, pixelFormat: C.PixelFormat.RGBA, pixelDatatype: datatype,
+        sampler: this.linearSampler })
+      entry.colorFramebuffer = this.rhi.createFramebuffer([entry.color.texture])
       const renderState = C.RenderState.fromCache({ viewport: new C.BoundingRectangle(0, 0, width, height), depthTest: { enabled: false }, depthMask: false })
-      const shader = 'uniform sampler2D u_source; in vec2 v_textureCoordinates; void main() { out_FragColor = texture(u_source, v_textureCoordinates); }'
-      this.rhiCopyColor = context.createViewportQuadCommand(shader, { renderState })
-      this.rhiCopyDepth = context.createViewportQuadCommand(shader, { renderState })
+      this.rhiCopyColor = context.createViewportQuadCommand(taaDisplayShader, { renderState })
       this.rhiHistorySize = size
       return true
     } catch (error) { this._releaseRhiHistory(); throw error }
@@ -218,7 +223,9 @@ export default class TaaPass143 {
 
   _copyToRhi(context, source, target, command) {
     if (!source || !target || !command) return
-    command.uniformMap = { u_source: () => source }
+    command.uniformMap = { colorTexture: () => source,
+      u_alphaSource: () => this.alphaSource, u_jitterUv: () => this.jitterUv,
+      u_reconstructColor: () => this.reconstructing }
     command.framebuffer = target.framebuffer
     const passState = new this.C.PassState(context)
     passState.framebuffer = target.framebuffer
@@ -227,13 +234,10 @@ export default class TaaPass143 {
   }
 
   _bindGraphHistory() {
-    const history = this.rhiHistory?.[this.active]
-    if (!this.graph?.activeFrame || !this.graphHistory || !history) return
-    this.graph.bindExternal(this.graphHistory.colorA, this.rhiHistory[0].color.texture)
-    this.graph.bindExternal(this.graphHistory.colorB, this.rhiHistory[1].color.texture)
-    this.graph.bindExternal(this.graphHistory.depthA, this.rhiHistory[0].depth.texture)
-    this.graph.bindExternal(this.graphHistory.depthB, this.rhiHistory[1].depth.texture)
-    this.graph.bindExternal(this.graphHistory.depth, this.rhiHistory[0].depth.texture)
+    if (!this.graph?.activeFrame || !this.graphHistory) return
+    this.graph.bindExternal(this.graphHistory.colorA, this.frames[0].resolve.outputTexture)
+    this.graph.bindExternal(this.graphHistory.colorB, this.frames[1].resolve.outputTexture)
+    this.graph.bindExternal(this.graphHistory.depth, this.depth.pack.outputTexture)
   }
 
   // A one-stage collection with `inputPreviousStageTexture: false` receives the chain's
@@ -268,13 +272,21 @@ export default class TaaPass143 {
   _applyJitter() {
     if (!this.enabled || this.failed || !this.jitter) return
     this._applyFallback()
-    const samples = this.getOptions().taaJitterSamples || 8
+    const samples = this.getOptions().taaJitterSamples || DEFAULT_JITTER_SAMPLES
     if (this.jitter.samples !== samples) { this.jitter.samples = samples; this.resetHistory() }
     const defer = this.healthy && this.scene._view?.frustumCommandsList?.length === 1 && this.scene.msaaSamples === 1
     if (defer && this.overlay && !this.overlay.active) { this.historyValid=false;this.historyAge=0 }
     this.overlay?.begin(defer)
-    if (!this.healthy) { this.jitter.restore(); return }
-    this.jitter.apply()
+    if (!this.healthy) this.jitter.restore()
+    else this.jitter.apply()
+    if (this.motion && this.C) {
+      const C = this.C, projection = C.Matrix4.clone(this.scene.camera.frustum.projectionMatrix, new C.Matrix4())
+      const pixel = this.jitter.holding ? this.jitter.pixel : { x: 0, y: 0 }
+      projection[8] += 2 * pixel.x / this.scene.drawingBufferWidth
+      projection[9] += 2 * pixel.y / this.scene.drawingBufferHeight
+      this.motion.begin(!this._scopeReason() && this.scene.msaaSamples === 1, this.scene.camera.viewMatrix,
+        projection, this.previousView, this.previousProjection, this.historyValid)
+    }
   }
 
   _fallback(enabled) {
@@ -306,6 +318,8 @@ export default class TaaPass143 {
         this.jitter = new TaaJitter143(this.C, this.scene, { samples: this.getOptions().taaJitterSamples })
         this.jitter.setEnabled(true)
         this.overlay = new TaaOverlay143(this.C, this.scene, this.jitter)
+        this.motion = new TaaMotion143(this.C, this.scene, this.rhi)
+        this.motion.attach()
         if (!this._attachJitter()) throw new Error('Scene pre-render/post-render events are unavailable')
         this.detach = registerHdrEffect(this.scene, 25, (...args) => this._execute(...args))
         this.detachSelectionDepth = attachTaaSelectionDepth(this.scene, () =>
@@ -325,6 +339,7 @@ export default class TaaPass143 {
     this.staticFrames = 0
     this.healthy = false
     if (this.jitter) this.jitter.reset()
+    this.motion?.reset()
     this.stats.resets++
   }
 
@@ -340,7 +355,9 @@ export default class TaaPass143 {
       return this.overlay?.composite(color) || color
     }
     const viewport = this.C.BoundingRectangle.clone(context.uniformState.viewport)
+    const inputSampler = color.sampler
     try {
+      this.alphaSource = color
       this.jitter?.bridge?.restoreColorProjection()
       const scene = this.scene, frame = scene.frameState
       const size = `${color.width}x${color.height}`
@@ -353,17 +370,33 @@ export default class TaaPass143 {
       this._ensureRhiHistory(color.width, color.height, this.historyDatatype)
        this.C.Matrix4.clone(scene.camera.viewMatrix, this.view)
       this.C.Matrix4.clone(scene.camera.frustum.projectionMatrix, this.projection)
+      // Snapshot the actual color draw frustum, after undoing any stable ID pass.
+      // Its near/far can differ from the root camera even in single-frustum mode.
+      const us = context.uniformState
+      if (us.projection) this.C.Matrix4.clone(us.projection, this.projection)
+      if (us.inverseProjection) this.C.Matrix4.clone(us.inverseProjection, this.currentInverseRasterProjection)
+      else this.C.Matrix4.inverse(this.projection, this.currentInverseRasterProjection)
+      // Decode log depth with actual draw uniforms above; then map eye metres
+      // to r186's ROOT camera depth domain (TRAANode._cameraNearFar), not the
+      // tighter Cesium draw subfrustum which would change the fixed thresholds.
+      this.cameraNearFar.x = scene.camera.frustum.near
+      this.cameraNearFar.y = scene.camera.frustum.far
       const pixel = this.jitter && this.jitter.holding ? this.jitter.pixel : { x: 0, y: 0 }
       this.jitterUv.x = pixel.x / color.width
       this.jitterUv.y = pixel.y / color.height
       // Store the projection of the stable history grid, preserving any caller offset.
       this.projection[8] += 2 * this.jitterUv.x
       this.projection[9] += 2 * this.jitterUv.y
+      if (!this.historyValid) {
+        this.C.Matrix4.clone(this.view, this.previousView)
+        this.C.Matrix4.clone(this.projection, this.previousProjection)
+        this.C.Matrix4.clone(this.currentInverseRasterProjection, this.previousInverseRasterProjection)
+        this.C.Cartesian2.clone(this.jitterUv, this.previousJitterUv)
+      }
 
       const destination = this.frames[this.active]
-             // Keep the proven Cesium stage output as the resolve input during the RHI migration.
-       // RHI history is still copied and owned for Graph/lifetime validation; sampling it here
-       // before the copy path has been validated reintroduces visible temporal jitter.
+      // Private native history includes acquisition metadata. The RHI colour copy
+      // restores scene opacity for display; Graph binds the native histories directly.
        this.historyColor = this.frames[1 - this.active].resolve.outputTexture
       this.historyDepth = this.depth.pack.outputTexture
       if (!this.historyColor || !this.historyDepth) this.historyValid = false
@@ -375,21 +408,32 @@ export default class TaaPass143 {
       // avoids the precision loss of round-tripping through Earth-centred world space.
       this.C.Matrix4.inverse(this.view, this.inverseView)
       this.C.Matrix4.multiply(this.previousView, this.inverseView, this.prevViewFromCurrent)
+      this.C.Matrix4.inverse(this.prevViewFromCurrent, this.currentViewFromPreviousEye)
       const change = this.prevViewFromCurrent
       this.staticFrames = this.historyValid && this.C.Matrix4.equalsEpsilon(change, this.C.Matrix4.IDENTITY, 1e-7)
         ? this.staticFrames + 1 : 0
       if (this.historyValid && (change[0] + change[5] + change[10] < 2.9 ||
           Math.hypot(change[12], change[13], change[14]) > 500)) this.resetHistory()
 
-      const settings = this.getOptions()
-      this.blend.set(taaBlendWeights(settings))
-      this.blend[0] = Math.max(this.blend[0], 1 / (this.historyAge + 1))
-      this.variance.set(taaVarianceGammas(settings))
-
+      // Reuse the display target before resolve: each current pixel is reconstructed once.
+      const currentHistory = this.rhiHistory?.[0]
+      let reconstructed
+      this.reconstructing = true
+      if (currentHistory) {
+        this._copyToRhi(context, color, currentHistory.colorFramebuffer, this.rhiCopyColor)
+        reconstructed = currentHistory.color.texture
+      } else {
+        this.display.collection.update(context, frame.useLogDepth, false)
+        this.display.collection.clear(context)
+        if (!this.display.collection.ready) { this.historyValid = false; this.reason = 'Reconstruction not ready'; return this.overlay?.composite(color) || color }
+        this.display.collection.execute(context, color, depth, id)
+        reconstructed = this.display.stage.outputTexture
+      }
+      this.reconstructing = false
       destination.collection.update(context, frame.useLogDepth, false)
       destination.collection.clear(context)
       if (!destination.collection.ready) { this.historyValid = false; this.reason = 'Not ready'; return this.overlay?.composite(color) || color }
-      destination.collection.execute(context, color, depth, id)
+      destination.collection.execute(context, reconstructed, depth, id)
       const output = destination.collection.outputTexture
       if (!output) { this.historyValid = false; this.reason = 'No output'; return this.overlay?.composite(color) || color }
 
@@ -399,10 +443,16 @@ export default class TaaPass143 {
       this.depth.collection.clear(context)
       if (this.depth.collection.ready) this.depth.collection.execute(context, color, depth, id)
 
-      const currentHistory = this.rhiHistory?.[this.active]
+      let displayOutput
        if (currentHistory) {
-         this._copyToRhi(context, output, currentHistory.color, this.rhiCopyColor)
-         if (this.depth.pack.outputTexture) this._copyToRhi(context, this.depth.pack.outputTexture, currentHistory.depth, this.rhiCopyDepth)
+         this._copyToRhi(context, output, currentHistory.colorFramebuffer, this.rhiCopyColor)
+         displayOutput = currentHistory.color.texture
+       } else {
+         this.display.collection.update(context, frame.useLogDepth, false)
+         this.display.collection.clear(context)
+         if (!this.display.collection.ready) { this.historyValid = false; this.reason = 'Display not ready'; return this.overlay?.composite(color) || color }
+         this.display.collection.execute(context, output, depth, id)
+         displayOutput = this.display.stage.outputTexture
        }
        this._bindGraphHistory()
       const previous = this.previousView
@@ -411,21 +461,27 @@ export default class TaaPass143 {
       const previousProjection = this.previousProjection
       this.previousProjection = this.projection
       this.projection = previousProjection
+      const previousRaster = this.previousInverseRasterProjection
+      this.previousInverseRasterProjection = this.currentInverseRasterProjection
+      this.currentInverseRasterProjection = previousRaster
+      this.C.Cartesian2.clone(this.jitterUv, this.previousJitterUv)
 
       this.active = 1 - this.active
       this.historyValid = true
       this.historyAge++
       this._fallback(false)
       this.healthy = true
-      this.output = output
+      this.output = displayOutput
       this.outputFrame = frame.frameNumber
       this.reason = null
       this.stats.frames++
-      return this.overlay?.composite(output) || output
+      return this.overlay?.composite(displayOutput) || displayOutput
     } catch (error) {
       this._fail(error)
       return color
     } finally {
+      this.reconstructing = false
+      color.sampler = inputSampler
       context.uniformState.viewport = viewport
       if (this.output === undefined) this.stats.bypasses++
     }
@@ -439,6 +495,13 @@ export default class TaaPass143 {
     }
     if (this.frames) this.frames.forEach(frame => collect(frame.resolve))
     if (this.depth) collect(this.depth.pack)
+    if (this.display) collect(this.display.stage)
+    const stageBytes = [...textures].reduce((sum, texture) => sum + (texture.sizeInBytes || 0), 0)
+    const rhiTextures = new Set()
+    for (const entry of this.rhiHistory || []) for (const resource of [entry.color]) {
+      if (resource?.texture && !textures.has(resource.texture)) rhiTextures.add(resource.texture)
+    }
+    const rhiHistoryBytes = [...rhiTextures].reduce((sum, texture) => sum + (texture.sizeInBytes || 0), 0)
     const sampler = texture => texture && texture.sampler
       ? { minificationFilter: texture.sampler.minificationFilter,
         magnificationFilter: texture.sampler.magnificationFilter }
@@ -447,12 +510,19 @@ export default class TaaPass143 {
       enabled: this.enabled, supported: this.supported, valid: !!this.output,
       reason: this._scopeReason() || this.reason, error: this.error, failed: this.failed,
       stats: { ...this.stats }, historyValid: this.historyValid, historySize: this.historySize,
-      activeFrame: this.active, blend: [...this.blend], variance: [...this.variance],
+      activeFrame: this.active,
+      algorithm: { name: 'Three.js r186 TRAA', commit: '9b4a2ac29c63ccb43fd51c5661f2f873ac2c39b8',
+        adaptation: 'CCR stable-grid reconstruction / float32 history / acquisition / relative depth',
+        depthThreshold: this.getOptions().taaDepthThreshold ?? 0.0005, edgeDepthDiff: this.getOptions().taaEdgeDepthDiff ?? 0.001,
+        maxVelocityLength: this.getOptions().taaMaxVelocityLength ?? 128, useSubpixelCorrection: this.getOptions().taaUseSubpixelCorrection !== false },
+      legacyIgnored: ['taaHistoryBlend', 'taaMotionBlend', 'taaVelocityThreshold', 'taaDepthTolerance', 'taaVarianceGammaStill', 'taaVarianceGammaMoving'],
+      motion: this.motion?.getDiagnostics() || null,
       staticFrames: this.staticFrames,
       jitter: this.jitter ? this.jitter.getDiagnostics() : null,
       overlay: this.overlay?.getDiagnostics() || null,
       samplers: { historyColor: sampler(this.historyColor), historyDepth: sampler(this.historyDepth) },
-      bytes: [...textures].reduce((sum, texture) => sum + texture.sizeInBytes, 0) + (this.overlay?.getDiagnostics().bytes || 0),
+      stageBytes, rhiHistoryBytes,
+      bytes: stageBytes + rhiHistoryBytes + (this.motion?.getDiagnostics().bytes || 0) + (this.overlay?.getDiagnostics().bytes || 0),
       scope: 'temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage'
     }
   }
@@ -477,6 +547,7 @@ export default class TaaPass143 {
     this.pendingFallback = undefined
     this.output = undefined
     this.outputFrame = undefined
+    this.alphaSource = undefined
     const scene = this.scene
     if (this.attached) {
       scene.preRender.removeEventListener(this.jitterListener)
@@ -486,6 +557,7 @@ export default class TaaPass143 {
     this.jitterListener = undefined
     this.restoreJitterListener = undefined
     this.overlay?.destroy();this.overlay=undefined
+    this.motion?.destroy();this.motion=undefined
     if (this.jitter) { this.jitter.destroy(); this.jitter = undefined }
     if (this.detachSelectionDepth) this.detachSelectionDepth()
     this.detachSelectionDepth = undefined
@@ -496,6 +568,7 @@ export default class TaaPass143 {
       if (frame.collection && !frame.collection.isDestroyed()) frame.collection.destroy()
     }
     this.frames = undefined
+    if (this.display) { this.display.collection.destroy(); this.display = undefined }
     if (this.depth) {
       if (this.depth.collection && !this.depth.collection.isDestroyed()) this.depth.collection.destroy()
       this.depth = undefined

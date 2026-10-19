@@ -1,6 +1,8 @@
 # 图像质量接口与空间抗锯齿（Cesium 1.143）
 
-2026-09-15：默认SMAA均衡档，MSAA请求1，设备原生像素。FXAA/SMAA位于最终显示颜色阶段，TAA实现不变。完整配置、校园图像对比与计时口径见 [校园抗锯齿说明](../../docs/04-integration/CAMPUS_ANTIALIASING.md)。
+> 本分支以固定 Three.js r186 TRAA 为上游，包含经授权的 CCR 采样与历史接受适配。默认 SMAA、已有 FXAA 保留；TAA 默认8相位。来源、偏离和实测边界见 [移植说明](./reference/three-r186/PORTING.md) 与 [当前验收状态](../../docs/verification/rendering-performance/traa-r186-2026-10-16/STATUS.md)。
+
+空间AA沿用2026-09-15的默认SMAA均衡档、MSAA请求1、设备原生像素。FXAA/SMAA位于最终显示颜色阶段；当前TAA见下文。完整配置、校园图像对比与计时口径见 [校园抗锯齿说明](../../docs/04-integration/CAMPUS_ANTIALIASING.md)。
 
 ```js
 pipeline.setAntiAliasing({ mode: 'smaa', quality: 'balanced', msaaSamples: 1, msaaCombine: false });
@@ -21,25 +23,26 @@ SpatialAaPass143共享已有最终颜色执行、copy、viewport恢复、原生F
 ## TAA时间抗锯齿
 
 ```js
-pipeline.setTaa({ enabled: true })
-pipeline.setTaa({ historyBlend: 0.03, motionBlend: 0.5, jitterSamples: 8 })
+pipeline.setTaa({ enabled: true, jitterSamples: 8 })
+pipeline.setTaa({ depthThreshold: 0.0005, edgeDepthDiff: 0.001,
+  maxVelocityLength: 128, useSubpixelCorrection: true })
 pipeline.getTaaDiagnostics()
 pipeline.resetTaaHistory()
 pipeline.setTaa({ enabled: false }) // 返回SMAA
 ```
 
-主场景面板及独立预览可以选择TAA，默认仍为SMAA。TAA在HDR效果之后、色调映射之前运行。当前颜色、历史颜色/深度和输出都对齐到固定显示网格；原始场景继续使用Halton亚像素采样。当前与历史使用Catmull-Rom重建、局部颜色夹取和深度反遮挡，不通过反复模糊显示结果来隐藏抖动。
+TAA在环境/HDR Bloom之后、色调映射之前运行。Halton(2,3)抖动经现有主相机bridge发布到实际draw frustum；颜色重建到稳定显示网格，历史用同核重建，3×3 RGB统计与当前颜色共享网格。R32F眼深按同一显示网格保存，读取时使用前帧jitter和actual inverse projection还原。官方阈值另转到ROOT相机perspective深度域，避免与draw子视锥的log-depth域混淆。
 
-混合vec4通过Cartesian4上传，诊断中的blend为本帧权重。默认静态当前帧权重0.03，初始化时按样本数快速积累；运动按像素位移增加当前帧权重。明显相机跳转丢弃历史。历史深度为R32F，使用当前分视锥的Cesium深度解码，并在可用时合并本帧Globe表面深度。
+保留r186最近表面运动、RGB方差盒/clipAABB、亚像素响应及HDR亮度加权。CCR明确偏离：深度dilation覆盖4×4实际重建范围；增加前帧眼空间米制遮挡拒绝；RGBA32F历史；固定基础当前权重0.003及短期EMA初始化；相机/表面运动和天空覆盖使用不同方差范围。未恢复旧5×5统计、高对比度静止分支或撤回候选。
 
-边缘稳定性：静止相机下，轮廓的采样深度可能在前景/背景间切换。仅在3×3深度邻域确有不连续时保留经过颜色约束的覆盖历史，避免每次切换都清空历史。5×5颜色验证范围覆盖整个三次重建足迹，并复用采样值进行重建，不对最终画面加模糊。静止的高对比像素逐步加强积累，最低当前帧权重为基础权重的1/6；`blend`报告基础权重，`staticFrames`报告静止积累时长。相机移动立即撤销静止记录，显露背景仍通过深度和颜色约束排除旧颜色。
+局部有限表面显露/新出现时重新取得最多32个初始化样本。计数存于私有颜色历史alpha；纯天空拒绝旧RGB时保留采样年龄，避免亚像素细线偶发漏采导致重复单样本闪点。正常管线使用一个RHI显示颜色目标恢复场景alpha；Graph直接绑定native颜色/深度历史，不再复制深度。无RHI的直接pass使用一个自有display stage。
 
-抖动桥限定主相机派生视锥，按其near重新计算偏移；相机替换、外部包装和原偏移在释放时保留。该桥是静态1.143的内部适配，并非跨版本公共API。样本数运行时改变会重启历史。
+性能优化：先复用显示目标完成一次当前颜色4×4重建，resolve直接读取重建后的3×3邻域；resolve结束后复用该目标恢复场景alpha。新增一次绘制但不新增纹理，当前颜色采样由每像素144次改为重建16次加resolve 9次。运动目标只在本帧首次实际写入时清理，无写入时resolve跳过运动纹理；primitive快照复用两份独立矩阵。FP32历史、重建核和接受公式保持不变。
 
-2026-09-18 交互修补：偏移只在 preRender/postRender 之间存在，避免被误判为相机移动而阻断 hover；轮廓 ID 使用稳定投影。单视锥 HDR、MSAA=1 下，Billboard/Label/PointPrimitive 在 TAA 后单独合成，不进入历史。额外 UI 目标和 ID 绘制的性能边界、验证结果见 `docs/04-integration/TAA_INTERACTION_FIX_2026-09-18.md`；诊断 `overlay` 报告本帧延后/重绘命令和额外内存。
+符合shader契约的独立opaque刚体GLTF通过实际draw记录前后primitive矩阵，产生RGBA32F速度与前后眼深。静态模型无需额外motion draw；遮挡/MASK需按实际最近表面核对有效速度。蒙皮、morph、实例和自定义位移未具备完整物体速度，观察到的opaque不兼容项计入unsupported。透明pass在入口跳过，不计入该计数，不能从unsupported=0推断透明已支持。
 
-当前TAA只接受单视锥透视HDR深度，多视锥时丢弃历史并回退FXAA；不把不可靠深度用于混合。1080p两张RGBA16F历史颜色与一张R32F历史深度约39.55MiB，不含上游场景/环境/反射资源。没有速度缓冲或透明Reactive Mask，复杂透明/变形物体仍有边界；不等同于TSR或上采样。
+运行时可选4/8/16/32相位，改变数量重启历史；32不保证比8稳定。旧historyBlend/motionBlend/velocityThreshold/depthTolerance/Gamma字段仅作解析兼容，诊断legacyIgnored列出，不改变新resolve。
 
-运行`node tests/rendering/run-taa-quality.cjs`（CESIUM_PLAYWRIGHT指向已安装模块），验证已知边缘覆盖、细条纹对比度、静态收敛、真实模型移动、GPU参数、相机硬切/慢速移动、启停和缩放。校园数据需配置或准备本地副本。回归判据针对最终输出稳定性，不能用“抖动使画面变化”代替抗锯齿验收。
+仅支持Cesium1.143、WebGL2、HDR、单视锥透视、MSAA=1和FP32 render/linear能力；不兼容时回退原生FXAA。Label/Billboard/PointPrimitive继续在TAA后合成，原生ID/轮廓使用稳定投影，抖动只在render时持有。reset/resize/开关/销毁释放自有资源，其他AA模式保持原有行为。
 
-复现：`npm run test:rendering`；静态服务器下打开`tests/rendering/image-quality-fixture.html`，执行`imageQualityFixture.runChecks()`。校园预览右上角可调色、选AA/MSAA和分辨率。当前GPU图像检查30项通过；最新103项Node回归通过。当前性能比较因前台/相机条件失败而未验收，完整结论见本地`plan/evidence/14-image-quality-handover.md`。
+诊断分别记录stageBytes、rhiHistoryBytes、motion.bytes、overlay.bytes和总bytes；旧版bytes遗漏RHI历史，不能直接相减当显存增量。验证命令：`node scripts/performance/validate-traa-r186.cjs --baseline`对批准基线，`--bundle --samples 8`验证构建，`--performance`独立执行300×3计时，`--campus --bundle`验证真实校园负载。图像读回与GPU计时分离；运动细线以重投影后的剖面宽度/对比度核验，不能只用未补偿画面移动的时间方差判断模糊。

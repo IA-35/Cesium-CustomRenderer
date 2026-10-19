@@ -35,6 +35,8 @@ export function resolveMsaaPolicy(input = {}) {
   const requested = Number.isFinite(raw) && raw >= 1 ? raw : 1
   if (mode === 'msaa') return { requested, effective: requested, combined: false, reason: 'Multisample-only mode' }
   if (mode === 'off') return { requested, effective: 1, combined: false, reason: 'Anti-aliasing disabled' }
+  if (mode === 'taa') return { requested, effective: 1, combined: false,
+    reason: requested > 1 ? 'Temporal anti-aliasing owns coverage; MSAA request reduced to 1' : 'Temporal anti-aliasing owns coverage' }
   const owner = mode === 'taa' ? 'Temporal anti-aliasing' : 'Post-process anti-aliasing'
   if (input && input.msaaCombine === true && requested > 1) {
     return { requested, effective: requested, combined: true, reason: 'Combined multisample and post-process anti-aliasing requested' }

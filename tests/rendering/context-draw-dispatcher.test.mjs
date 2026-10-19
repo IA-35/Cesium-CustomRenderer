@@ -2,6 +2,22 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import ContextDrawDispatcher143 from '../../src/pipeline/ContextDrawDispatcher143.js'
 
+test('repeated AA handler disposal releases records without skipping the next active callback', () => {
+  const calls = [], dispatcher = new ContextDrawDispatcher143({ draw() { calls.push('draw') } }).install()
+  for (let i = 0; i < 100; i++) {
+    dispatcher.addHandler(() => 'continue', { name: 'temporary-aa' })()
+    dispatcher.addObserver(() => {})()
+  }
+  assert.equal(dispatcher.handlers.length, 0)
+  assert.equal(dispatcher.observers.length, 0)
+  let off
+  off = dispatcher.addHandler(() => { off(); calls.push('first'); return 'continue' }, { name: 'first' })
+  dispatcher.addHandler(() => { calls.push('second'); return 'continue' }, { name: 'second' })
+  dispatcher.context.draw('native')
+  assert.deepEqual(calls, ['first', 'second', 'draw'])
+  dispatcher.destroy()
+})
+
 test('dispatcher installs one wrapper and records handler decisions', () => {
   const calls = [], context = { draw(command) { calls.push(command); return command } }
   const dispatcher = new ContextDrawDispatcher143(context).install()

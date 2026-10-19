@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import TaaJitter143 from '../../src/antialiasing/TaaJitter143.js'
 import TaaPass143, { taaBlendWeights, taaVarianceGammas } from '../../src/antialiasing/TaaPass143.js'
-import { taaResolveShader, taaDepthShader, taaCommon } from '../../src/antialiasing/taaShaders143.js'
+import { taaResolveShader, taaDepthShader, taaDisplayShader, taaCommon } from '../../src/antialiasing/taaShaders143.js'
 
 const C = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
 
@@ -102,46 +102,32 @@ test('the jitter refuses unusable cameras and never clobbers a foreign offset', 
   unusable.destroy()
 })
 
-test('both TAA shaders assemble as Cesium GLSL3 with a single output and no self-read', () => {
-  for (const [name, shader] of Object.entries({ resolve: taaResolveShader, depth: taaDepthShader })) {
+test('TAA shaders assemble as Cesium GLSL3 with a single output and no self-read', () => {
+  for (const [name, shader] of Object.entries({ resolve: taaResolveShader, depth: taaDepthShader, display: taaDisplayShader })) {
     const combined = new C.ShaderSource({ sources: [shader] }).createCombinedFragmentShader({ webgl2: true })
     assert.match(combined, /^#version 300 es/, name)
     assert.equal((combined.match(/out vec4 out_FragColor;/g) || []).length, 1, name)
-    for (const uniform of ['highp sampler2D colorTexture', 'highp sampler2D depthTexture',
+    for (const uniform of ['highp sampler2D colorTexture', ...(name === 'display' ? [] : ['highp sampler2D depthTexture']),
       'in vec2 v_textureCoordinates']) {
       assert.ok(combined.includes(uniform), `${name}: ${uniform}`)
     }
   }
   const resolve = new C.ShaderSource({ sources: [taaResolveShader] }).createCombinedFragmentShader({ webgl2: true })
   for (const uniform of ['highp sampler2D u_historyColor', 'highp sampler2D u_historyDepth',
-    'mat4 u_prevViewFromCurrent', 'mat4 u_prevProjection', 'vec4 u_taaBlend', 'vec4 u_taaVariance',
-    'float u_historyValid']) {
+    'mat4 u_currentInverseRasterProjection', 'mat4 u_previousInverseRasterProjection',
+    'mat4 u_previousViewFromCurrentEye', 'mat4 u_currentViewFromPreviousEye', 'vec2 u_cameraNearFar',
+    'float u_depthThreshold', 'float u_edgeDepthDiff', 'float u_maxVelocityLength']) {
     assert.ok(resolve.includes(`uniform ${uniform};`), uniform)
   }
-  // The resolve must not output the history's auxiliary channel into the HDR chain: every
-  // output path writes alpha 1, and only the depth stage may carry depth in a texture.
-  const writes = resolve.match(/out_FragColor = [^\n]*/g) || []
-  assert.equal(writes.length, 2)
-  for (const write of writes) assert.match(write, /,\s*1\.0\);$/)
-  assert.match(taaDepthShader, /taaEyeDepth\(v_textureCoordinates \+ u_jitterUv\)/)
+  assert.match(taaDepthShader, /v_textureCoordinates \+ u_jitterUv/)
+  assert.match(taaDepthShader, /closest = min\(closest, eye\)/)
   assert.match(resolve, /czm_windowToEyeCoordinates\(uv \* czm_viewport.zw \+ czm_viewport.xy, depth\)/)
-  assert.match(resolve, /texture\(u_historyDepth, previousUV\)\.r/)
-  assert.match(resolve, /reconstruct\(u_historyColor, previousUV\)/)
-  // History is bounded by the intersection of a variance AABB and the neighbourhood min/max
-  // box, then weighted by the blend factor. The min/max box alone let a single bright outlier
-  // stretch the bounds and keep stale history alive (ghosting).
-  assert.match(resolve, /uniform vec4 u_taaVariance;/)
-  assert.match(resolve, /vec3 sigma = sqrt\(max\(moment2 \/ NEIGHBOURHOOD_TAPS - mean \* mean, vec3\(0\.0\)\)\)/)
-  // Preserve the previous visual baseline while the replacement's temporal flicker
-  // is investigated; do not reintroduce the rejected raw-raster resolve implicitly.
-  assert.match(resolve, /float varianceGamma = mix\(u_taaVariance\.w, u_taaVariance\.z, motionConfidence\)/)
-  assert.match(resolve, /vec3 clippedHistory = clamp\(history, max\(varianceMin, lower\), min\(varianceMax, upper\)\)/)
-  assert.match(resolve, /out_FragColor = vec4\(mix\(clippedHistory, current, blend\), 1\.0\)/)
-  assert.match(resolve, /u_prevViewFromCurrent \* vec4\(eye, background \? 0\.0 : 1\.0\)/)
-  assert.match(resolve, /float expectedDepth = background \? 0\.0 : -previousEye\.z;/)
-  assert.match(resolve, /clip.w > 0.0/)
-  assert.match(resolve, /abs\(storedDepth - expectedDepth\) <= tolerance/)
-  assert.match(resolve, /vec2 uv = outputUV \+ u_jitterUv/)
+  assert.match(resolve, /taaHistory\(historyUV, expectedPreviousEyeDepth\)/)
+  assert.match(resolve, /texture\(u_historyDepth, historyUV\)/)
+  assert.match(resolve, /for \(int x = -1; x <= 2; \+\+x\)/)
+  assert.match(resolve, /edge \|\| !disocclusion/)
+  assert.match(resolve, /taaFlickerReduction\(currentColor, clippedHistoryColor, currentWeight\)/)
+  assert.doesNotMatch(resolve, /u_staticFrames|u_taaBlend|u_taaVariance|reactivity|Catmull/)
 
 })
 
@@ -155,9 +141,9 @@ test('TAA shaders declare no identifier that GLSL ES 3.00 reserves', () => {
     'superp', 'namespace', 'using', 'cast', 'packed', 'goto', 'inline', 'noinline', 'public',
     'static', 'extern', 'external', 'interface', 'long', 'short', 'double', 'half', 'fixed',
     'unsigned', 'sizeof', 'union', 'enum', 'typedef', 'template', 'this', 'asm', 'class',
-    'volatile', 'final', 'attribute', 'varying', 'texture2D', 'texture3D', 'textureCube'])
+    'volatile', 'coherent', 'final', 'attribute', 'varying', 'texture2D', 'texture3D', 'textureCube'])
   const declaration = /\b(?:float|int|uint|bool|void|vec[234]|ivec[234]|uvec[234]|bvec[234]|mat[234]|mat[234]x[234]|sampler2D|samplerCube)\s+([A-Za-z_]\w*)/g
-  for (const [name, shader] of Object.entries({ resolve: taaResolveShader, depth: taaDepthShader })) {
+  for (const [name, shader] of Object.entries({ resolve: taaResolveShader, depth: taaDepthShader, display: taaDisplayShader })) {
     const declared = [...shader.matchAll(declaration)].map(match => match[1])
     assert.ok(declared.length > 0, `${name}: no declarations found`)
     for (const identifier of declared) {
@@ -173,6 +159,7 @@ function passFixture() {
     camera: { frustum },
     context: { webgl2: true, depthTexture: true, floatingPointTexture: true,
       halfFloatingPointTexture: true, colorBufferHalfFloat: true, colorBufferFloat: true,
+      textureFloatLinear: true, textureHalfFloatLinear: true,
       defaultTexture: {}, _gl: { isContextLost: () => false },
       // The jitter needs somewhere to publish the sub-pixel request: without it the offsets
       // would move the camera frustum while the scene kept drawing with its own projection.
@@ -258,6 +245,21 @@ test('the temporal pass reports its configuration and history state', () => {
   assert.equal(pass.isDestroyed(), true)
 })
 
+test('r186 requires actual floating linear sampling and single-sample raster input', () => {
+  const f = passFixture()
+  f.scene.context.textureFloatLinear = false
+  const unsupported = new TaaPass143(C, f.scene, taaOptions)
+  assert.equal(unsupported.supported, false)
+  assert.match(unsupported.getDiagnostics().reason, /Linear/)
+  unsupported.destroy()
+  f.scene.context.textureFloatLinear = true
+  const pass = new TaaPass143(C, f.scene, taaOptions)
+  pass.setEnabled(true)
+  f.scene.msaaSamples = 4
+  assert.match(pass.getDiagnostics().reason, /MSAA=1/)
+  pass.destroy()
+})
+
 // PostProcessStage.execute assigns this._colorTexture.sampler = this._sampler, so a stage's
 // sampleMode rewrites the sampler of the texture handed *into* it and never touches the
 // stage's own output texture. The history colour is another stage's output, which is why the
@@ -267,11 +269,12 @@ test('the resolve controls how its own history is filtered, not the stage sample
   const pass = new TaaPass143(C, f.scene, taaOptions)
   pass.setEnabled(true)
 
-  // sampleMode must stay NEAREST so it does not reach back into the HDR chain's shared
-  // colour texture, which every other HDR effect consumes.
+  // Stage sampling temporarily affects current input. History needs its own sampler;
+  // the incoming HDR sampler is restored by the effect's execution boundary.
   for (const name of ['a', 'b']) {
     const stage = pass.frames.find(frame => frame.resolve.name.endsWith(name)).resolve
-    assert.equal(stage.sampleMode, C.PostProcessStageSampleMode.NEAREST, name)
+    assert.equal(stage.sampleMode, C.PostProcessStageSampleMode.LINEAR, name)
+    assert.equal(stage.pixelDatatype, C.PixelDatatype.FLOAT, 'low-weight HDR accumulation requires float32 history')
   }
   assert.equal(pass.depth.pack.sampleMode, C.PostProcessStageSampleMode.NEAREST)
   assert.equal(pass.linearSampler.minificationFilter, C.TextureMinificationFilter.LINEAR)
@@ -295,9 +298,67 @@ test('the resolve controls how its own history is filtered, not the stage sample
   pass.destroy()
 })
 
+test('RHI display copy restores scene alpha and targets the framebuffer resource', () => {
+  const f = passFixture(), commands = []
+  let textures = 0
+  f.scene.context.createViewportQuadCommand = fragmentShader => {
+    const command = { fragmentShader, execute: (context, state) => assert.equal(state.framebuffer, command.framebuffer) }
+    commands.push(command); return command
+  }
+  const rhi = { createTexture: options => { textures++; return { texture: { ...options }, release() {} } },
+    createFramebuffer: () => ({ framebuffer: {}, release() {} }) }
+  const pass = new TaaPass143(C, f.scene, taaOptions, rhi)
+  pass._ensureRhiHistory(64, 64, C.PixelDatatype.FLOAT)
+  pass._ensureRhiHistory(64, 64, C.PixelDatatype.FLOAT)
+  assert.equal(textures, 1, 'only one display texture; native stages already own the histories')
+  const source = { width: 64, height: 64 }, alphaSource = {}
+  pass.alphaSource = alphaSource
+  pass._copyToRhi(f.scene.context, source, pass.rhiHistory[0].colorFramebuffer, pass.rhiCopyColor)
+  assert.equal(commands[0].fragmentShader, taaDisplayShader)
+  assert.equal(commands[0].uniformMap.colorTexture(), source)
+  assert.equal(commands[0].uniformMap.u_alphaSource(), alphaSource)
+  assert.equal(commands[0].uniformMap.u_reconstructColor(), false)
+  pass.reconstructing = true
+  assert.equal(commands[0].uniformMap.u_reconstructColor(), true, 'the same target also serves the current reconstruction')
+  assert.equal(commands[0].framebuffer, pass.rhiHistory[0].colorFramebuffer.framebuffer)
+  pass.destroy()
+})
+
+test('partial RHI display allocation releases every resource when any allocation fails', () => {
+  for (let failAt = 1; failAt <= 2; failAt++) {
+    const f = passFixture(), alive = new Set()
+    let allocations = 0
+    const allocate = field => {
+      if (++allocations === failAt) throw new Error('Injected allocation failure')
+      const resource = { [field]: {}, release() { alive.delete(resource) } }
+      alive.add(resource); return resource
+    }
+    const rhi = { createTexture: () => allocate('texture'), createFramebuffer: () => allocate('framebuffer') }
+    const pass = new TaaPass143(C, f.scene, taaOptions, rhi)
+    assert.throws(() => pass._ensureRhiHistory(64, 64, C.PixelDatatype.FLOAT), /Injected allocation failure/)
+    assert.equal(alive.size, 0, `allocation ${failAt} leaked prior resources`)
+    pass.destroy()
+  }
+})
+
+test('Graph binds actual native histories without allocating copies', () => {
+  const f = passFixture(), pass = new TaaPass143(C, f.scene, taaOptions), bindings = new Map()
+  const graph = { activeFrame: {}, importResource: name => name, bindExternal: (name, value) => bindings.set(name, value) }
+  pass.declareGraph(graph)
+  const colors = [{}, {}], depth = {}
+  pass.frames = colors.map(outputTexture => ({ resolve: { outputTexture } }))
+  pass.depth = { pack: { outputTexture: depth } }
+  pass._bindGraphHistory()
+  assert.equal(bindings.get('taa.history.colorA'), colors[0])
+  assert.equal(bindings.get('taa.history.colorB'), colors[1])
+  assert.equal(bindings.get('taa.history.depth'), depth)
+  assert.equal(bindings.size, 3)
+  pass.destroy()
+})
+
 // The weights used to be partly literals in the execute path: the motion threshold was a
 // hard-coded 12 with no way to reach it from presets.js.
-test('the resolve blend block is configuration, including the motion threshold', () => {
+test('deprecated blend helpers preserve source compatibility for legacy callers', () => {
   assert.deepEqual(taaBlendWeights({}), [0.03, 0.5, 12, 0.1])
   assert.deepEqual(taaBlendWeights({ taaHistoryBlend: 0.25, taaMotionBlend: 0.7,
     taaVelocityThreshold: 20, taaDepthTolerance: 0.3 }), [0.25, 0.7, 20, 0.3])
@@ -320,16 +381,20 @@ test('the resolve blend block is configuration, including the motion threshold',
   const f = passFixture()
   const pass = new TaaPass143(C, f.scene, () => ({ ...taaOptions(), taaHistoryBlend: 0.25 }))
   const diagnostics = pass.getDiagnostics()
-  assert.deepEqual(diagnostics.blend, [0, 0, 0, 0],
-    'the block starts zeroed so a bypassed pass cannot blend anything into itself')
+  assert.equal(diagnostics.algorithm.name, 'Three.js r186 TRAA')
+  assert.ok(diagnostics.legacyIgnored.includes('taaHistoryBlend'))
+  assert.equal(diagnostics.algorithm.maxVelocityLength, 128)
   pass.destroy()
 })
 
-test('the resolve supplies a Cesium vec4 value, not an unuploadable typed array', () => {
+test('the resolve supplies real Cesium matrix/vector uniforms and official controls', () => {
   const f = passFixture(), pass = new TaaPass143(C, f.scene, taaOptions)
   pass.setEnabled(true)
-  const value = pass.frames[0].resolve.uniforms.u_taaBlend()
-  assert.ok(value instanceof C.Cartesian4)
+  const uniforms = pass.frames[0].resolve.uniforms
+  assert.ok(uniforms.u_cameraNearFar() instanceof C.Cartesian2)
+  assert.ok(uniforms.u_currentProjection() instanceof C.Matrix4)
+  assert.equal(uniforms.u_depthThreshold(), 0.0005)
+  assert.equal(uniforms.u_taaBlend, undefined)
   pass.destroy()
 })
 
