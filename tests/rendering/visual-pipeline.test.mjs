@@ -54,7 +54,8 @@ function geometryFixture(capabilities = {}) {
   const f = fixture()
   const C = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
   for (const key of ['PostProcessStage', 'PostProcessStageComposite', 'PixelFormat', 'PixelDatatype',
-    'PostProcessStageSampleMode', 'Color', 'SceneMode']) f.Cesium[key] = C[key]
+    'PostProcessStageSampleMode', 'Color', 'SceneMode', 'Tonemapper',
+    'Cartesian2', 'Cartesian3', 'Cartesian4']) f.Cesium[key] = C[key]
   f.stages = new C.PostProcessStageCollection()
   Object.assign(f.viewer.scene, {
     postProcessStages: f.stages,
@@ -412,4 +413,35 @@ test('preview loads the configured map image and surrounding white model outside
   assert.match(preview, /const contextTiles = \[\]/)
   assert.match(preview, /contextTiles\.push\(whiteModel\)/)
   assert.doesNotMatch(preview, /tiles\.push\(whiteModel\)/)
+})
+
+// 回归：改曝光等普通选项不能把已选中的色调映射曲线顶掉。
+//
+// 旧实现里 `apply()` 无条件 `write(postProcessStages,'tonemapper',ACES)`。
+// `setLensEffects({toneMappingCurve:'reinhard'})` 先把原生曲线换成 REINHARD，
+// 随后 `setOptions({exposure:2})` 又重复进 `apply()` 写回 ACES；而已经启用的
+// LensEffectPipeline 在 `setEnabled(true)` 时直接 return，不会重新应用曲线 →
+// 配置显示 reinhard、实际执行 ACES。
+test('changing exposure keeps the tone mapping curve chosen earlier', () => {
+  const f = geometryFixture()
+  Object.assign(f.viewer.scene.context, {
+    webgl2: true,
+    _gl: { isContextLost: () => false }
+  })
+  f.viewer.scene.frameState = { passes: { render: true }, frameNumber: 1 }
+  f.viewer.scene.context.uniformState = {}
+  f.viewer.scene.camera = { directionWC: { x: 0, y: 0, z: -1 }, viewMatrix: { id: 1 }, frustum: {} }
+  f.viewer.resize = () => {}
+  const pipeline = new VisualPipeline({ ...f, options: { ...f.options, antialiasing: 'off' } })
+
+  pipeline.setLensEffects({ toneMappingCurve: 'reinhard' })
+  assert.equal(f.stages.tonemapper, f.Cesium.Tonemapper.REINHARD)
+
+  pipeline.setOptions({ exposure: 2.4 })
+  assert.equal(pipeline.getOptions().toneMappingCurve, 'reinhard', 'the option must not change')
+  assert.equal(f.stages.tonemapper, f.Cesium.Tonemapper.REINHARD, 'and the native curve must stay applied')
+  assert.equal(f.stages.exposure, 2.4, 'exposure itself still has to reach the pipeline')
+
+  pipeline.destroy()
+  f.stages.destroy()
 })

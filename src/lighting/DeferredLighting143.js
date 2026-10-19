@@ -29,9 +29,8 @@ export default class DeferredLighting143 {
       this.sunUniforms=acquireSunUniforms(this.C,this.scene)
       this.geometryAvailable=undefined
       this.bridge=createFrameBridge({Cesium:this.C,scene:this.scene})
-      this.offItems=this.bridge.onRenderItem(item=>this.renderItems.set(item.command,item))
-       this.offFrame=this.bridge.on('opaqueFrame',()=>this.renderItems.clear(),{priority:-100})
-       this.off=this.bridge.on('translucent',()=>this.render())
+      this.offItems=this.bridge.onRenderItem(item=>this._collect(item))
+      this.off=this.bridge.on('translucent',()=>this.render())
       this.bridge.install()
       this.materials.setEnabled(true)
       this.onLost=()=>this.fail(new Error('Context lost'))
@@ -39,6 +38,14 @@ export default class DeferredLighting143 {
       this.reason='Not rendered'
     }catch(error){this.fail(error)}
     this.scene.requestRender()
+  }
+  // Collection and clearing both key off the bridge's frame number. Subscribing to `opaqueFrame`
+  // would clear the map *after* the frame's commands were already collected, leaving `renderItemFor`
+  // empty for the whole frame and letting stale command references accumulate across frames.
+  _collect(item){
+    const frame=item.frameNumber
+    if(this.collectFrame!==frame){this.collectFrame=frame;this.renderItems.clear()}
+    this.renderItems.set(item.command,item)
   }
   renderItemFor(command){return this.renderItems.get(command)}
   setGeometryAvailable(value){
@@ -191,7 +198,7 @@ export default class DeferredLighting143 {
     this.setGeometryAvailable(false)
   }
   detach(){
-    this.off?.();this.off=null;this.offItems?.();this.offItems=null;this.offFrame?.();this.offFrame=null
+    this.off?.();this.off=null;this.offItems?.();this.offItems=null
     this.bridge?.destroy();this.bridge=null
     this.materials.setEnabled(false)
     if(this.onLost)this.scene.canvas?.removeEventListener('webglcontextlost',this.onLost)

@@ -31,24 +31,30 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   function assertAlive() { if (state.destroyed) throw new Error('FrameBridge143 is destroyed') }
   function contextFor(phase) {
     const view = scene._view, frameNumber = scene.frameState.frameNumber
-    if (state.frameNumber !== frameNumber) {
+    const newFrame = state.frameNumber !== frameNumber
+    if (newFrame) {
       state.frameNumber = frameNumber; state.frameGeneration++; state.commandIndex = 0; stats.frames++
     }
     if (view && !viewIds.has(view)) viewIds.set(view, viewCount++)
     const id = view ? viewIds.get(view) : -1, current = scene.context.uniformState?.currentFrustum
     const frameState = createFrameState143(scene, { generation: state.frameGeneration })
-    return { phase, frameState, scene, view, frameNumber, frameGeneration: state.frameGeneration,
+    const context = { phase, frameState, scene, view, frameNumber, frameGeneration: state.frameGeneration,
       generation: state.generation, sceneId: scene.id || 'scene-0',
       viewId: (scene.id || 'scene-0') + ':' + id, callIndex: id, frustumIndex: id < 0 ? 0 : id,
       frustum: current ? { near: current.x, far: current.y } : null,
       boundary: phase === 'translucent' ? 'oit-compose' : phase === 'resolve' ? 'post-resolve' : 'oit-frustum',
       useOIT: scene._environmentState?.useOIT === true,
       drawingBuffer: { width: scene.context.drawingBufferWidth, height: scene.context.drawingBufferHeight } }
+    // The frame's collectors must start empty *before* the first command is submitted, not when the
+    // opaque phase is announced. Commands are collected during `createPotentiallyVisibleSet`, which
+    // runs before `updateAndExecuteCommands` announces `opaqueFrame`; clearing there would discard
+    // the frame we just collected. The new-frame boundary is the only correct reset point.
+    if (newFrame) { itemQueue.begin(frameState); for (const graph of graphs) graph.beginFrame(context) }
+    return context
   }
   function dispatch(phase) {
     if (!state.installed || !enabled || !isRender()) return
     const context = contextFor(phase), previous = activeContext
-    if (phase === 'opaqueFrame') { itemQueue.begin(context.frameState); for (const graph of graphs) graph.beginFrame(context) }
     stats.callbacks[phase]++; activeContext = context
     try {
       for (const record of [...callbacks].sort((a,b) => a.priority - b.priority)) {

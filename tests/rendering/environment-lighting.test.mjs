@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import EnvironmentLighting143 from '../../src/environment/EnvironmentLighting143.js'
@@ -281,6 +281,59 @@ test('unsupported dynamic mapping leaves manager configuration untouched', () =>
   assert.equal(lighting.getDiagnostics().managerCount, 0)
   assert.equal(model.environmentMapManager.atmosphereScatteringIntensity, 2)
   lighting.destroy(); model.destroy()
+})
+
+test('a shared reflection record skips a model whose IBL was taken over or destroyed', () => {
+  const { scene, lighting } = fixture()
+  const makeModel = () => {
+    const model = Object.create(C.Model.prototype)
+    model._imageBasedLighting = new C.ImageBasedLighting()
+    model._shouldDestroyImageBasedLighting = true
+    model._destroyed = false
+    model.resetDrawCommands = () => {}
+    model.isDestroyed = () => model._destroyed
+    scene.primitives.add(model)
+    return model
+  }
+  // External takeover: the record has no `changes` array to replay, so reaching
+  // the property-restore path used to throw on `records.slice`.
+  const taken = makeModel()
+  lighting.setReflectionIncluded(taken, true)
+  lighting.setReflection({ enabled: true, strength: 0.5, map: '/assets/environment/98_ibl.ktx2' })
+  const external = new C.ImageBasedLighting()
+  taken.imageBasedLighting = external
+  lighting.setReflection({ enabled: false, map: null })
+  assert.equal(taken.imageBasedLighting, external, 'an external IBL is left untouched')
+  // Destroyed model: the shared object is gone before cleanup runs.
+  const dead = makeModel()
+  lighting.setReflectionIncluded(dead, true)
+  lighting.setReflection({ enabled: true, strength: 0.5, map: '/assets/environment/98_ibl.ktx2' })
+  dead._destroyed = true
+  lighting.setReflection({ enabled: false, map: null })
+  assert.equal(lighting.reflectionRecords.size, 0)
+  lighting.destroy()
+})
+
+test('restoring a shared reflection puts back the ownership the model had before', () => {
+  const { scene, lighting } = fixture()
+  const model = Object.create(C.Model.prototype)
+  model._imageBasedLighting = new C.ImageBasedLighting()
+  // ImageBasedLighting is created with the model, so the model owns and destroys it.
+  model._shouldDestroyImageBasedLighting = true
+  model._destroyed = false
+  model.resetDrawCommands = () => {}
+  model.isDestroyed = () => model._destroyed
+  scene.primitives.add(model)
+  const original = model.imageBasedLighting
+  lighting.setReflectionIncluded(model, true)
+  lighting.setReflection({ enabled: true, strength: 0.5, map: '/assets/environment/98_ibl.ktx2' })
+  assert.notEqual(model.imageBasedLighting, original)
+  assert.equal(model._shouldDestroyImageBasedLighting, false)
+  lighting.setReflection({ enabled: false, map: null })
+  assert.equal(model.imageBasedLighting, original)
+  // Leaving this false would leak the IBL the model created and owns.
+  assert.equal(model._shouldDestroyImageBasedLighting, true)
+  lighting.destroy()
 })
 
 test('dead assets and missing capabilities are safe and unsupported status is explicit', () => {

@@ -52,20 +52,38 @@ export function planRenderBatches143(items = [], { pass = null } = {}) {
   }
   const flattened = batches.flatMap(batch => batch.items)
   const orderStable = flattened.every((item, index) => index === 0 || item.nativeOrderKey >= flattened[index - 1].nativeOrderKey)
-  const programBinds = batches.length
-  const renderStateBinds = new Set(batches.map(batch => batch.key.split('|')[3])).size
+  // ⚠️ 上报口径必须区分「计划」与「实际」。
+  //
+  // `batches.length` 是**如果**有一条真正的批处理提交路径时的绑定次数上限；
+  // 而当前 `RenderItemExecutor143.executeBatch` 仍是逐条 `command.execute()`，
+  // Cesium `Context.beginDraw`（1.143 `Source/Renderer/Context.js:1313`）对每条
+  // 命令无条件 `shaderProgram._bind()`，所以实际 GL 绑定次数恒等于条目数。
+  // 早先直接拿 `batches.length` 当 `programBinds` 上报 `programBindReduction`，
+  // 是把尚未兑现的优化说成已到手的收益。
+  //
+  // `directSubmitRange()` 在 `src/` 内没有生产调用点（只有
+  // `tests/rendering/deferred-transparency.test.mjs` 打桩调用），
+  // 所以 `optimizationSuccess` 一律按「未达成」报告。
+  const plannedProgramBinds = batches.length
+  const plannedStateBinds = new Set(batches.map(batch => batch.key.split('|')[3])).size
+  const programBinds = ordered.length
+  const renderStateBinds = ordered.length
   return Object.freeze({
     batches: Object.freeze(batches.map(batch => Object.freeze({ ...batch, items: Object.freeze(batch.items.slice()) }))),
     inputCount: ordered.length,
     batchCount: batches.length,
     meanBatchSize: batches.length ? ordered.length / batches.length : 0,
+    // 实际发生的绑定次数（逐条提交）。
     programBinds,
     renderStateBinds,
-    // Savings are stated against the unbatchable baseline: one bind per item.
+    // 计划中的绑定次数上限，只有接上真正的批提交路径才会变成实际值。
+    plannedProgramBinds,
+    plannedStateBinds,
     programBindReduction: ordered.length ? 1 - programBinds / ordered.length : 0,
+    plannedProgramBindReduction: ordered.length ? 1 - plannedProgramBinds / ordered.length : 0,
     correctness: orderStable ? 'pass' : 'fail',
     noRegression: orderStable && flattened.length === ordered.length ? 'pass' : 'fail',
-    optimizationSuccess: batches.length < ordered.length ? 'pass' : 'not-achieved'
+    optimizationSuccess: plannedProgramBinds < ordered.length ? 'planned-only' : 'not-achieved'
   })
 }
 

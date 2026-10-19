@@ -136,6 +136,55 @@ test('light camera updates never invoke interactive setView/picking during rende
   assert.doesNotThrow(() => light.update(C.Cartesian3.fromDegrees(123, 41), C.Cartesian3.UNIT_Z, 2000, 2048))
 })
 
+test('sub-pixel TAA jitter does not invalidate the shadow frame cache', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const root = {}
+  const scene = { primitives: { length: 1, _primitives: [root] } }
+  const frustum = new engine.PerspectiveFrustum({ fov: Math.PI / 3, aspectRatio: 1.57, near: 1, far: 500000 })
+  const camera = {
+    viewMatrix: engine.Matrix4.clone(engine.Matrix4.IDENTITY),
+    positionWC: new engine.Cartesian3(0, 0, 1),
+    frustum
+  }
+  const options = { shadowCascades: 1, shadowSize: 4096, shadowDistance: 4000, shadowUpdateInterval: 2 }
+  const caster = { castShadows: true, shaderProgram: {}, pass: engine.Pass.OPAQUE }
+  const base = pass => {
+    Object.assign(pass, {
+      C: engine, scene, ready: true, forceShadowUpdate: false,
+      lastCameraView: engine.Matrix4.clone(camera.viewMatrix),
+      lastLightDirection: engine.Cartesian3.clone(engine.Cartesian3.UNIT_Z),
+      lastCommandCount: 1, lastCommandRefs: [caster], lastPrimitiveCount: 1, lastPrimitiveRefs: [root],
+      lastFrustumKey: pass.cameraFrustumKey(camera),
+      lastShadowOptionsKey: pass.shadowOptionsKey(options), lastShadowFrame: 10, shadowFrameCounter: 10,
+      levels: [{ target: { size: 4096 } }]
+    })
+    return pass
+  }
+  const list = () => [caster, { pass: engine.Pass.COMPUTE }]
+  const toLight = engine.Cartesian3.UNIT_Z
+  // Each frame writes the jitter phase TaaJitter143 would apply (fraction of a pixel
+  // near the frustum plane). The key must be blind to it.
+  const phase = i => ({ xOffset: (i % 2 ? 1 : -1) * 0.00022838 * (1 + i), yOffset: (i % 3 ? 1 : -1) * 0.00011419 * (1 + i) })
+  const run = jitter => {
+    const pass = base(Object.create(DirectionalShadowPass.prototype))
+    pass.rememberShadowFrame({ frameNumber: 10 }, camera, list(), toLight, options)
+    let updates = 0
+    for (let i = 0; i < 24; i++) {
+      if (jitter) Object.assign(frustum, phase(i))
+      else Object.assign(frustum, { xOffset: 0, yOffset: 0 })
+      const frame = { frameNumber: 11 + i }
+      if (pass.shouldReuseShadowFrame(frame, camera, list(), toLight, options)) continue
+      updates++
+      pass.rememberShadowFrame(frame, camera, list(), toLight, options)
+    }
+    return updates
+  }
+  const withoutJitter = run(false)
+  const withJitter = run(true)
+  assert.equal(withoutJitter, 12, 'a stationary camera refreshes every other frame at interval 2')
+  assert.equal(withJitter, withoutJitter, 'TAA jitter must not force a shadow-map redraw')
+})
+
 test('adaptive shadow reuse ignores scheduling commands and never skips consecutive frames', () => {
   const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
   const root = {}

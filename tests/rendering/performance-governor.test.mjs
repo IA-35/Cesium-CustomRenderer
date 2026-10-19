@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import PerformanceGovernor143, { quantile } from '../../src/performance/PerformanceGovernor143.js'
 import VisualPipeline from '../../src/VisualPipeline.js'
@@ -244,4 +244,38 @@ test('the pipeline exposes governor control and destroys it with the pipeline', 
   assert.equal(p.governor, null)
   assert.equal(listeners.post.length + listeners.pre.length, 0)
   assert.equal(p.getPerformanceDiagnostics().reason, 'Destroyed')
+})
+
+// `allowResolutionScaling` 是构造期字段（PerformanceGovernor143:46 只读一次），
+// 早先不在 setPerformance 的 tuning 键里，于是「先开调速器、再单独授权/撤销降分辨率」
+// 完全不生效：调速器仍会在用户撤销授权后继续改画面清晰度。
+test('setPerformance honours allowResolutionScaling changed on its own', () => {
+  const { p } = pipelineHost()
+  p.setPerformance({ enabled: true, targetFps: 30 })
+  assert.equal(p.getPerformanceDiagnostics().allowResolutionScaling, false)
+
+  p.setPerformance({ allowResolutionScaling: true })
+  assert.equal(p.getPerformanceDiagnostics().allowResolutionScaling, true, 'granting must take effect')
+
+  p.setPerformance({ allowResolutionScaling: false })
+  assert.equal(p.getPerformanceDiagnostics().allowResolutionScaling, false, 'revoking must take effect too')
+
+  p.destroy()
+})
+
+test('rebuilding the governor keeps settings the call did not repeat', () => {
+  const { p } = pipelineHost()
+  p.setPerformance({ enabled: true, targetFps: 45, minScale: 0.75, allowResolutionScaling: true })
+  const before = p.getPerformanceDiagnostics()
+  assert.equal(before.targetFrameMs, 1000 / 45)
+
+  // 只改一个字段，其余必须原样保留而不是退回默认值。
+  p.setPerformance({ sampleWindow: 120 })
+  const after = p.getPerformanceDiagnostics()
+  assert.equal(after.sampleWindow, 120)
+  assert.equal(after.targetFrameMs, 1000 / 45)
+  assert.equal(after.minScale, 0.75)
+  assert.equal(after.allowResolutionScaling, true)
+
+  p.destroy()
 })

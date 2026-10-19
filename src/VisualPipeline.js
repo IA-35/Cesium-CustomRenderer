@@ -34,6 +34,24 @@ const pipelines = new WeakMap()
 const contextLossOwner = Symbol('context loss requires Viewer rebuild')
 export const getVisualPipeline = viewer => pipelines.get(viewer)
 
+// 读回 governor 当前生效的构造配置，供重建时合并。
+// 只取构造期字段；运行期状态（window/baseline/step）不在此列。
+function performanceSettingsOf143(governor) {
+  if (!governor) return {}
+  return {
+    targetFrameMs: governor.targetFrameMs,
+    minScale: governor.minScale,
+    sampleWindow: governor.sampleWindow,
+    evaluateEvery: governor.evaluateEvery,
+    settleFrames: governor.settleFrames,
+    allowResolutionScaling: governor.allowResolutionScaling === true,
+    degradeThreshold: governor.degradeThreshold,
+    recoverThreshold: governor.recoverThreshold,
+    recoverStreakRequired: governor.recoverStreakRequired,
+    now: governor.now,
+  }
+}
+
 function withoutSceneReflections(options, input = {}) {
   const patch = { screenSpaceReflectionEnabled: false, screenSpaceReflectionTransparent: false }
   if (options.screenSpaceReflectionEnabled) {
@@ -156,7 +174,12 @@ export default class VisualPipeline {
       configureShadowBias(this)
     }
     this.write(s, 'highDynamicRange', true)
-    this.write(p, 'tonemapper', C.Tonemapper.ACES)
+    // 曲线归 LensEffectPipeline 管时不能再写 ACES：`setLensEffects` 已把原生
+    // tonemapper 换成所选曲线，而 `setOptions`（改曝光等非曲线选项）会重复进
+    // 到这里，无条件写入会把实际曲线改回 ACES；且已启用的 lens 管线在
+    // `setEnabled(true)` 时直接返回，不会重新应用曲线 →
+    // 「配置显示 reinhard、实际执行 ACES」。
+    if (!this.lensEffects?.ownsNativeTonemapper?.()) this.write(p, 'tonemapper', C.Tonemapper.ACES)
     this.write(p, 'exposure', o.exposure)
     this.write(p.ambientOcclusion, 'enabled', o.ambientOcclusion && !o.screenSpaceAoEnabled && C.PostProcessStageLibrary.isAmbientOcclusionSupported(s))
     // Optional AO is unfiltered in this Cesium release; keep it off by default.
@@ -823,6 +846,11 @@ export default class VisualPipeline {
   /**
    * Phase 6 batching state, measured from the live batch plan rather than hard-coded, so the
    * flag cannot claim an optimisation that produced no mergeable program runs.
+   *
+   * 注意 `active` 用**实际**绑定次数判定，而不是计划上限：执行器逐条提交、Cesium
+   * `Context.beginDraw` 每条都 `_bind()`，所以只要没接上真正的批提交路径，
+   * `programBindReduction` 恒为 0，这里必然报 `active: false`。
+   * `plannedProgramBindReduction` 只表示「如果接上能省多少」。
    */
   _batchingFeature() {
     if (this.options.materialBatchingEnabled !== true) return { requested: false, active: false, reason: 'Material batching is disabled' }
@@ -830,11 +858,16 @@ export default class VisualPipeline {
     const plan = this.transparentForward?.batchPlan || this.transparentForward?.stats?.batchPlan
     if (!plan) return { requested: true, active: false, reason: 'No batch plan for this frame' }
     const reducing = plan.programBindReduction > 0
+    const planned = Number(plan.plannedProgramBindReduction) || 0
     return {
       requested: true, active: reducing,
-      reason: reducing ? null : 'Batch plan found no mergeable program runs',
+      reason: reducing ? null : (planned > 0
+        ? 'Batch plan groups programs, but submission is still per-item so no bind is saved yet'
+        : 'Batch plan found no mergeable program runs'),
       batchCount: plan.batchCount, programBinds: plan.programBinds,
       programBindReduction: plan.programBindReduction,
+      plannedProgramBinds: plan.plannedProgramBinds,
+      plannedProgramBindReduction: planned,
       optimizationSuccess: plan.optimizationSuccess, correctness: plan.correctness
     }
   }
@@ -956,11 +989,23 @@ export default class VisualPipeline {
       if (this.governor) this.governor.setEnabled(false)
       return this.getPerformanceDiagnostics()
     }
-    const tuning = ['targetFps', 'targetFrameMs', 'minScale', 'sampleWindow', 'evaluateEvery', 'settleFrames']
-      .some(key => input[key] !== undefined)
+    // 构造期一次性读取的字段：只要其中一个变了就得重建 governor。
+    // `allowResolutionScaling` 曾经漏在这里，导致「先开启调速器、再单独授权降分辨率」
+    // 完全不生效——用户撤销授权后调速器仍会继续改画面清晰度。
+    const tuning = [
+      'targetFps', 'targetFrameMs', 'minScale', 'sampleWindow', 'evaluateEvery', 'settleFrames',
+      'allowResolutionScaling', 'degradeThreshold', 'recoverThreshold', 'recoverStreakRequired',
+    ].some(key => input[key] !== undefined)
     if (this.governor && tuning) {
-      this.governor.destroy()
+      // 重建时必须带上现有配置，否则没在本次调用里重复传的字段会退回默认值。
+      // 反例要当心：governor 只存 `targetFrameMs`，而调用方可能只传 `targetFps`；
+      // 若照搬旧的 targetFrameMs，构造函数会优先用它，新传的 targetFps 被静默忽略。
+      const previous = this.governor
+      const merged = { ...performanceSettingsOf143(previous), ...input }
+      if (input.targetFps !== undefined && input.targetFrameMs === undefined) delete merged.targetFrameMs
+      previous.destroy()
       this.governor = null
+      this.governor = new PerformanceGovernor143(this, merged)
     }
     if (!this.governor) this.governor = new PerformanceGovernor143(this, input)
     if (input.enabled !== false) this.governor.setEnabled(true)

@@ -3,7 +3,7 @@
 > 基线：2026-10-16 · 对应提交 `00595ee` 之后的工作区
 > 规模：**124 个源文件 / 19,606 行**（不含 `environment/cloudNoiseData.js` 这个 1.4 MB 的噪声图集数据块）
 >
-> 本文描述**代码实际长什么样**，而不是设计意图。凡与设计不符之处都在 §6 标出。
+> 本文描述**代码实际长什么样**，而不是设计意图。凡与设计不符之处都在 §7 标出。
 
 ---
 
@@ -16,7 +16,7 @@ CCR 是**寄生在 Cesium 1.143 WebGL 渲染循环上的增强层**，不是 for
 | 不修改 Cesium 源码 | 通过公开/内部字段介入（`scene._view`、`context.draw`、`updateDerivedCommands`、`uniformState`…） |
 | Cesium 拥有帧循环与上下文 | CCR 不创建 WebGL context，不接管 RAF |
 | 版本硬门禁 | 所有类要求 `Cesium.VERSION` 匹配 `/^1\.143(?:\.0)?$/`，不匹配直接抛错 |
-| 升级需重新验证 | 依赖大量非公开结构，见 §7 风险清单 |
+| 升级需重新验证 | 依赖大量非公开结构，见 §8 风险清单 |
 
 **这个约束决定了架构的主要形状**：CCR 没有"自己的渲染循环"，只能在 Cesium 的循环里**插入拦截点**与**声明自己的帧图**。因此 §4.2 的 dispatcher 与 §4.1 的 FrameBridge 是整个架构的承重墙。
 
@@ -89,7 +89,7 @@ CCR 是**寄生在 Cesium 1.143 WebGL 渲染循环上的增强层**，不是 for
 | `renderer/` | 4 | 197 | RenderItem / Queue / Executor / BatchPlanner |
 | `bloom/` | 2 | 197 | HDR Bloom |
 | `selection/` | 1 | 101 | 选中轮廓（复用拾取深度） |
-| `rhi/` | 1 | 85 | WebGL 资源抽象（**抽象层最薄，见 §6.4**） |
+| `rhi/` | 1 | 85 | WebGL 资源抽象（**抽象层最薄，见 §7.4**） |
 | `core/` | 1 | 23 | FrameState 快照 |
 | `scene/` | 1 | 17 | Cesium scene → FrameState 桥 |
 
@@ -110,7 +110,7 @@ channels  ←(4) lighting      ←(1) reflections
 environment ←(2) reflections ←(1) bloom / ao / antialiasing / stages
 ```
 
-**总体是"向上依赖"的 DAG，但有两处例外**，见 §6.1 与 §6.2。
+**总体是"向上依赖"的 DAG，但有两处例外**，见 §7.1 与 §7.2。
 
 ---
 
@@ -241,11 +241,100 @@ present            读 screen（sideEffect，防止被裁剪）
 
 ---
 
-## 6. 已识别的问题
+## 6. 功能成熟度清单
+
+**这一节回答"哪些功能是真的在用"**，因为 `src/` 里存在大量**默认关闭**的实现，容易让人误以为它们都在生效。
+
+标签定义：
+
+| 标签 | 含义 |
+|---|---|
+| **在用** | 默认开启，随管线一起运行 |
+| **可选** | 默认关闭，显式开启后可用，有内容级测试覆盖 |
+| **受限** | 有条件生效，存在未实现的组合或与其他模式互斥 |
+| **未完成** | 代码自述实验性 / 计划内缺口，不建议依赖 |
+| **缺覆盖** | 实现存在但**没有任何测试引用**，状态未经验证 |
+
+### 6.1 在用（默认开启）
+
+| 功能 | 开关 | 说明 |
+|---|---|---|
+| 自定义级联阴影 | `shadows: true`, `shadowMode: 'custom'` | 默认单级联 4096² |
+| 环境（大气 + 体积云） | `environment: true`, `clouds: true` | 解析大气散射 + 体积云 + Hillaire LUT |
+| 高度雾 | `fog: true` | |
+| SMAA | `antialiasing: 'smaa'` | 见 §6.3：生效但视觉收益有限 |
+| 增强前向光照 | `lightingMode: 'enhanced'` | 保持 Cesium 原生前向光照 |
+| RenderTargetPool | `renderTargetPoolEnabled: true` | 资源复用 |
+
+### 6.2 可选（默认关闭，开启可用）
+
+| 功能 | 开关 | 内容级测试覆盖 |
+|---|---|---|
+| HDR Bloom | `hdrBloomEnabled: false` | 8 个测试文件 |
+| SSAO / HBAO | `screenSpaceAoEnabled: false` | 8 |
+| 环境反射 / 屏幕空间反射 | `environmentReflectionEnabled: false`、`screenSpaceReflectionEnabled: false` | 7 |
+| 原生 AO / Bloom | `ambientOcclusion: false`、`bloom: false` | — |
+| 几何 / 材质通道 | `geometryEnabled: false`、`materialChannelsEnabled: false` | — |
+| 色调映射曲线 | `toneMappingCurve: 'aces'` | 默认即原生 ACES，**单独开启不改变画面**（`presets.js:42-44`） |
+
+### 6.3 受限
+
+**MSAA** —— 实现完整（`selectMsaaSamples` 真的查询设备格式支持），但**实际几乎用不上**：
+
+| 限制 | 证据 |
+|---|---|
+| 只在 `antialiasing: 'msaa'` 时生效，其他模式一律降为 1 采样 | `settings143.js:36-45` `resolveMsaaPolicy` |
+| **与延迟几何组合未实现**，必须回退 | `capabilityMatrix143.js:78-90` 明写「计划 B02 已公开记录『MSAA 延迟几何接管尚未实现』」 |
+| 与 TAA 互斥（TAA 要求 `msaaSamples === 1`） | `TaaPass143.js:273` |
+| 默认值 1 | `settings143.js:3` |
+| 无独立测试文件 | 按内容仅 2 个测试文件提到 `antialiasing: 'msaa'` |
+
+**FXAA** —— 复用 Cesium 内置 FXAA 3.11（`FXAA_QUALITY_PRESET 39`，即 Cesium 自己的最高画质档），实现没问题；但它与 SMAA 同属**形态学后处理**，只能沿已检出的边缘混合，**对不足 1 像素的结构无效**。而本项目的锯齿主要来自后一类（密集建筑窗格、屋檐、栏杆），所以视觉收益有限——这与实测结论一致：同视角下 SMAA 与"关闭 AA"几乎无差别，而 TAA 明显更好。
+
+> **结论**：MSAA 与 FXAA 可以视为**保留但不再投入**的分支。**在代码里正式标记 `deprecated` 是另一个动作**（涉及选项校验与文档），本文只记录现状。
+
+### 6.4 未完成
+
+**延迟光照（B02）** —— 代码三处自述实验性：
+
+```
+presets.js:23            // B02: deferred lighting is experimental and off by default.
+VisualPipeline.js:220    * B02: deferred lighting. Deliberately experimental and off by default --
+                           the plan only allows it to become a candidate default after B03 closes
+                           the opaque/transparent loop
+```
+
+未闭合的缺口：
+
+| 缺口 | 证据 |
+|---|---|
+| 与 MSAA 组合未实现 | `capabilityMatrix143.js:87-90` |
+| direct-submit / batching 未启用，真实场景等价性未验证 | `presets.js:28-31`「real-scene equivalence … has not been verified yet」 |
+| 8 条回退条件，任一条命中即整帧退回增强前向 | `DeferredGeometry143.js:105-119` `scopeReason()` |
+| 仅 2 个测试文件使用 `lightingMode: 'deferred'` | 按内容统计 |
+
+**FrameBridge** 亦自述为实验性 OIT 桥（`FrameBridge143.js:1`）。
+
+### 6.5 缺覆盖
+
+| 功能 | 情况 |
+|---|---|
+| **遮挡剔除** | `occlusionCullingEnabled: false`。**有**单元测试（`tests/rendering/occlusion-culling.test.mjs`，4 用例：视锥内外与近平面 fail-open、代理包围球保守性、两次同态隐藏才生效、安装失败回退）。**缺**集成验证：无 dispatcher `skip` 端到端断言、无 query 超时 fail-open 断言（`OcclusionCulling143.js:97-99` 的 `stats.timeouts` 零覆盖）、无停用后重新启用验证 |
+| direct-submit / batching | 各仅 1 个测试文件；`presets.js:28-31` 已声明等价性未验证 |
+
+### 6.6 这张表的用法
+
+- **评估"某功能能不能靠"时先查这里**：默认关闭 ≠ 可用，需要看有没有测试覆盖
+- **改动默认值时**：把可选功能打开会走**未被场景验收**的路径
+- **`getRenderDiagnostics()` / `getCapabilityDiagnostics()`** 会在运行时报出 `requested / active / reason / generation`，比读默认值更可靠
+
+---
+
+## 7. 已识别的问题
 
 **以下都是实测到的结构问题，不是猜测。** 按影响排序。
 
-### 6.1 模块环：`channels ⇄ reflections`
+### 7.1 模块环：`channels ⇄ reflections`
 
 ```
 channels/MaterialChannels143.js:3
@@ -263,7 +352,7 @@ reflections/transparentReflectionShader143.js:1
 
 **建议**：把"反射着色器源码"整体归到一处（`reflections/` 更合适），`channels` 单向依赖它。属于低风险重构。
 
-### 6.2 反向依赖：`pipeline → shadows`
+### 7.2 反向依赖：`pipeline → shadows`
 
 ```
 pipeline/TransparentForward143.js:3        → shadows/shadowUniforms143.js
@@ -276,22 +365,22 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 **建议**：把 `TransparentForward143.js` + `transparentForwardShader143.js` 移到 `lighting/`（与 deferred 配对）。**这是目录归属问题，不是设计问题。**
 
-### 6.3 `pipeline/` 职责混杂
+### 7.3 `pipeline/` 职责混杂
 
 目录里同时住着两类东西：
 
 | 类别 | 文件 |
 |---|---|
 | **真·基础设施** | `FrameBridge143`、`RenderGraph143`、`ContextDrawDispatcher143`、`RenderTargetPool143`、`PooledStageCache143`、`PrimitiveOrder143`、`particleBillboards143` |
-| **具体效果** | `TransparentForward143`、`transparentForwardShader143`（见 §6.2） |
+| **具体效果** | `TransparentForward143`、`transparentForwardShader143`（见 §7.2） |
 
-### 6.4 RHI 抽象最薄
+### 7.4 RHI 抽象最薄
 
 `rhi/WebGLDevice143.js` 仅 85 行，而**绕过它直接 `new C.Texture` / `new C.Framebuffer` 的地方有 29 处**（分布在 lighting、shadows、antialiasing、channels、reflections、environment、pipeline）。
 
 **含义**：RHI 目前是"资源创建的可选入口"而非"强制边界"。若目标是将来换后端，需要把直连处收敛到 RHI。**当前不做也不影响功能**，但它决定了后端可替换性的上限。
 
-### 6.5 `environment/` 是巨型模块
+### 7.5 `environment/` 是巨型模块
 
 4286 行 / 24 文件，是第二名的 1.5 倍，且内部把**大气散射、体积云、LUT 生成、环境光照、夜间、HDR 合成**全放在一起。
 
@@ -299,7 +388,7 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 **建议方向**（未实施）：拆成 `atmosphere` / `clouds` / `composite` 三个独立 pass。代价是全屏读写增加，收益是边界清晰、可单独开关与定位。
 
-### 6.6 `VisualPipeline.js` 是上帝对象
+### 7.6 `VisualPipeline.js` 是上帝对象
 
 约 1050 行，`new` 了 **18 个子系统**，暴露 **40+ 个 `set*/get*`** 方法。
 
@@ -309,7 +398,7 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 ---
 
-## 7. 升级 Cesium 时的风险面
+## 8. 升级 Cesium 时的风险面
 
 下列非公开结构被直接依赖，升级时**必须逐个重新验证**（这也是版本门禁存在的原因）：
 
@@ -326,7 +415,7 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 ---
 
-## 8. 新增模块的落位指南
+## 9. 新增模块的落位指南
 
 | 你要加的东西 | 放哪 | 需要实现的契约 |
 |---|---|---|
@@ -349,7 +438,7 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 ---
 
-## 9. 与设计文档的关系
+## 10. 与设计文档的关系
 
 | 文档 | 关系 |
 |---|---|
@@ -361,8 +450,9 @@ pipeline/transparentForwardShader143.js:1  → shadows/shaderAdapter143.js
 
 ---
 
-## 10. 维护约定
+## 11. 维护约定
 
 - 本文随**结构变化**更新（新增目录、依赖方向改变、契约变更），不随功能细节更新
-- §6 的问题清单在修复后应标注日期与结论，**不直接删除**（保留判断依据）
+- §7 的问题清单在修复后应标注日期与结论，**不直接删除**（保留判断依据）
+- 功能成熟度（§6）在默认值或测试覆盖变化时更新；**"默认关闭"与"未完成"必须分开标注**
 - 引用代码位置时给出**文件路径 + 行号**，便于核对

@@ -54,9 +54,16 @@ export default class DirectionalShadowPass {
     return Number.isFinite(frame)?frame:++this.shadowFrameCounter
   }
   shadowOptionsKey(options){return [options.shadowCascades,options.shadowSize,options.shadowDistance].join('|')}
+  // Deliberately excludes xOffset/yOffset. Those are the TAA sub-pixel jitter
+  // (src/antialiasing/TaaJitter143.js), which shifts the main projection by a
+  // fraction of a pixel every frame. Including them made the key differ on every
+  // jitter phase, so shouldReuseShadowFrame never hit and the shadow maps were
+  // redrawn at full rate while TAA was enabled. Jitter cannot change shadow map
+  // content: maps are rendered from the light camera and receivers are geometry,
+  // and the coverage fit only sees the offsets at offset/near (~2e-4 here).
   cameraFrustumKey(camera){
     const f=camera?.frustum||{}
-    return [f.near,f.far,f.fovy,f.aspectRatio,f.xOffset,f.yOffset].join('|')
+    return [f.near,f.far,f.fovy,f.aspectRatio].join('|')
   }
   rootPrimitivesMatch(){
     const current=this.scene.primitives?._primitives

@@ -24,6 +24,10 @@ function write(records, object, key, value) {
 }
 
 function restore(records) {
+  // Shared-reflection records swap a whole ImageBasedLighting object and therefore
+  // carry no property changes. Callers must never reach here for them, but a missing
+  // array must degrade to "nothing to restore" instead of throwing.
+  if (!Array.isArray(records)) return false
   let changed = false
   for (const record of records.slice().reverse()) {
     const { object, key, before, applied, owned } = record
@@ -186,10 +190,24 @@ export default class EnvironmentLighting143 {
 
   restoreReflectionRecord(record) {
     if (!record) return
-    if (record.shared && record.primitive?.imageBasedLighting === record.shared) {
-      record.primitive._shouldDestroyImageBasedLighting = false
-      record.primitive.imageBasedLighting = record.original
-    } else restore(record.changes)
+    if (!record.shared) {
+      restore(record.changes)
+      return
+    }
+    // A shared record swaps the whole ImageBasedLighting object, so it has no
+    // `changes` array to replay. Replaying one would be a crash, not a restore.
+    const primitive = record.primitive
+    if (!alive(primitive)) return
+    if (primitive.imageBasedLighting !== record.shared) {
+      // Another owner took the IBL slot after us. Their object is not ours to
+      // touch, and the shared one is released with the pool in restoreReflections().
+      return
+    }
+    if (record.original && !alive(record.original)) return
+    primitive.imageBasedLighting = record.original
+    // The setter forces the ownership flag to false. Put back what the model owned
+    // before we borrowed the slot, or a self-owned IBL would leak on model.destroy().
+    primitive._shouldDestroyImageBasedLighting = record.shouldDestroy === true
   }
 
   updateReflections() {
@@ -238,9 +256,12 @@ export default class EnvironmentLighting143 {
               this.restoreReflectionRecord(current)
               this.reflectionRecords.delete(primitive)
             }
+            // Assigning the setter destroys the previous IBL whenever the model
+            // still owns it, so remember that ownership before we clear the flag.
+            const shouldDestroy = primitive._shouldDestroyImageBasedLighting === true
             primitive._shouldDestroyImageBasedLighting = false
             primitive.imageBasedLighting = shared
-            this.reflectionRecords.set(primitive, { primitive, original: ibl, shared })
+            this.reflectionRecords.set(primitive, { primitive, original: ibl, shared, shouldDestroy })
           }
           return
         }

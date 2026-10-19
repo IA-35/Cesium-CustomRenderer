@@ -68,7 +68,9 @@ export default class WebGLDevice143 {
       acquire: (descriptor = {}) => this.pool.acquire(owner, { context: this.context,
         width: descriptor.width, height: descriptor.height,
         pixelFormat: resolveTransientPixelFormat143(this.C, descriptor.pixelFormat ?? descriptor.format),
-        pixelDatatype: resolveTransientPixelDatatype143(this.C, descriptor.pixelDatatype ?? descriptor.datatype),
+        // datatype 也要走 format 回退：`{ format: 'rgba16f' }` 这种只写格式简写的
+        // 描述此前拿到 undefined → 兜底成 UNSIGNED_BYTE，HDR/深度资源被静默降级。
+        pixelDatatype: resolveTransientPixelDatatype143(this.C, descriptor.pixelDatatype ?? descriptor.datatype ?? descriptor.format),
         samples: descriptor.samples ?? 1, depth: !!descriptor.depth }),
       release: lease => lease?.release?.(),
       getDiagnostics: () => ({ mode: 'graph', owner: owner.kind, pool: this.pool.getDiagnostics() }),

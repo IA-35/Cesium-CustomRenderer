@@ -71,6 +71,11 @@ export default class TransparentForward143 {
       return 'skip'
     }catch(error){this.stats.directSubmitFallbacks=(this.stats.directSubmitFallbacks||0)+1;this.stats.directSubmitReason=error.message||String(error);return 'continue'}
   }
+  // ⚠️ 生产代码里没有调用点（只有 `tests/rendering/deferred-transparency.test.mjs` 打桩调用）。
+  // 也就是说这条路是「规划好了但没接线」：真实提交走 `dispatchDirect` 的逐条路径。
+  // 保留它是为了不改测试与调用形状，但不要据此宣称批处理收益。
+  // 真正接线前必须解决：`executeBatch` 内部仍逐条 `command.execute()`，Cesium
+  // `Context.beginDraw` 每条都 `_bind()`，所以现在接线也只是多一层分组，省不到绑定。
   directSubmitRange(items,context,passState){
     const options=this.getOptions(),first=items?.[0]
     if(options.transparentDirectSubmit!==true)return {submitted:0,reason:'Not requested'}
@@ -84,7 +89,8 @@ export default class TransparentForward143 {
       previous=item.nativeOrderKey
     }
     // The range already proved the ordering contract, so the planner can merge the items that
-    // share a program/render state and the executor can bind each program once per batch.
+    // share a program/render state. `plan.programBindReduction` 是**实际**绑定减少量
+    // （当前恒为 0，逐条提交），`plannedProgramBindReduction` 才是计划上限。
     const plan=planRenderBatches143(items,{pass:'transparent.forward'})
     // Items already carry their command; the planner only grouped them.
     let submitted=0

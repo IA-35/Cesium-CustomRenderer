@@ -45,6 +45,21 @@ export default class LensEffectPipeline143 {
 
   _sceneDestroyed() { return !!(this.scene.isDestroyed && this.scene.isDestroyed()) }
 
+  // 当前是否由本模块决定原生 tonemapper。
+  //
+  // 不能用「有没有 ownedTonemapper 记录」当判据：`_createStages` 只在
+  // `collection.tonemapper !== wanted` 时才建记录，值本来就对得上时不会写。
+  // 所以判据是「已启用 + 所选曲线是原生曲线 + 集合当前值就是那条曲线」。
+  // 调用方（`VisualPipeline.apply`）据此决定要不要再写 ACES。
+  ownsNativeTonemapper() {
+    if (!this.enabled || this.destroyed || this.failed) return false
+    const tone = resolveToneMapping(this.getOptions()?.toneMappingCurve)
+    if (!tone || !tone.native || !tone.enumName) return false
+    const wanted = this.C?.Tonemapper?.[tone.enumName]
+    const collection = this.scene?.postProcessStages
+    return !!(wanted && collection && collection.tonemapper === wanted)
+  }
+
   scopeReason() {
     if (this.destroyed || this._sceneDestroyed()) return 'Destroyed'
     if (!this.supported) return `Missing ${this.missing.join(', ')}`

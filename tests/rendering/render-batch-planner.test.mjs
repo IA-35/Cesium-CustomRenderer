@@ -21,10 +21,11 @@ test('batch planner merges only compatible continuous native-order items', () =>
   assert.equal(result.correctness, 'pass')
   assert.equal(result.noRegression, 'pass')
   assert.equal(result.batchCount, 2)
-  assert.equal(result.optimizationSuccess, 'pass')
   assert.equal(result.batches[0].items.length, 2)
-  assert.equal(result.programBinds, 2)
   assert.equal(result.meanBatchSize, 1.5)
+  // 计划 2 次绑定，实际仍逐条提交 = 3 次。
+  assert.equal(result.plannedProgramBinds, 2)
+  assert.equal(result.programBinds, 3)
 })
 
 test('transparent planner reports native-order regression instead of sorting it away', () => {
@@ -40,12 +41,20 @@ test('batch planner preserves framebuffer and pass boundaries', () => {
   assert.ok(result.batchCount >= 2)
 })
 
-test('planner reports program-bind reduction against one bind per item', () => {
+test('planner states real binds, not the planned upper bound, as achieved', () => {
   const four = [item(1), item(2), item(3), item(4)]
   const grouped = planRenderBatches143(four)
   assert.equal(grouped.batchCount, 1)
-  assert.equal(grouped.programBindReduction, 0.75)
+  // 实际：逐条经 Cesium `Context.beginDraw` 各自 `_bind()` → 4 次。
+  assert.equal(grouped.programBinds, 4)
+  assert.equal(grouped.programBindReduction, 0)
+  // 计划：一批只需 1 次 → 0.75，但它只是上限。
+  assert.equal(grouped.plannedProgramBinds, 1)
+  assert.equal(grouped.plannedProgramBindReduction, 0.75)
+  // 没有生产调用点，所以不得报告为已达成。
+  assert.equal(grouped.optimizationSuccess, 'planned-only')
   const split = planRenderBatches143(four.map((entry, index) => ({ ...entry, shaderSourceId: 'shader-' + index })))
   assert.equal(split.programBindReduction, 0)
+  assert.equal(split.plannedProgramBindReduction, 0)
   assert.equal(split.optimizationSuccess, 'not-achieved')
 })

@@ -141,20 +141,63 @@ test('collected RenderItems carry monotonic native command order metadata', () =
   assert.ok(items[1].nativeOrderKey > items[0].nativeOrderKey)
 })
 
-test('attached Render Graph begins with the main color command frame', () => {
+test('attached Render Graph begins once per frame, before the frame collects commands', () => {
   const Cesium = fakeCesium()
+  Cesium.Pass = { TRANSLUCENT: 4 }
   const { scene } = fakeScene()
   const bridge = createFrameBridge({ Cesium, scene })
   const events = []
-  const graph = { beginFrame(context) { events.push(context.phase) } }
+  const graph = { beginFrame(context) { events.push({ phase: context.phase, frameNumber: context.frameNumber }) } }
   const detach = bridge.attachGraph(graph)
   bridge.install()
+  // The visible-set build is where the frame's commands are collected, and it runs before the OIT
+  // entry point announces `opaqueFrame`. The graph must already be in its frame by then.
+  scene.updateDerivedCommands({ pass: 0 })
+  assert.deepEqual(events.map(entry => entry.frameNumber), [7])
   scene.updateAndExecuteCommands()
   scene._view.oit.executeCommands()
   scene.resolveFramebuffers()
-  assert.deepEqual(events, ['opaqueFrame'])
+  // Announcing the opaque phase is not a new frame: it must not begin the graph a second time.
+  assert.deepEqual(events.map(entry => entry.frameNumber), [7])
+  scene.frameState.frameNumber = 8
+  scene.updateDerivedCommands({ pass: 0 })
+  assert.deepEqual(events.map(entry => entry.frameNumber), [7, 8])
   detach()
   bridge.destroy()
+})
+
+test('commands collected before the opaque phase survive to resolve', () => {
+  const Cesium = fakeCesium()
+  Cesium.Pass = { TRANSLUCENT: 4 }
+  const { scene } = fakeScene()
+  const bridge = createFrameBridge({ Cesium, scene })
+  bridge.install()
+  scene.updateDerivedCommands({ pass: 0 })
+  scene.updateDerivedCommands({ pass: 0 })
+  assert.equal(bridge.getRenderItems().length, 2)
+  // `opaqueFrame` announces the boundary; clearing there would discard what this frame just collected.
+  scene._view.oit.executeCommands()
+  assert.equal(bridge.getRenderItems().length, 2, 'announcing opaqueFrame must not clear the frame')
+  scene.resolveFramebuffers()
+  assert.equal(bridge.getRenderItems('native.forward').length, 2)
+})
+
+test('a new frame number resets collection, so commands never accumulate across frames', () => {
+  const Cesium = fakeCesium()
+  Cesium.Pass = { TRANSLUCENT: 4 }
+  const { scene } = fakeScene()
+  const bridge = createFrameBridge({ Cesium, scene })
+  bridge.install()
+  const counts = []
+  for (const frameNumber of [7, 8, 9]) {
+    scene.frameState.frameNumber = frameNumber
+    scene.updateDerivedCommands({ pass: 0 })
+    scene._view.oit.executeCommands()
+    scene.resolveFramebuffers()
+    counts.push(bridge.getRenderItems().length)
+  }
+  assert.deepEqual(counts, [1, 1, 1])
+  assert.deepEqual(bridge.getRenderItems().map(item => item.commandIndex), [0])
 })
 
 

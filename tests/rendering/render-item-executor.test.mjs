@@ -33,11 +33,19 @@ test('executor submits a command through the dispatcher without recursively re-e
   dispatcher.destroy()
 })
 
-test('executeBatch binds the shared program once and submits every item', () => {
+// 这条用例的假命令必须模拟 Cesium 的真实绑定行为：
+// `Context.beginDraw`（1.143 `Source/Renderer/Context.js:1313`）对每条命令
+// 无条件 `shaderProgram._bind()`。早先的假命令 `execute()` 里不绑，
+// 于是「一批一次绑定」的假象通过了测试，而真实运行时是 n+1 次（预绑定 + 每条再绑）。
+// 现在执行器不再预绑定，所以断言应是「恰好每条一次，没有多余的那一次」。
+test('executeBatch does not add a redundant program bind on top of Cesium native binds', () => {
   const binds = [], executed = []
   const program = { _bind() { binds.push('bind'); return true } }
   const executor = new RenderItemExecutor143(null, { label: 'test' })
-  const command = n => ({ shaderProgram: program, execute() { executed.push(n); return n } })
+  const command = n => ({
+    shaderProgram: program,
+    execute() { program._bind(); executed.push(n); return n }
+  })
   const items = [
     { pass: 'opaque.forward', command: command(1) },
     { pass: 'opaque.forward', command: command(2) }
@@ -45,7 +53,7 @@ test('executeBatch binds the shared program once and submits every item', () => 
   const result = executor.executeBatch({ items }, {}, {})
   assert.equal(result.submitted, 2)
   assert.equal(result.failedAt, -1)
-  assert.equal(binds.length, 1, 'one program bind must serve the whole batch')
+  assert.equal(binds.length, 2, 'one bind per item, and no extra pre-bind')
   assert.deepEqual(executed, [1, 2])
   assert.equal(executor.getDiagnostics().batched, 2)
 })
