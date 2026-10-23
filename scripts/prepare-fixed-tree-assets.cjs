@@ -158,7 +158,9 @@ async function prepareFixedTreeAssets({ modelsDirectory, pointsFile, outputDirec
   fs.mkdirSync(outputDirectory, { recursive: true })
   const barkDirectory = path.join(outputDirectory, 'eztree/bark')
   fs.mkdirSync(barkDirectory, { recursive: true })
-  fs.copyFileSync(path.join(__dirname, '../vendor/cesium-ez-tree/assets/bark/pine_color_1k.jpg'), path.join(barkDirectory, 'pine_color_1k.jpg'))
+  for (const file of ['pine_color_1k.jpg', 'oak_color_1k.jpg']) {
+    fs.copyFileSync(path.join(__dirname, '../vendor/cesium-ez-tree/assets/bark', file), path.join(barkDirectory, file))
+  }
   const prototypes = PROTOTYPES.map(definition => normalizePrototype(fs.readFileSync(path.join(modelsDirectory, definition.file)), definition, outputDirectory))
   fs.writeFileSync(path.join(outputDirectory, 'points.json'), `${JSON.stringify(points)}\n`)
   const manifest = {

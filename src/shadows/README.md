@@ -47,6 +47,20 @@ pipeline.setOptions({ shadowStatic: true })
 pipeline.invalidateShadows()
 ```
 
+`invalidateShadows()` 有两种语义，因为调用方的失效原因差别很大：
+
+```js
+// 立即（默认）：下一渲染帧必须重画深度图，绕过 shadowUpdateInterval。
+pipeline.invalidateShadows()
+pipeline.invalidateShadows({ immediate: true })
+
+// 延迟：只丢弃静态缓存签名，重画时机仍由 shadowUpdateInterval 决定。
+// 平移物体、动画投影体等"每帧都在变"的调用方必须用这个。
+pipeline.invalidateShadows({ immediate: false })
+```
+
+`src/traffic/TrafficSystem.js` 的 `_update()` 每帧都会调用一次。若用立即形式，`forceShadowUpdate` 会被永久置位，`shadowUpdateInterval` 完全失效，阴影图每帧全量重画。campus 场景实测：立即形式 22.7 FPS，延迟形式 59.9 FPS（`shadowUpdateInterval` 重新生效）。车流载入、生成、显隐等离散事件仍用立即形式。
+
 自动检测光源矩阵/范围、分辨率、命令集合、Shader、VertexArray、绘制数量、模型矩阵和投影Shader的活动uniform值。资源对象身份可检测替换，但不能检测同一GPU纹理/缓冲内部的任意修改；此类修改必须显式失效。
 
 带蒙皮、形变或自定义顶点变换标记的Shader不使用静态缓存，即使调用方开启静态模式。不能用“时钟暂停”推断全部资源静态。日照/天气工具继续使用已有suspend/resume协议，恢复时使深度失效。

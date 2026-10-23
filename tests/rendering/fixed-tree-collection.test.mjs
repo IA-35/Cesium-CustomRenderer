@@ -76,6 +76,7 @@ test('scales fixed GLB trees and their culling radius', async()=>{
   const t=await load(h,resources,manifestUrl,{source:'glb',scale:1.6})
   const instance=h.models[0]._instances[0]
   assert.equal(instance.kind,'externalTree')
+  assert.equal(h.models[0].castShadows,false)
   assert.equal(instance.scale.x / baselineHarness.models[0]._instances[0].scale.x,1.6)
   assert.equal(instance.radius,12.8)
   baseline.destroy()
@@ -129,12 +130,43 @@ test('uses one upstream primitive for all fixed points with ENU transforms', asy
   assert.equal(h.models[0]._instances[1].translation.x,20)
   assert.equal(h.models[0].treeAssets.length,0)
   assert.equal(h.models[0]._instances[0].kind,'tree')
-  assert.equal(h.models[0].treeBranchMinimumLodRatio,1)
-  assert.equal(h.models[0].treeLeafMinimumLodRatio,1)
+  assert.equal(h.models[0].castShadows,false)
+  assert.equal(h.models[0].maximumTreeBranchDistance,6000)
+  assert.equal(h.models[0].maximumTreeLeafDistance,4000)
+  assert.equal(h.models[0].treeBranchMinimumLodRatio,0.35)
+  assert.equal(h.models[0].treeLeafMinimumLodRatio,0.2)
   assert.equal(t.getDiagnostics().backend,'cesium-ez-tree')
   assert.equal(t.getDiagnostics().modelCount,0)
   assert.equal(h.listeners.length,0)
   t.destroy()
+})
+test('forwards finite campus tree distances and density settings', async()=>{
+  const {manifestUrl,resources}=fixture(),h=harness()
+  const t=await load(h,resources,manifestUrl,{source:'glb',maximumTreeLeafDistance:1500,maximumTreeBranchDistance:2000,
+    treeLeafLodNearDistance:600,treeBranchLodNearDistance:800,treeLeafMinimumLodRatio:0.35,treeBranchMinimumLodRatio:0.5})
+  const p=h.models[0]
+  assert.equal(p.maximumTreeLeafDistance,1500)
+  assert.equal(p.maximumTreeBranchDistance,2000)
+  assert.equal(p.treeLeafLodNearDistance,600)
+  assert.equal(p.treeBranchLodNearDistance,800)
+  assert.equal(p.treeLeafMinimumLodRatio,0.35)
+  assert.equal(p.treeBranchMinimumLodRatio,0.5)
+  t.destroy()
+})
+
+test('cellSize controls the spatial batching grid and defaults to 80 metres', async()=>{
+  const {manifestUrl,resources}=fixture()
+  const def=harness(),wide=harness(),invalid=harness()
+  const a=await load(def,resources,manifestUrl)
+  const b=await load(wide,resources,manifestUrl,{cellSize:320})
+  // Non-finite and non-positive values must fall back instead of silently collapsing the grid.
+  const c=await load(invalid,resources,manifestUrl,{cellSize:0})
+  // The runtime emits one draw command per (glTF primitive × cell), so this value is the batch
+  // grid it splits the point cloud with — not a cosmetic culling hint.
+  assert.equal(def.models[0].lodCellSize,80)
+  assert.equal(wide.models[0].lodCellSize,320)
+  assert.equal(invalid.models[0].lodCellSize,80)
+  a.destroy();b.destroy();c.destroy()
 })
 test('show and destroy operate on the upstream primitive and detach readiness', async()=>{
   const {manifestUrl,resources}=fixture(),h=harness(),t=await load(h,resources,manifestUrl)

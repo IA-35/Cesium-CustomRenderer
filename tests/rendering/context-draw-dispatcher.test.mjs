@@ -55,7 +55,7 @@ test('dispatcher composes aroundDraw scopes before native execution', () => {
   dispatcher.destroy()
 })
 
-test('dispatcher measures program and material binds from the GL entry points', () => {
+test('dispatcher measures GL calls without labelling draws as material binds', () => {
   let useProgram = 0
   const gl = {
     useProgram() { useProgram++; return useProgram },
@@ -67,7 +67,8 @@ test('dispatcher measures program and material binds from the GL entry points', 
   gl.useProgram('p'); gl.drawElements(); gl.drawElements()
   const measured = dispatcher.readBindCounters()
   assert.equal(measured.programBinds, 1)
-  assert.equal(measured.materialBinds, 2)
+  assert.equal(measured.drawCalls, 2)
+  assert.equal(measured.materialBinds, null)
   assert.equal(dispatcher.getDiagnostics().bindTracking, true)
   assert.equal(dispatcher.getDiagnostics().programBinds, 1)
   dispatcher.stopBindTracking()

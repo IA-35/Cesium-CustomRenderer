@@ -122,13 +122,24 @@ test('TAA shaders assemble as Cesium GLSL3 with a single output and no self-read
   assert.match(taaDepthShader, /v_textureCoordinates \+ u_jitterUv/)
   assert.match(taaDepthShader, /closest = min\(closest, eye\)/)
   assert.match(resolve, /czm_windowToEyeCoordinates\(uv \* czm_viewport.zw \+ czm_viewport.xy, depth\)/)
-  assert.match(resolve, /taaHistory\(historyUV, expectedPreviousEyeDepth\)/)
+  assert.match(resolve, /taaHistory\(historyUV, expectedPreviousEyeDepth, stableCoverage\)/)
   assert.match(resolve, /texture\(u_historyDepth, historyUV\)/)
   assert.match(resolve, /for \(int x = -1; x <= 2; \+\+x\)/)
   assert.match(resolve, /edge \|\| !disocclusion/)
   assert.match(resolve, /taaFlickerReduction\(currentColor, clippedHistoryColor, currentWeight\)/)
   assert.doesNotMatch(resolve, /u_staticFrames|u_taaBlend|u_taaVariance|reactivity|Catmull/)
 
+  // One depth label covers a whole 4x4 reconstruction footprint, so a jitter phase can move
+  // which surface is closest without any surface appearing. The label therefore stores the
+  // footprint span, and the reveal test compares against its far end: comparing against the
+  // near end turned a 256m/266m coverage swap into a 3.5% "reveal" every eighth frame.
+  assert.match(taaDepthShader, /farthest = max\(farthest, eye\)/)
+  assert.match(taaDepthShader, /vec4\(closest == 1e30 \? 0\.0 : closest, sky \? 0\.0 : farthest/)
+  assert.match(resolve, /texture\(u_historyDepth, historyUV\)\.rg/)
+  assert.match(resolve, /storedFarthestEyeDepth \+ max\(0\.1, 0\.02 \* expectedPreviousEyeDepth\)/)
+  // A subpixel wire that misses the footprint must keep its colour as well as its age:
+  // replacing the colour with sky left the variance box nothing but sky to clip to.
+  assert.doesNotMatch(resolve, /heldHistory/)
 })
 
 // Cesium compiles these as GLSL ES 3.00, where `sample`, `filter`, `input`, `output` and
@@ -277,6 +288,9 @@ test('the resolve controls how its own history is filtered, not the stage sample
     assert.equal(stage.pixelDatatype, C.PixelDatatype.FLOAT, 'low-weight HDR accumulation requires float32 history')
   }
   assert.equal(pass.depth.pack.sampleMode, C.PostProcessStageSampleMode.NEAREST)
+  // The depth history feeds a per-texel footprint span (closest, farthest) to the resolve.
+  assert.equal(pass.depth.pack.pixelFormat, C.PixelFormat.RG)
+  assert.equal(pass.depth.pack.pixelDatatype, C.PixelDatatype.FLOAT)
   assert.equal(pass.linearSampler.minificationFilter, C.TextureMinificationFilter.LINEAR)
   assert.equal(pass.linearSampler.magnificationFilter, C.TextureMagnificationFilter.LINEAR)
   assert.equal(pass.nearestSampler.minificationFilter, C.TextureMinificationFilter.NEAREST)
@@ -395,6 +409,38 @@ test('the resolve supplies real Cesium matrix/vector uniforms and official contr
   assert.ok(uniforms.u_currentProjection() instanceof C.Matrix4)
   assert.equal(uniforms.u_depthThreshold(), 0.0005)
   assert.equal(uniforms.u_taaBlend, undefined)
+  pass.destroy()
+})
+
+// preRender runs before Cesium restores the colour frame state, so a picking pass still owns
+// the frustum list here — and an empty-sky pick leaves it at zero. Reading it directly made a
+// pick look like a scope change, closed the overlay, and restarted a history of 911 frames.
+test('a picking frame cannot restart history through the preRender frustum count', () => {
+  const f = passFixture(), pass = new TaaPass143(C, f.scene, taaOptions)
+  f.scene.msaaSamples = 1
+  pass.setEnabled(true); pass.healthy = true; pass.colorFrustums = 1
+  pass._applyJitter()
+  assert.equal(pass.overlay.active, true, 'a resolved colour frame defers overlay commands')
+
+  pass.historyValid = true; pass.historyAge = 120
+  f.scene._view = { frustumCommandsList: [] }
+  f.scene.frameState.passes = { render: false, pick: true, depth: false }
+  pass.motion.detach = () => {}
+  pass._applyJitter()
+  assert.equal(pass.motion.active, true, 'the impending colour frame must capture motion even after pick')
+  f.scene.frameState.passes = { render: false, pick: false, depth: false }
+  pass._applyJitter()
+  assert.equal(pass.motion.active, true, 'pickPosition must not interrupt colour snapshots either')
+  assert.equal(pass.historyValid, true, 'the picking frame is not a scope change')
+  assert.equal(pass.historyAge, 120)
+
+  pass.colorFrustums = 0
+  pass._applyJitter()
+  assert.equal(pass.overlay.active, false)
+  pass.historyValid = true; pass.historyAge = 120; pass.colorFrustums = 1
+  pass._applyJitter()
+  assert.equal(pass.historyValid, false, 'leaving the colour scope still restarts history')
+  assert.equal(pass.historyAge, 0)
   pass.destroy()
 })
 

@@ -8,6 +8,7 @@ const routes = { type: 'FeatureCollection', features: [{ type: 'Feature', id: 'l
 const vehicles = [{ id: 'car', routeId: 'loop', url: 'https://example.test/car.glb', speed: 10, offset: 0 }]
 function setup(load) {
   let milliseconds = 0, invalidations = 0
+  const invalidationArgs = []
   const models = [], members = new Set(), preUpdate = new C.Event(), postRender = new C.Event()
   const clock = { shouldAnimate: false, multiplier: 10, currentTime: C.JulianDate.now() }
   const scene = { preUpdate, postRender, requestRender() {}, isDestroyed: () => false,
@@ -20,9 +21,9 @@ function setup(load) {
     isDestroyed: () => destroyed }; models.push(model); return model }
   const engine = { ...C, Model: { fromGltfAsync: load || (async () => makeModel()) } }
   const viewer = { scene, clock, isDestroyed: () => false }
-  return { engine, viewer, models, members, makeModel,
+  return { engine, viewer, models, members, makeModel, invalidationArgs,
     options: { Cesium: engine, viewer, routes, vehicles, now: () => milliseconds,
-      pipeline: { invalidateShadows() { invalidations++ } } },
+      pipeline: { invalidateShadows(...args) { invalidations++; invalidationArgs.push(args) } } },
     tick(ms) { milliseconds += ms; preUpdate.raiseEvent(scene, clock.currentTime) },
     get invalidations() { return invalidations } }
 }
@@ -62,6 +63,22 @@ test('speed changes affect subsequent travel and reject invalid multipliers', as
   assert.ok(Math.abs(traffic.vehicles[0].distance - 30) < 1e-8)
   traffic.destroy()
 })
+test('continuous vehicle movement defers the shadow redraw instead of forcing it', async () => {
+  const fixture = setup(), traffic = new TrafficSystem(fixture.options)
+  await traffic.readyPromise
+  fixture.invalidationArgs.length = 0
+  fixture.tick(1000)
+  assert.ok(fixture.invalidationArgs.length > 0, 'moving vehicles still stale the cached caster signature')
+  // Every invalidation caused by per-frame motion must be the deferred form, otherwise
+  // forceShadowUpdate stays set and shadowUpdateInterval can never skip a frame.
+  // Load/spawn/visibility are discrete and keep the immediate default.
+  for (const args of fixture.invalidationArgs) {
+    assert.deepEqual(args, [{ immediate: false }], 'per-frame movement must not force an immediate redraw')
+  }
+  traffic.setVisible(false)
+  assert.notEqual(fixture.invalidationArgs.at(-1)[0]?.immediate, false, 'a visibility change must still redraw immediately')
+  traffic.destroy()
+})
 test('one listener drives all cars and destroy preserves foreign primitives', async () => {
   const fixture = setup(), foreign = {}, traffic = new TrafficSystem({ ...fixture.options,
     vehicles: [...vehicles, { ...vehicles[0], id: 'car-2', offset: 50 }] })
@@ -84,6 +101,37 @@ test('vehicle input is validated before starting model requests', async () => {
     assert.equal(fixture.members.size, 0)
     traffic.destroy()
   }
+})
+
+test('initial vehicles load serially and destruction stops queued model requests', async () => {
+  const pending = []
+  const fixture = setup(() => new Promise(resolve => pending.push(resolve)))
+  const traffic = new TrafficSystem({ ...fixture.options,
+    vehicles: [0, 1, 2].map(i => ({ ...vehicles[0], id: `car-${i}`, offset: i * 20 })) })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(pending.length, 1)
+  pending[0](fixture.makeModel())
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(pending.length, 2)
+  traffic.destroy()
+  pending[1](fixture.makeModel())
+  await assert.rejects(traffic.readyPromise)
+  assert.equal(pending.length, 2)
+  assert.equal(fixture.members.size, 0)
+})
+
+test('destruction during cooperative junction preparation prevents vehicle creation', async () => {
+  const fixture = setup()
+  const network = { type: 'FeatureCollection', features: [{ type: 'Feature', id: 'long',
+    properties: { from: 'a', to: 'b', spawn: true },
+    geometry: { type: 'LineString', coordinates: [[123, 41, 0], [123.2, 41, 0]] } }] }
+  const traffic = new TrafficSystem({ ...fixture.options, network, routes: undefined,
+    vehicles: [{ ...vehicles[0], routeId: 'long' }] })
+  await new Promise(resolve => setImmediate(resolve))
+  traffic.destroy()
+  await assert.rejects(traffic.readyPromise, /destroyed/)
+  assert.equal(fixture.models.length, 0)
+  assert.equal(fixture.members.size, 0)
 })
 test('manifest URLs resolve relative vehicle assets and failed loading rolls back', async () => {
   const fixture = setup(), traffic = new TrafficSystem({ ...fixture.options, routes: undefined, vehicles: undefined,
@@ -155,14 +203,18 @@ test('tab visibility changes reset time even when background frames stop complet
   } finally { if (original === undefined) delete globalThis.document; else globalThis.document = original }
 })
 
-test('a peer load failure also disposes a model that resolves after rollback', async () => {
-  let complete, calls = 0
-  const fixture = setup(() => ++calls === 1 ? Promise.reject(new Error('broken asset')) : new Promise(resolve => { complete = resolve }))
-  const traffic = new TrafficSystem({ ...fixture.options, vehicles: [vehicles[0], { ...vehicles[0], id: 'late' }] })
+test('a load failure rolls back ready vehicles and never starts later requests', async () => {
+  let calls = 0
+  const fixture = setup(async () => {
+    if (++calls === 2) throw new Error('broken asset')
+    return fixture.makeModel()
+  })
+  const traffic = new TrafficSystem({ ...fixture.options,
+    vehicles: [0, 1, 2].map(i => ({ ...vehicles[0], id: `car-${i}`, offset: i * 20 })) })
   await assert.rejects(traffic.readyPromise, /broken asset/)
-  const late = fixture.makeModel(); complete(late)
-  await new Promise(resolve => setImmediate(resolve))
-  assert.equal(late.isDestroyed(), true); assert.equal(fixture.members.size, 0)
+  assert.equal(calls, 2)
+  assert.equal(fixture.models[0].isDestroyed(), true)
+  assert.equal(fixture.members.size, 0)
   traffic.destroy()
 })
 

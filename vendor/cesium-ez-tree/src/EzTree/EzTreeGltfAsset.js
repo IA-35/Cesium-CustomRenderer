@@ -64,7 +64,7 @@ function isPowerOfTwo(value) {
   return value > 0 && (value & (value - 1)) === 0;
 }
 
-function createTexture(context, image) {
+function createTexture(context, image, preMultiplyAlpha) {
   const canMipmap = isPowerOfTwo(image.width) && isPowerOfTwo(image.height);
   const texture = new Texture({
     context: context,
@@ -73,6 +73,7 @@ function createTexture(context, image) {
     pixelDatatype: PixelDatatype.UNSIGNED_BYTE,
     sampler: canMipmap ? mipmapSampler : linearSampler,
     flipY: false,
+    preMultiplyAlpha: preMultiplyAlpha === true,
   });
 
   if (canMipmap) {
@@ -480,6 +481,10 @@ function createMaterial(record, materialId) {
     ? getImageIdFromTexture(gltf, textureId)
     : undefined;
 
+  if (defined(imageId) && material?.alphaMode === "MASK") {
+    record.imageRecords[imageId].preMultiplyAlpha = true;
+  }
+
   return {
     baseColorFactor: baseColorFactor,
     imageRecord: defined(imageId) ? record.imageRecords[imageId] : undefined,
@@ -515,13 +520,50 @@ function imageRecordKey(record) {
     hash ^= record.bytes[i];
     hash = Math.imul(hash, 0x01000193);
   }
-  return `${record.mimeType}:${record.bytes.length}:${hash >>> 0}`;
+  return `${record.preMultiplyAlpha === true}:${record.mimeType}:${record.bytes.length}:${hash >>> 0}`;
 }
 
 function imageBytesEqual(left, right) {
-  if (left.mimeType !== right.mimeType || left.bytes.length !== right.bytes.length) return false;
+  if ((left.preMultiplyAlpha === true) !== (right.preMultiplyAlpha === true) || left.mimeType !== right.mimeType || left.bytes.length !== right.bytes.length) return false;
   for (let i = 0; i < left.bytes.length; i++) if (left.bytes[i] !== right.bytes[i]) return false;
   return true;
+}
+
+// Both tree collections use the same fixed samplers/format. Content and alpha policy
+// must match, and each WebGL context owns a separate reference-counted GPU cache.
+const sharedImageTextures = new WeakMap();
+function acquireSharedImageTexture(record, context, create = createTexture) {
+  if (record.sharedTexture) return record.sharedTexture.texture;
+  let buckets = sharedImageTextures.get(context);
+  if (!buckets) { buckets = new Map(); sharedImageTextures.set(context, buckets); }
+  const key = record.sharedKey ?? (record.sharedKey = imageRecordKey(record));
+  let bucket = buckets.get(key);
+  let entry = bucket?.find(candidate => imageBytesEqual(candidate.record, record));
+  if (!entry) {
+    if (!record.image) return undefined;
+    const texture = create(context, record.image, record.preMultiplyAlpha);
+    if (!bucket) { bucket = []; buckets.set(key, bucket); }
+    entry = { texture, record, references: 0, bucket, buckets, key };
+    bucket.push(entry);
+  }
+  entry.references++;
+  record.sharedTexture = entry;
+  record.texture = entry.texture;
+  record.image?.close?.();
+  record.image = undefined;
+  return entry.texture;
+}
+
+function releaseSharedImageTexture(record) {
+  const entry = record.sharedTexture;
+  if (!entry) return;
+  record.sharedTexture = undefined;
+  record.texture = undefined;
+  if (--entry.references === 0) {
+    entry.texture.destroy();
+    entry.bucket.splice(entry.bucket.indexOf(entry), 1);
+    if (!entry.bucket.length) entry.buckets.delete(entry.key);
+  }
 }
 
 function canonicalizeImageRecords(records, keyOf = imageRecordKey) {
@@ -608,21 +650,25 @@ function processImageRecord(record, context) {
     throw record.error;
   }
 
-  if (defined(record.image)) {
-    record.texture = createTexture(context, record.image);
-    record.image = undefined;
+  if (defined(acquireSharedImageTexture(record, context))) {
     return true;
   }
 
   if (!defined(record.promise)) {
-    record.promise = loadImageFromTypedArray({
-      uint8Array: record.bytes,
-      format: record.mimeType,
-      flipY: false,
-      skipColorSpaceConversion: false,
-    })
+    const imagePromise = record.preMultiplyAlpha === true
+      ? Resource.supportsImageBitmapOptions().then(supported => supported
+        ? Resource.createImageBitmapFromBlob(new Blob([record.bytes], { type: record.mimeType }), {
+          flipY: false, premultiplyAlpha: true, skipColorSpaceConversion: false,
+        })
+        : loadImageFromTypedArray({ uint8Array: record.bytes, format: record.mimeType }))
+      : loadImageFromTypedArray({
+        uint8Array: record.bytes, format: record.mimeType,
+        flipY: false, skipColorSpaceConversion: false,
+      });
+    record.promise = imagePromise
       .then(function (image) {
-        record.image = image;
+        if (record.destroyed || record.texture) image.close?.();
+        else record.image = image;
       })
       .catch(function (error) {
         record.error = error;
@@ -797,7 +843,11 @@ function destroyEzTreeGltfAssetRecord(record) {
   record.destroyed = true;
   for (let i = 0; i < record.imageRecords.length; i++) {
     const imageRecord = record.imageRecords[i];
-    imageRecord.texture = imageRecord.texture && imageRecord.texture.destroy();
+    imageRecord.destroyed = true;
+    imageRecord.image?.close?.();
+    imageRecord.image = undefined;
+    if (imageRecord.sharedTexture) releaseSharedImageTexture(imageRecord);
+    else imageRecord.texture = imageRecord.texture && imageRecord.texture.destroy();
   }
 }
 
@@ -808,6 +858,8 @@ const EzTreeGltfAsset = Object.freeze({
 });
 
 export {
+  acquireSharedImageTexture,
+  releaseSharedImageTexture,
   canonicalizeImageRecords,
   createEzTreeGltfAssetRecord,
   destroyEzTreeGltfAssetRecord,

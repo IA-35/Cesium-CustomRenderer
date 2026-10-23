@@ -71,20 +71,30 @@ they do not establish GPU precision, atlas texture fidelity, visual acceptance o
   view rays. Empty gaps are skipped in the sampling path. Sun/ground rays cover the whole
   forward cloud shell, with no former planar 6 km light cutoff. Fixed quality tap counts
   still approximate long grazing rays and do not replace upstream cascaded Beer shadows.
+- View-distance LOD retains the same density field and horizon extent. Samples within
+  8 km retain their original budget; a smoothstep to 40 km raises view strides to 4x
+  and reduces secondary sun/ambient/ground/moon marches to two taps. Color and weighted
+  depth share the same cursor, including the exact remaining final segment. Light tap
+  counts are fractional with a clipped final segment, so a tap appearing/disappearing
+  starts/ends with zero weight. Near lighting and receiver cloud shadows retain the
+  original fixed-step integrator. No camera-distance fade is applied to secondary
+  optical depth, and the atlas/detail density equations are unchanged.
 - View/geometry optical density fades smoothly over the final 30% of the tier's
   camera distance limit, so source radiance approaches zero and residual T approaches
   one before truncation. Both passes use the same samples and fade. Solar/ground
   light paths retain the complete shell density; camera-range fading must not alter
   the weather field or make distant sunlight artificially transparent.
-- Camera-dependent horizon range is a CCR adaptation. Downward views retain
-  the tier's 30/40/50 km cap. The cloud-base chord at the local fade distance,
-  rather than the solid horizon alone, sets a five-degree smooth view transition:
-  visible distant clouds must not disappear as soon as the ground horizon leaves
-  the screen. Below the cloud base the ground horizon is a conservative fallback.
-  Proximity independently fades extension between camera heights of one and two
-  local ranges (60/80/100 km complete disable by tier); no orbital orientation can
-  reopen a planetary cloud layer. Views steeper than 60 degrees down stay local. The
-  extended cap is 1.5 times the sum of the ground-tangent distances from the
+- Camera height alone drives the horizon range extension. Downward views below the
+  local neighbourhood retain the tier's 30/40/50 km cap, and no orientation can
+  reopen a planetary cloud layer: proximity fades the extension between one and two
+  local ranges and reaches zero there (60/80/100 km complete disable by tier). Earlier
+  revisions also gated on camera pitch and vertical FOV with a five-degree transition.
+  That branch was removed after measurement: below 12 km the ray already meets the
+  ground or the shell before the extension could apply, so the terms never changed a
+  rendered pixel; only 40-80 km downward views were suppressed, which the height ramp
+  covers directly. The shell/scene still clip each ray, so a steeper view cannot see
+  more cloud than geometry allows.
+  The extended cap is 1.5 times the sum of the ground-tangent distances from the
   camera and cloud top, putting the 70% fade onset outside the visible shell.
   The shell/scene still clip each ray. Short occupied paths retain uniform
   quadrature; long paths smoothly adopt near-dense exponential distance segments

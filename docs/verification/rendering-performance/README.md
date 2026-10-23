@@ -81,6 +81,8 @@ for (i < FOG_STEPS) 24       // environmentStages.js:212
 
 ### 绑定次数（实测）
 
+> 2026-10-21 口径更正：以下为历史采样。旧 `materialBinds` 实际统计 draw 调用，不能解释为材质绑定成本；旧 `uniformUploads` 只包含两种入口。新计数器将绘制记为 `drawCalls`，`materialBinds` 为未测量，并覆盖 WebGL uniform 入口。新绑定去重在同步场景提交作用域内直接记录请求与下发次数；planner 只报告分组估算，不再将条目数标作实测。下方增幅不能直接推导时间成本或当前优化收益。
+
 采样窗口（300 帧）内的真实 GL 调用次数，由 `ContextDrawDispatcher143.startBindTracking()` 包装
 GL 入口点统计（而非估算）：
 

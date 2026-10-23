@@ -23,6 +23,16 @@ test('transient allocator maps R32F and RGBA16F semantic descriptors', () => {
   assert.equal(resolveTransientPixelDatatype143(C, 'rgba16f'), 5131)
 })
 
+// TAA 深度历史要同时保存重建足迹的最近与最远深度，只存最近会把 jitter 覆盖变化
+// 误判成遮挡显露。RG32F 是唯一能放下这两个 float 又保持 NEAREST 单 texel 读取的格式；
+// 早先 `rg32f` 在两张表里都没有分支，会静默落到 RGBA + UNSIGNED_BYTE。
+test('transient allocator maps RG32F to an RG float texture', () => {
+  const C = { PixelFormat: { RED: 6403, RG: 33319, RGBA: 6408 }, PixelDatatype: { FLOAT: 5126, HALF_FLOAT: 5131, UNSIGNED_BYTE: 5121 } }
+  assert.equal(resolveTransientPixelFormat143(C, 'rg32f'), 33319)
+  assert.equal(resolveTransientPixelDatatype143(C, 'rg32f'), 5126)
+  assert.equal(resolveTransientPixelFormat143(C, C.PixelFormat.RG), 33319)
+})
+
 // 只写格式简写的公开描述契约。
 //
 // 早先 `createTransientAllocator().acquire` 计算 datatype 时只读

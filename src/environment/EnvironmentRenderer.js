@@ -206,13 +206,11 @@ export default class EnvironmentRenderer {
   }
 
   cloudHorizon() {
-    const C=this.C,camera=this.viewer.camera,frustum=camera?.frustum
-    if(!camera?.directionWC||!frustum)return 0
+    const C=this.C,camera=this.viewer.camera
+    if(!camera?.positionWC)return 0
     const ellipsoid=this.scene.globe?.ellipsoid||C.Ellipsoid.WGS84
-    const up=ellipsoid.geodeticSurfaceNormal(camera.positionWC,new C.Cartesian3())
-    const pitch=Math.asin(Math.max(-1,Math.min(1,C.Cartesian3.dot(camera.directionWC,up))))
-    return cloudHorizonBlend(pitch,frustum.fovy,ellipsoid.cartesianToCartographic(camera.positionWC).height,
-      PLANET_RADIUS_M,this.state.cloudBase,cloudTier(this.state.environmentQuality).maxDistance)
+    return cloudHorizonBlend(ellipsoid.cartesianToCartographic(camera.positionWC).height,
+      cloudTier(this.state.environmentQuality).maxDistance)
   }
 
   updateShellCamera() {

@@ -28,7 +28,10 @@ test('official tree prototypes preserve all points with bounded, decreasing geom
   const manifest = JSON.parse(fs.readFileSync(filename))
   const original = JSON.parse(fs.readFileSync(new URL('../../assets/vegetation/manifest.json', import.meta.url)))
   assert.equal(manifest.pointCount, original.pointCount)
-  assert.deepEqual(manifest.typeMap, original.typeMap)
+  // Street points only name the pine types; the scatter rotates through every key.
+  for (const [type, id] of Object.entries(original.typeMap)) assert.equal(manifest.typeMap[type], id)
+  assert.deepEqual(new Set(Object.keys(manifest.typeMap)), new Set([...Object.keys(original.typeMap), '银杏', '樱花']))
+  const streetIds = new Set(Object.values(original.typeMap))
   assert.match(manifest.generator.repository, /dgreenheck\/ez-tree$/)
   assert.deepEqual(new Set(manifest.prototypes.map(prototype => prototype.form)), new Set(['columnar', 'spreading', 'rounded']))
   for (const prototype of manifest.prototypes) {
@@ -48,7 +51,10 @@ test('official tree prototypes preserve all points with bounded, decreasing geom
     }
     assert.ok(counts[0] <= 14000, `Near geometry exceeds budget: ${counts}`)
     assert.ok(counts[3] <= 900, `Far geometry exceeds budget: ${counts}`)
-    assert.ok(prototype.height >= 8.5, 'Street trees must not retain the undersized 4.3 metre prototype')
+    // Only the street-point prototypes serve the fixed points; the scatter's
+    // ornamental species (ginkgo, cherry) are allowed to be understory sized.
+    if (streetIds.has(prototype.id)) assert.ok(prototype.height >= 8.5, 'Street trees must not retain the undersized 4.3 metre prototype')
+    assert.ok(prototype.height > 0)
     const leafUV = gltf.accessors[gltf.meshes[0].primitives[1].attributes.TEXCOORD_0]
     const uvOffset = gltf.bufferViews[leafUV.bufferView].byteOffset
     assert.equal(binary.readFloatLE(uvOffset + 4), 0, 'Leaf tip must sample the top of the GLB image')

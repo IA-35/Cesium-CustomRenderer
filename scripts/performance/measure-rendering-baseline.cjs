@@ -59,14 +59,14 @@ function recordPerformanceSample(ledger, sample = {}) {
   return ledger.recordFrame(sample)
 }
 
-const STATE_FIELDS = ['drawHookInstallations', 'drawHookInvocations', 'programBinds', 'materialBinds', 'uniformUploads', 'textureBinds']
+const STATE_FIELDS = ['drawHookInstallations', 'drawHookInvocations', 'programBinds', 'drawCalls', 'materialBinds', 'uniformUploads', 'textureBinds']
 
 function counterDelta(current = {}, previous = {}) {
   const delta = {}
   for (const field of STATE_FIELDS) {
-    const value = Number(current[field])
+    const value = current[field]
     if (!Number.isFinite(value)) continue
-    const before = Number(previous[field])
+    const before = previous[field]
     delta[field] = Number.isFinite(before) && value >= before ? value - before : value
   }
   return delta
@@ -172,10 +172,10 @@ async function run() {
           .map(sample => sample.milliseconds)
         const deltaCounters = (current = {}, previous = {}) => {
           const delta = {}
-          for (const field of ['drawHookInstallations', 'drawHookInvocations', 'programBinds', 'materialBinds', 'uniformUploads', 'textureBinds']) {
-            const value = Number(current[field])
+          for (const field of ['drawHookInstallations', 'drawHookInvocations', 'programBinds', 'drawCalls', 'materialBinds', 'uniformUploads', 'textureBinds']) {
+            const value = current[field]
             if (!Number.isFinite(value)) continue
-            const before = Number(previous[field])
+            const before = previous[field]
             delta[field] = Number.isFinite(before) && value >= before ? value - before : value
           }
           return delta

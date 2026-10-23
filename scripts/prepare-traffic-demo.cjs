@@ -21,7 +21,20 @@ function box(target, center, size) {
     target.indices.push(first, first + 1, first + 2, first, first + 2, first + 3)
   }
 }
-function writeGlb(file, meshes, materials) {
+function writeGlb(file, meshes, materials, packedCar = false) {
+  if (packedCar) {
+    const merged = { ...mesh(), colors: [], texcoords: [] }
+    meshes.forEach((data, part) => {
+      const first = merged.positions.length / 3
+      merged.positions.push(...data.positions); merged.normals.push(...data.normals)
+      merged.indices.push(...data.indices.map(index => first + index))
+      for (let i = 0; i < data.positions.length / 3; i++) {
+        merged.colors.push(...materials[part][0])
+        merged.texcoords.push((part + .5) / 4, .5)
+      }
+    })
+    meshes = [merged]
+  }
   const chunks = [], views = [], accessors = []; let offset = 0
   const add = (array, componentType, type, target) => {
     const bytes = Buffer.from(array.buffer), index = views.length
@@ -29,7 +42,7 @@ function writeGlb(file, meshes, materials) {
     chunks.push(bytes); offset += bytes.length
     const padding = (4 - offset % 4) % 4
     if (padding) { chunks.push(Buffer.alloc(padding)); offset += padding }
-    const accessor = { bufferView: index, componentType, count: array.length / (type === 'VEC3' ? 3 : 1), type }
+    const accessor = { bufferView: index, componentType, count: array.length / ({ VEC3: 3, VEC2: 2 }[type] || 1), type }
     if (type === 'VEC3') {
       accessor.min = [0, 1, 2].map(i => Math.min(...Array.from(array).filter((_, j) => j % 3 === i)))
       accessor.max = [0, 1, 2].map(i => Math.max(...Array.from(array).filter((_, j) => j % 3 === i)))
@@ -40,11 +53,24 @@ function writeGlb(file, meshes, materials) {
     POSITION: add(new Float32Array(data.positions), 5126, 'VEC3', 34962),
     NORMAL: add(new Float32Array(data.normals), 5126, 'VEC3', 34962) },
     indices: add(new Uint16Array(data.indices), 5123, 'SCALAR', 34963), material }))
+  if (packedCar) {
+    primitives[0].attributes.COLOR_0 = add(new Float32Array(meshes[0].colors), 5126, 'VEC3', 34962)
+    primitives[0].attributes.TEXCOORD_0 = add(new Float32Array(meshes[0].texcoords), 5126, 'VEC2', 34962)
+  }
   const gltf = { asset: { version: '2.0', generator: 'CCR original traffic demo' }, scene: 0,
     scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives }],
     buffers: [{ byteLength: offset }], bufferViews: views, accessors,
     materials: materials.map(([color, metallic = 0, roughness = 0.8]) => ({ pbrMetallicRoughness: {
       baseColorFactor: [...color, 1], metallicFactor: metallic, roughnessFactor: roughness } })) }
+  if (packedCar) {
+    // Four constant material texels: G=roughness*300, B=metallic*300.
+    // Multiplying sampled bytes by .85 (=255/300) preserves the original factors.
+    gltf.materials = [{ pbrMetallicRoughness: { baseColorFactor: [1,1,1,1],
+      metallicFactor: .85, roughnessFactor: .85, metallicRoughnessTexture: { index: 0 } } }]
+    gltf.images = [{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGP4X2Tz/7+H9///Hxj+///A8B8AXSkLGklfs/MAAAAASUVORK5CYII=' }]
+    gltf.samplers = [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }]
+    gltf.textures = [{ source: 0, sampler: 0 }]
+  }
   let json = Buffer.from(JSON.stringify(gltf)); json = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 32)])
   const binary = Buffer.concat(chunks), header = Buffer.alloc(20), binHeader = Buffer.alloc(8)
   header.writeUInt32LE(0x46546c67, 0); header.writeUInt32LE(2, 4); header.writeUInt32LE(28 + json.length + binary.length, 8)
@@ -58,8 +84,9 @@ if (!networkOnly) for (const [name, color] of [['blue', [.08, .29, .4]], ['ivory
   box(windows, [0, 1.18, -.25], [1.54, .3, 1.98])
   for (const x of [-.86, .86]) for (const z of [-1.34, 1.34]) box(tires, [x, .34, z], [.26, .68, .68])
   for (const x of [-.58, .58]) box(lamps, [x, .69, 2.16], [.42, .16, .035])
-  writeGlb(`car-${name}.glb`, [body, windows, tires, lamps], [[color, .2, .38], [[.035, .07, .09], .25, .24], [[.035, .038, .04]], [[.96, .91, .65]]])
+  writeGlb(`car-${name}.glb`, [body, windows, tires, lamps], [[color, .2, .38], [[.035, .07, .09], .25, .24], [[.035, .038, .04]], [[.96, .91, .65]]], true)
 }
+if (process.argv.includes('--cars-only')) process.exit(0)
 function loop(inset = 0) {
   const points = [], radius = 22 - inset
   for (const [x, y, start] of [[38, 12, 0], [-38, 12, 90], [-38, -12, 180], [38, -12, 270]]) {

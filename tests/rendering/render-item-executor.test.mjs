@@ -7,12 +7,13 @@ import ContextDrawDispatcher143 from '../../src/pipeline/ContextDrawDispatcher14
 test('executor owns command overrides without mutating RenderItem command', () => {
   const calls = []
   const C = { DrawCommand: { shallowClone(command) { return { ...command } } } }
-  const command = { framebuffer: 'old', execute(context, passState) { calls.push([this.framebuffer, passState]) } }
+  const oldFramebuffer = {}, newFramebuffer = {}
+  const command = { framebuffer: oldFramebuffer, execute(context, passState) { calls.push([this.framebuffer, passState]) } }
   const item = createRenderItem143(command, { pass: 'deferred.geometry' })
   const executor = new RenderItemExecutor143(C)
-  executor.execute(item, {}, {}, { framebuffer: 'new' })
-  assert.equal(command.framebuffer, 'old')
-  assert.deepEqual(calls[0], ['new', {}])
+  executor.execute(item, {}, {}, { framebuffer: newFramebuffer })
+  assert.equal(command.framebuffer, oldFramebuffer)
+  assert.deepEqual(calls[0], [newFramebuffer, {}])
   assert.equal(executor.getDiagnostics().deferred, 1)
 })
 

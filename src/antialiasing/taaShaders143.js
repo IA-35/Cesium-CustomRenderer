@@ -29,15 +29,19 @@ export const taaDepthShader = `${taaCommon}
 void main() {
     // History colour and depth share the stable display grid; motion stays raster.
     // Label the whole colour reconstruction footprint, including coverage lobes.
+    // RG keeps the covered span: the closest sample decides near-surface tests,
+    // the farthest proves which surfaces the label actually saw.
     ivec2 size = textureSize(depthTexture, 0);
     ivec2 base = ivec2(floor((v_textureCoordinates + u_jitterUv) * vec2(size) - 0.5));
-    float closest = 1e30;
+    float closest = 1e30, farthest = 0.0;
+    bool sky = false;
     for (int x = -1; x <= 2; ++x) for (int y = -1; y <= 2; ++y) {
         vec2 uv = (vec2(clamp(base + ivec2(x,y), ivec2(0), size-1)) + 0.5) / vec2(size);
         float eye = taaEyeDepth(uv);
-        if (eye > 0.0) closest = min(closest, eye);
+        if (eye > 0.0) { closest = min(closest, eye); farthest = max(farthest, eye); }
+        else sky = true;
     }
-    out_FragColor = vec4(closest == 1e30 ? 0.0 : closest, 0.0, 0.0, 0.0);
+    out_FragColor = vec4(closest == 1e30 ? 0.0 : closest, sky ? 0.0 : farthest, 0.0, 0.0);
 }
 `
 
@@ -96,6 +100,7 @@ uniform vec2 u_previousJitterUv;
 // B=0 is clear/static fallback; B>0,A<=0 is first-seen local invalid history.
 uniform highp sampler2D u_motionTexture;
 uniform bool u_hasMotionTexture;
+uniform bool u_hasPreviousFootprint;
 uniform vec2 u_cameraNearFar;
 uniform mat4 u_currentInverseRasterProjection;
 uniform mat4 u_previousInverseRasterProjection;
@@ -107,6 +112,7 @@ uniform float u_historyValid;
 uniform float u_acquisitionAge;
 uniform float u_jitterSamples;
 uniform bool u_cameraStill;
+uniform bool u_stableCoverage;
 uniform float u_depthThreshold;
 uniform float u_edgeDepthDiff;
 uniform float u_maxVelocityLength;
@@ -116,7 +122,7 @@ vec4 taaCurrent(vec2 uv) {
     ivec2 size = textureSize(colorTexture, 0);
     return texelFetch(colorTexture, clamp(ivec2(uv * vec2(size)), ivec2(0), size-1), 0);
 }
-vec4 taaHistory(vec2 uv, float expectedEyeDepth) {
+vec4 taaHistory(vec2 uv, float expectedEyeDepth, bool stableCoverage) {
     ivec2 size = textureSize(u_historyColor, 0);
     vec2 grid = uv * vec2(size) - 0.5;
     ivec2 base = ivec2(floor(grid));
@@ -125,9 +131,10 @@ vec4 taaHistory(vec2 uv, float expectedEyeDepth) {
     float weightSum = 0.0;
     for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x) {
         ivec2 pixel = clamp(base + ivec2(x-1,y-1), ivec2(0), size-1);
-        float eye = texelFetch(u_historyDepth, pixel, 0).r;
-        if (eye > 0.0 && expectedEyeDepth > eye + max(0.1, 0.02 * expectedEyeDepth)) continue;
+        vec2 span = texelFetch(u_historyDepth, pixel, 0).rg;
         vec4 tap = texelFetch(u_historyColor, pixel, 0);
+        float eye = stableCoverage && tap.a >= 0.0 ? span.y : span.x;
+        if (eye > 0.0 && (expectedEyeDepth == 0.0 || expectedEyeDepth > eye + max(0.1, 0.02 * expectedEyeDepth))) continue;
         float weight = wx[x] * wy[y];
         value += tap * weight; weightSum += weight;
         lower = min(lower, tap); upper = max(upper, tap);
@@ -212,10 +219,12 @@ void main() {
     // misses the fourth row/column and resets partially covered wires to one sample.
     float closestDepth = 2.0, farthestDepth = -1.0;
     float closestEyeDepth = 0.0;
+    bool rejectedFootprint = false;
     ivec2 closestPixel = pixel;
     ivec2 reconstructionBase = ivec2(floor((uv + u_jitterUv) * vec2(size) - 0.5));
     for (int x = -1; x <= 2; ++x) for (int y = -1; y <= 2; ++y) {
         ivec2 neighbor = clamp(reconstructionBase + ivec2(x,y), ivec2(0), size-1);
+        if (u_hasPreviousFootprint && texelFetch(u_motionTexture, neighbor, 0).w < 0.0) rejectedFootprint = true;
         vec2 neighborUV = (vec2(neighbor) + 0.5) / vec2(size);
         float eyeDepth = taaEyeDepth(neighborUV);
         float depth = taaPerspectiveDepth(eyeDepth);
@@ -233,7 +242,8 @@ void main() {
     vec2 velocityNDC = currentClip.xy / currentClip.w - previousClip.xy / previousClip.w;
     float expectedPreviousEyeDepth = closestEyeDepth > 0.0
         ? -(u_previousViewFromCurrentEye * currentEye).z : 0.0;
-    bool localValid = previousClip.w > 0.0;
+    bool localValid = previousClip.w > 0.0 && !rejectedFootprint;
+    bool movingSurface = false;
     if (u_hasMotionTexture) {
         vec4 objectMotion = texelFetch(u_motionTexture, closestPixel, 0);
         // Float32 surface quantization tolerance, separate from history thresholds.
@@ -241,38 +251,55 @@ void main() {
         bool visibleMotion = objectMotion.z > 0.0 && closestEyeDepth > 0.0
             && abs(objectMotion.z - closestEyeDepth) <= surfaceTolerance;
         if (visibleMotion) {
+            movingSurface = true;
             velocityNDC = objectMotion.xy;
             expectedPreviousEyeDepth = objectMotion.w;
-            localValid = objectMotion.w > 0.0;
+            localValid = objectMotion.w > 0.0 && !rejectedFootprint;
         }
     }
     // Three uses top-left UV and (0.5,-0.5). Cesium's bottom-left UV is
     // (NDC+1)*0.5, so both axes multiply by positive 0.5.
     vec2 offsetUV = velocityNDC * 0.5;
     vec2 historyUV = uv - offsetUV;
+    // Negative private alpha identifies a moving/new surface in the previous
+    // reconstruction footprint. Its magnitude remains the acquisition age.
+    float historyMetadata = texelFetch(u_historyColor, clamp(ivec2(historyUV * vec2(size)), ivec2(0), size-1), 0).a;
+    bool stableCoverage = u_stableCoverage && !movingSurface && historyMetadata >= 0.0;
     bool inBounds = all(greaterThanEqual(historyUV, vec2(0.0))) && all(lessThanEqual(historyUV, vec2(1.0)));
     bool edge = farthestDepth - closestDepth > u_edgeDepthDiff;
     bool disocclusion = closestDepth - taaPreviousDepth(historyUV) > u_depthThreshold;
     // Root-camera perspective depth loses discrimination far from a tiny near
     // plane. Compare in previous-eye metres too; motion.w handles rigid Z motion.
-    float storedEyeDepth = texture(u_historyDepth, historyUV).r;
-    bool relativeDisocclusion = storedEyeDepth > 0.0 && (closestEyeDepth == 0.0 ||
-        expectedPreviousEyeDepth > storedEyeDepth + max(0.1, 0.02 * expectedPreviousEyeDepth));
-    bool hasValidHistory = localValid && inBounds && (edge || !disocclusion) && !relativeDisocclusion;
+    // A stored label covers its whole reconstruction footprint, so a jitter phase
+    // can move the closest sample while the same surfaces stay in view. Reject
+    // only when the closest current surface is farther than everything the stored
+    // footprint saw: that is a real reveal, not a coverage change.
+    vec2 storedSpan = texture(u_historyDepth, historyUV).rg;
+    float storedEyeDepth = storedSpan.x;
+    // Far=0 includes sky. Under motion retain the strict nearest-surface reject.
+    float storedFarthestEyeDepth = stableCoverage ? storedSpan.y : storedEyeDepth;
+    bool relativeDisocclusion = storedFarthestEyeDepth > 0.0 && (closestEyeDepth == 0.0 ||
+        expectedPreviousEyeDepth > storedFarthestEyeDepth + max(0.1, 0.02 * expectedPreviousEyeDepth));
+    bool hasValidHistory = localValid && inBounds && (stableCoverage || edge || !disocclusion) && !relativeDisocclusion;
     if (!hasValidHistory) {
         // A finite revealed surface starts acquisition again. Empty sky still
         // rejects the old RGB immediately, but keeps sample age: a subpixel wire
         // can miss the entire raster footprint for one Halton phase.
         float age = closestEyeDepth == 0.0 && inBounds
-            ? clamp(texture(u_historyColor, historyUV).a + 1.0, 1.0, max(u_jitterSamples, 32.0)) : 1.0;
-        out_FragColor = vec4(currentColor.rgb, age);
+            ? clamp(abs(historyMetadata) + 1.0, 1.0, max(u_jitterSamples, 32.0)) : 1.0;
+        out_FragColor = vec4(currentColor.rgb, movingSurface ? -age : age);
         return;
     }
 
-    vec4 historyColor = taaHistory(historyUV, expectedPreviousEyeDepth);
+    // Reuse the pre-r186 stationary sampling rule: matrix roundoff must not
+    // repeatedly cubic-filter a history texel and spread a thin silhouette.
+    bool coherentHistory = u_cameraStill && length(offsetUV * vec2(size)) < 0.001;
+    vec4 historyColor = coherentHistory ? texelFetch(u_historyColor, pixel, 0)
+        : taaHistory(historyUV, expectedPreviousEyeDepth, stableCoverage);
     // A locally rejected/new surface reacquires its own jitter samples even
     // after the camera has been still for minutes. No extra history target.
-    float acquisitionAge = min(u_acquisitionAge, max(1.0, historyColor.a));
+    // Acquisition metadata belongs to one pixel, not a cubic mixture of ages.
+    float acquisitionAge = min(u_acquisitionAge, max(1.0, abs(historyMetadata)));
     historyColor.a = currentColor.a;
     float motionFactor = clamp(length((uv - historyUV) * vec2(size)) / u_maxVelocityLength, 0.0, 1.0);
     // A fixed low floor filters the Halton phase response, independent of camera
@@ -283,11 +310,13 @@ void main() {
         ? baseWeight / (1.0 - pow(1.0 - baseWeight, acquisitionAge + 1.0)) : baseWeight;
     if (u_useSubpixelCorrection) currentWeight += taaSubpixelCorrection(offsetUV, vec2(size)) * 0.25;
     currentWeight = clamp(currentWeight + motionFactor, 0.0, 1.0);
-    bool coherentHistory = u_cameraStill && length(offsetUV * vec2(size)) < 0.001;
     float varianceGamma = mix(0.5, coherentHistory || farthestDepth == 1.0 ? 2.0 : 1.0,
         (1.0 - motionFactor) * (1.0 - motionFactor));
     vec4 clippedHistoryColor = taaVarianceClipping(pixel, size, currentColor, historyColor, varianceGamma);
+    // A missing stationary subpixel sample is not evidence that its accumulated
+    // radiance vanished. Keep integrating (never freeze); motion restores clipping.
+    if (stableCoverage) clippedHistoryColor = historyColor;
     out_FragColor = vec4(taaFlickerReduction(currentColor, clippedHistoryColor, currentWeight).rgb,
-        min(acquisitionAge + 1.0, max(u_jitterSamples, 32.0)));
+        (movingSurface ? -1.0 : 1.0) * min(acquisitionAge + 1.0, max(u_jitterSamples, 32.0)));
 }
 `

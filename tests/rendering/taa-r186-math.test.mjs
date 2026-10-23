@@ -16,7 +16,7 @@ const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
 test('CCR adaptations retain the r186 resolve core and do not revive the withdrawn blend block', () => {
   assert.match(shader, /float currentWeight = acquisitionAge/)
   assert.match(shader, /vec4 currentColor = taaCurrent\(uv\)/)
-  assert.match(shader, /taaHistory\(historyUV, expectedPreviousEyeDepth\)/)
+  assert.match(shader, /taaHistory\(historyUV, expectedPreviousEyeDepth, stableCoverage\)/)
   assert.doesNotMatch(shader, /u_staticFrames|u_taaVariance|YCoCg|rejectionScale/)
   assert.match(shader, /return taaClipAABB/)
   assert.match(shader, /taaFlickerReduction\(currentColor, clippedHistoryColor, currentWeight\)/)

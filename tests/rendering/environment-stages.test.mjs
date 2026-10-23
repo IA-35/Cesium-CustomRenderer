@@ -136,7 +136,7 @@ test('the cloud tier integrates continuous sun extinction against the visible de
   // The sun path delegates to the shared optical-depth integral over spherical intervals.
   const sunBody = shader.slice(shader.indexOf('float ccrCloudSunOpticalDepth'), shader.indexOf('float ccrCloudSunVisibility'))
   assert.match(sunBody, /ccrCloudShellIntervals\(position, sunDirectionAtmo, 1\.0e9\)/)
-  assert.match(sunBody, /return ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals\)/)
+  assert.match(sunBody, /return ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals, sampleCount\)/)
   const opticalBody = shader.slice(shader.indexOf('float ccrCloudOpticalDepth'), shader.indexOf('float ccrCloudSunOpticalDepth'))
   assert.match(opticalBody, /opticalDepth \+= ccrCloudDensity\(samplePosition\) \* stepLength/)
   assert.doesNotMatch(sunBody, /inside \+=/)

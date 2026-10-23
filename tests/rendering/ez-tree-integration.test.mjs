@@ -52,10 +52,9 @@ test('grass commands never cast or receive shadows while tree commands retain pr
 
 test('external tree leaf cutoff preserves coverage as geometry LOD decreases',()=>{
   const runtime=getRuntime(C)
-  assert.equal(runtime.externalTreeAlphaCutoff(0.35,0,true),0.35)
-  assert.equal(runtime.externalTreeAlphaCutoff(0.35,1,true),0.30)
-  assert.equal(runtime.externalTreeAlphaCutoff(0.35,2,true),0.24)
-  assert.equal(runtime.externalTreeAlphaCutoff(0.35,3,true),0.18)
+  for(const lod of [0,1,2,3]) assert.equal(runtime.externalTreeAlphaCutoff(0.42,lod,true),0.12)
+  assert.equal(runtime.externalTreeAlphaCutoff(0.03,0,true),0.03)
+  assert.equal(runtime.externalTreeAlphaCutoff(0,0,true),0)
   assert.equal(runtime.externalTreeAlphaCutoff(0.35,3,false),0.35)
   const primitive=new runtime.EzTreePrimitive({instances:[]})
   assert.deepEqual(primitive._externalThresholds,[180,80,12])
@@ -74,6 +73,20 @@ test('byte-identical material images share one canonical record without trusting
   assert.equal(records[1].primitiveRecords[0].material.imageRecord,records[0].primitiveRecords[0].material.imageRecord)
   assert.notEqual(records[2].primitiveRecords[0].material.imageRecord,records[0].primitiveRecords[0].material.imageRecord)
   assert.equal(result.sharedCount,1)
+})
+
+test('image sharing keeps premultiplied leaf textures separate from straight textures',()=>{
+  const runtime=getRuntime(C)
+  const make=preMultiplyAlpha=>{
+    const image={bytes:new Uint8Array([1,2,3]),mimeType:'image/png',preMultiplyAlpha}
+    return {imageRecords:[image],primitiveRecords:[{material:{imageRecord:image}}]}
+  }
+  const records=[make(true),make(false),make(true)]
+  const result=runtime.canonicalizeImageRecords(records,()=> 'forced-collision')
+  assert.equal(result.unique.length,2)
+  assert.equal(result.sharedCount,1)
+  assert.notEqual(records[0].primitiveRecords[0].material.imageRecord,records[1].primitiveRecords[0].material.imageRecord)
+  assert.equal(records[0].primitiveRecords[0].material.imageRecord,records[2].primitiveRecords[0].material.imageRecord)
 })
 
 test('shared image texture is destroyed exactly once across both asset records',()=>{

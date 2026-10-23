@@ -117,7 +117,8 @@ export async function captureR186Series(f, name, count = 128, motion = 'static')
           const values = f.read(texture), samples = []
           for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
             const x = Math.max(0, Math.min(texture.width - 1, acquisitionCenter[0] + dx)), y = Math.max(0, Math.min(texture.height - 1, acquisitionCenter[1] + dy))
-            samples.push(values[(y * texture.width + x) * 4 + 3])
+            const alpha = values[(y * texture.width + x) * 4 + 3]
+            samples.push(texture === metadata ? Math.abs(alpha) : alpha)
           }
           return { min: Math.min(...samples), max: Math.max(...samples), center: samples[12] }
         }

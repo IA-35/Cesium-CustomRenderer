@@ -48,7 +48,22 @@ export default class DirectionalShadowPass {
   get target(){return this.levels.at(-1)?.target}
   get light(){return this.levels.at(-1)?.light}
   setOrigin(){this.invalidate()}
-  invalidate(){for(const level of this.levels)level.cache.invalidate();this.ready=false;this.forceShadowUpdate=true;this.version++}
+  // Two severities, because callers invalidate for very different reasons.
+  // Immediate (default): the depth targets or their contents changed in a way the
+  // next rendered frame must reflect, so the reuse gate has to miss unconditionally.
+  // Deferred: only the static-cache signature is dropped; shadowUpdateInterval still
+  // decides when to redraw. Continuously animated casters such as TrafficSystem must
+  // use the deferred form. Calling the immediate form once per frame pinned
+  // forceShadowUpdate, which made shouldReuseShadowFrame miss on every single frame
+  // and turned a 4096px shadow pass into a per-frame full redraw (measured on the
+  // campus scene: 22.7 FPS with traffic vs 59.9 FPS once the redraw rate returned to
+  // the configured interval).
+  invalidate({immediate=true}={}){
+    for(const level of this.levels)level.cache.invalidate()
+    this.version++
+    if(!immediate)return
+    this.ready=false;this.forceShadowUpdate=true
+  }
   getFrameNumber(state){
     const frame=state?.frameNumber??state?.frameState?.frameNumber
     return Number.isFinite(frame)?frame:++this.shadowFrameCounter

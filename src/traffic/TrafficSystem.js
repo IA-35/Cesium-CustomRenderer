@@ -77,16 +77,20 @@ export default class TrafficSystem {
           position: new this.C.Cartesian3(), direction: new this.C.Cartesian3(), normal: new this.C.Cartesian3(),
           rotation: new this.C.Matrix3(), heading: this.C.Matrix3.fromRotationZ(vehicle.headingOffset ?? 0), model: null }
       })
-      this.simulation = new TrafficSimulation(this.C, this.vehicles, this.network)
-      let next = 0
-      const worker = async () => {
-        while (next < this.vehicles.length) {
-          this._assertLoading()
-          const vehicle = this.vehicles[next++]
-          await this._createModel(vehicle)
-        }
+      let preparationStart = performance.now()
+      this.simulation = new TrafficSimulation(this.C, this.vehicles, this.network, async () => {
+        this._assertLoading()
+        if (performance.now() - preparationStart < 4) return
+        await new Promise(resolve => setTimeout(resolve, 0))
+        this._assertLoading()
+        preparationStart = performance.now()
+      })
+      await this.simulation.readyPromise
+      // 等前一辆实际 ready 后再创建下一辆，避免入场后集中上传车型。
+      for (const vehicle of this.vehicles) {
+        this._assertLoading()
+        await this._createModel(vehicle)
       }
-      await Promise.all(Array.from({ length: Math.min(4, this.vehicles.length) }, worker))
       this._assertLoading()
       this.state = 'ready'
       this._lastTime = this.now()
@@ -199,12 +203,18 @@ export default class TrafficSystem {
       }
     }
     for (const vehicle of this.vehicles) if (vehicle.model) vehicle.model.show = this.visible && vehicle.state === 'driving'
-    if (moved) this._invalidateShadows()
+    // Vehicles move every frame, so the caster signature is stale every frame. Use the
+    // deferred form: it drops the cached signature but leaves the redraw rate to
+    // shadowUpdateInterval. Asking for an immediate redraw here pinned
+    // forceShadowUpdate and made the shadow pass redraw on every frame, which cost the
+    // campus scene about 37 FPS (22.7 -> 59.9 measured) and made
+    // shadowUpdateInterval unreachable whenever traffic was playing.
+    if (moved) this._invalidateShadows({ immediate: false })
     if (this.speedMultiplier > 0 && this.vehicles.some(vehicle => vehicle.speed > 0 && vehicle.state !== 'error')) this.scene.requestRender()
   }
 
-  _invalidateShadows() {
-    if (this.pipeline && !this.pipeline.destroyed) this.pipeline.invalidateShadows()
+  _invalidateShadows(options) {
+    if (this.pipeline && !this.pipeline.destroyed) this.pipeline.invalidateShadows(options)
   }
 
   play() {

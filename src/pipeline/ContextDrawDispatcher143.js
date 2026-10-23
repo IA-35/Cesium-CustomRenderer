@@ -11,7 +11,7 @@ export default class ContextDrawDispatcher143 {
     this.bypassDepth = 0
     this.installed = false; this.destroyed = false; this.generation = 0
     this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0,
-      programBinds: 0, materialBinds: 0, textureBinds: 0, uniformUploads: 0 }
+      programBinds: null, materialBinds: null, textureBinds: null, uniformUploads: null }
     this._bindTracking = null
     this.wrapper = (...args) => this._dispatch(args)
     installations.set(context, this)
@@ -22,20 +22,22 @@ export default class ContextDrawDispatcher143 {
     if (this._bindTracking) return this._bindTracking
     const gl = this.context?._gl
     if (!gl) return null
-    const counters = { programBinds: 0, materialBinds: 0, textureBinds: 0, uniformUploads: 0 }
-    // drawElements/drawArrays are the per-draw material submission; useProgram is the
+    const counters = { programBinds: 0, drawCalls: 0, materialBinds: null, textureBinds: 0, uniformUploads: 0 }
+    // drawElements/drawArrays count draw submissions, not material binds; useProgram is the
     // program bind a batch is supposed to amortise; bindTexture and uniform* are uploads.
     const bindings = [
       ['programBinds', 'useProgram'],
-      ['materialBinds', 'drawElements'],
-      ['materialBinds', 'drawArrays'],
+      ['drawCalls', 'drawElements'],
+      ['drawCalls', 'drawArrays'],
       // Cesium submits most primitives through the instanced entry points; counting only the
       // non-instanced pair under-reports the real submission count.
-      ['materialBinds', 'drawElementsInstanced'],
-      ['materialBinds', 'drawArraysInstanced'],
+      ['drawCalls', 'drawElementsInstanced'],
+      ['drawCalls', 'drawArraysInstanced'],
       ['textureBinds', 'bindTexture'],
-      ['uniformUploads', 'uniform4fv'],
-      ['uniformUploads', 'uniformMatrix4fv']
+      ...['1f','2f','3f','4f','1i','2i','3i','4i','1ui','2ui','3ui','4ui',
+        '1fv','2fv','3fv','4fv','1iv','2iv','3iv','4iv','1uiv','2uiv','3uiv','4uiv',
+        'Matrix2fv','Matrix3fv','Matrix4fv','Matrix2x3fv','Matrix2x4fv','Matrix3x2fv',
+        'Matrix3x4fv','Matrix4x2fv','Matrix4x3fv'].map(suffix => ['uniformUploads', `uniform${suffix}`])
     ]
     const restores = []
     for (const [counter, method] of bindings) {

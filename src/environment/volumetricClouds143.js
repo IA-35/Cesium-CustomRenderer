@@ -187,15 +187,35 @@ float ccrCloudOpticalDepth(vec3 position, vec3 direction, vec4 intervals) {
   return opticalDepth;
 }
 
+float ccrCloudOpticalDepth(vec3 position, vec3 direction, vec4 intervals, float sampleCount) {
+  if (sampleCount >= float(CLOUD_LIGHT_STEPS)) return ccrCloudOpticalDepth(position,direction,intervals);
+  float pathLength = ccrCloudIntervalLength(intervals);
+  float stepLength = pathLength / sampleCount;
+  if (stepLength <= 0.0) return 0.0;
+  float opticalDepth = 0.0;
+  for (int l = 0; l < CLOUD_LIGHT_STEPS; l++) {
+    float start = float(l) * stepLength;
+    if (start >= pathLength) break;
+    float length = min(stepLength, pathLength - start);
+    float distance = ccrCloudIntervalDistance(intervals, start + 0.5 * length);
+    vec3 samplePosition = position + direction * distance;
+    opticalDepth += ccrCloudDensity(samplePosition) * length;
+  }
+  return opticalDepth;
+}
+
 // No planar grazing-angle approximation or kilometre truncation: a horizontal
 // sun ray can cross tens of kilometres of the spherical layer.
-float ccrCloudLightOpticalDepth(vec3 position,vec3 lightDirection) {
+float ccrCloudLightOpticalDepth(vec3 position,vec3 lightDirection,float sampleCount) {
   vec4 intervals = ccrCloudShellIntervals(position, lightDirection, 1.0e9);
-  return ccrCloudOpticalDepth(position, lightDirection, intervals);
+  return ccrCloudOpticalDepth(position, lightDirection, intervals, sampleCount);
+}
+float ccrCloudSunOpticalDepth(vec3 position,float sampleCount) {
+  vec4 intervals = ccrCloudShellIntervals(position, sunDirectionAtmo, 1.0e9);
+  return ccrCloudOpticalDepth(position, sunDirectionAtmo, intervals, sampleCount);
 }
 float ccrCloudSunOpticalDepth(vec3 position) {
-  vec4 intervals = ccrCloudShellIntervals(position, sunDirectionAtmo, 1.0e9);
-  return ccrCloudOpticalDepth(position, sunDirectionAtmo, intervals);
+  return ccrCloudSunOpticalDepth(position,float(CLOUD_LIGHT_STEPS));
 }
 
 float ccrCloudSunVisibility(vec3 position) { return exp(-ccrCloudSunOpticalDepth(position)); }
@@ -211,10 +231,10 @@ vec3 ccrCloudAtmosphereSunTransmittance(vec3 position) {
   return ccrAtmosphereLightTransmittance(position, sunDirectionAtmo, stepLength);
 }
 
-vec3 ccrCloudGroundBounce(vec3 position, vec3 skyIrradiance, vec3 sunIrradiance) {
+vec3 ccrCloudGroundBounce(vec3 position, vec3 skyIrradiance, vec3 sunIrradiance, float sampleCount) {
   vec3 up = normalize(position - CCR_PLANET_POS);
   vec4 intervals = ccrCloudShellIntervals(position, -up, 1.0e9);
-  float opticalDepth = ccrCloudOpticalDepth(position, -up, intervals);
+  float opticalDepth = ccrCloudOpticalDepth(position, -up, intervals, sampleCount);
   // Upstream Lambertian albedo=0.3, with direct ground irradiance reduced by coverage.
   // skyIrradiance is an analytic hemispherical estimate (see TRANSPORT_PORT.md).
   vec3 groundIrradiance = skyIrradiance + (1.0 - clamp(cloudParams.x, 0.0, 1.0))
@@ -261,10 +281,10 @@ float ccrCloudAmbientVisibility(vec2 opticalDepth) {
   }
   return 0.5*(transmission.x+transmission.y)/totalWeight;
 }
-vec2 ccrCloudAmbientOpticalDepth(vec3 position) {
+vec2 ccrCloudAmbientOpticalDepth(vec3 position,float sampleCount) {
   vec3 up=normalize(position-CCR_PLANET_POS);
-  float above=ccrCloudOpticalDepth(position,up,ccrCloudShellIntervals(position,up,1.0e9));
-  float below=ccrCloudOpticalDepth(position,-up,ccrCloudShellIntervals(position,-up,1.0e9));
+  float above=ccrCloudOpticalDepth(position,up,ccrCloudShellIntervals(position,up,1.0e9),sampleCount);
+  float below=ccrCloudOpticalDepth(position,-up,ccrCloudShellIntervals(position,-up,1.0e9),sampleCount);
   return vec2(above,below);
 }
 
@@ -287,19 +307,23 @@ vec4 ccrCloudMarch(vec3 origin, vec3 direction, float sceneDistance, bool integr
   float pathLength = ccrCloudIntervalLength(intervals);
   if (pathLength <= 0.0) return vec4(0.0, 0.0, 0.0, 1.0);
   float sampleCount = float(CLOUD_STEPS) * (1.0 + cloudHorizonBlend * clamp(pathLength/CLOUD_MAX_DISTANCE-1.0,0.0,1.0));
+  sampleCount=ceil(sampleCount);
   bool extendedSampling=cloudHorizonBlend>0.0&&pathLength>CLOUD_MAX_DISTANCE;
   float stepLength = pathLength / float(CLOUD_STEPS);
   float jitter = ccrCloudJitter();
   vec3 accumulated = vec3(0.0);
   float transmittance = 1.0;
   float weightedDistance = 0.0, weightSum = 0.0;
+  float sampleCursor = 0.0;
   for (int i = 0; i < CLOUD_STEPS * 2; i++) {
-    if(float(i)>=ceil(sampleCount))break;
-    float start=ccrCloudViewPathDistance(float(i)/ceil(sampleCount),pathLength);
-    float finish=ccrCloudViewPathDistance(float(i+1)/ceil(sampleCount),pathLength);
-    // Preserve the accepted uniform quadrature exactly while looking down.
-    if(extendedSampling)stepLength=finish-start;
-    float pathDistance=extendedSampling?mix(start,finish,jitter):(float(i)+jitter)*stepLength;
+    if(sampleCursor>=sampleCount)break;
+    float start=ccrCloudViewPathDistance(sampleCursor/sampleCount,pathLength);
+    float nextSample=ccrCloudNextSample(sampleCursor,sampleCount,ccrCloudIntervalDistance(intervals,start));
+    float finish=ccrCloudViewPathDistance(nextSample/sampleCount,pathLength);
+    bool adaptiveSampling=extendedSampling||nextSample-sampleCursor!=1.0;
+    stepLength=adaptiveSampling?finish-start:pathLength/float(CLOUD_STEPS);
+    float pathDistance=adaptiveSampling?mix(start,finish,jitter):(sampleCursor+jitter)*stepLength;
+    sampleCursor=nextSample;
     float distanceAlongRay = ccrCloudIntervalDistance(intervals, pathDistance);
     vec3 position = origin + direction * distanceAlongRay;
     float density = ccrCloudDensity(position) * ccrCloudDistanceFade(distanceAlongRay, viewRange);
@@ -309,7 +333,9 @@ vec4 ccrCloudMarch(vec3 origin, vec3 direction, float sceneDistance, bool integr
     weightedDistance += distanceAlongRay * sampleWeight;
     weightSum += sampleWeight;
     if (integrateLighting) {
-      float sunDepth = ccrCloudSunOpticalDepth(position);
+      // Fractional final light segments avoid popping as distance changes the tap budget.
+      float lightSamples=mix(float(CLOUD_LIGHT_STEPS),2.0,ccrCloudDistanceLod(distanceAlongRay));
+      float sunDepth = ccrCloudSunOpticalDepth(position,lightSamples);
       float heightFraction = clamp((ccrCloudAltitude(position) - cloudParams.y) / max(cloudParams.z - cloudParams.y, 1.0), 0.0, 1.0);
       // atmosphereSunRadiance is the unattenuated directional source used by the
       // atmosphere, never the camera-altitude ccrSunRadiance estimate. The sky input
@@ -322,19 +348,19 @@ vec4 ccrCloudMarch(vec3 origin, vec3 direction, float sceneDistance, bool integr
 #endif
       vec3 lighting = sunIrradiance * ccrCloudScattering(sunDepth, dot(direction, sunDirectionAtmo));
       float skyGradient=heightFraction*0.5+0.5;
-      float ambientVisibility=ccrCloudAmbientVisibility(ccrCloudAmbientOpticalDepth(position));
+      float ambientVisibility=ccrCloudAmbientVisibility(ccrCloudAmbientOpticalDepth(position,lightSamples));
       lighting += ccrCloudSkyScatteringSource(skyIrradiance) * skyGradient * ambientVisibility;
 #ifdef CCR_ATMOSPHERE_LUT
       // M already includes the ground hemisphere. Do not add a second diffuse
       // ground term to its full-sphere mean radiance.
-      if(!atmosphereLutReady) lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance);
+      if(!atmosphereLutReady) lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance,lightSamples);
 #else
-      lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance);
+      lighting += ccrCloudGroundBounce(position, skyIrradiance, sunIrradiance,lightSamples);
 #endif
       lighting += nightSkyRadiance * (heightFraction * 0.5 + 0.5);
       if(max(max(moonRadiance.r,moonRadiance.g),moonRadiance.b)>0.0) {
         vec3 moonIrradiance = moonRadiance * ccrCloudLightTransmittance(position, moonDirectionAtmo);
-        float moonDepth = ccrCloudLightOpticalDepth(position, moonDirectionAtmo);
+        float moonDepth = ccrCloudLightOpticalDepth(position, moonDirectionAtmo,lightSamples);
         lighting += moonIrradiance * ccrCloudScattering(moonDepth,dot(direction,moonDirectionAtmo));
 #ifdef CCR_ATMOSPHERE_LUT
         if(atmosphereLutReady) lighting += ccrLutMultipleScattering(position,moonDirectionAtmo)

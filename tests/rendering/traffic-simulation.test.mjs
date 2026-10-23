@@ -13,12 +13,63 @@ const graph = async definitions => prepareTrafficNetwork(C, { type: 'FeatureColl
 const car = (id, route, distance, speed = 8, extra = {}) => ({ id, route, distance, speed, scale: 1, ...extra })
 const loop = () => prepareTrafficRoutes(C, { type: 'FeatureCollection', features: [{ type: 'Feature', id: 'loop',
   properties: {}, geometry: { type: 'LineString', coordinates: [point(0), point(100), point(100, 100), point(0)] } }] }).get('loop')
+
+test('collision poses are reused without retaining stale hypothetical routes or rollback distances', () => {
+  const route = loop(), a = car('a', route, 10), b = car('b', route, 30)
+  const simulation = new TrafficSimulation(C, [a, b])
+  simulation.collisionFootprints.clear()
+  let samples = 0
+  const footprint = simulation._footprint
+  simulation._footprint = function(...args) { samples++; return footprint.apply(this, args) }
+  for (let i = 0; i < 100; i++) assert.equal(simulation._physicalOverlap(a, route, 10, b), false)
+  assert.equal(samples, 2)
+  assert.equal(simulation._physicalOverlap(a, route, 30, b), true)
+  assert.equal(simulation._physicalOverlap(a, route, 10, b), false)
+  assert.equal(samples, 4)
+  simulation.destroy()
+  assert.equal(simulation.collisionFootprints.size, 0)
+})
+
+test('cached collision checks preserve the uncached simulation trajectory', () => {
+  const route = loop(), cars = Array.from({ length: 12 }, (_, i) => car(`car-${i}`, route, i*12, 4+i%4))
+  const copy = cars.map(v => ({ ...v }))
+  const cached = new TrafficSimulation(C, cars), reference = new TrafficSimulation(C, copy)
+  reference._collisionFootprint = reference._footprint
+  for (let i = 0; i < 200; i++) {
+    cached.advance(.05); reference.advance(.05)
+    for (let j = 0; j < cars.length; j++) {
+      assert.equal(cars[j].distance, copy[j].distance)
+      assert.equal(cars[j].currentSpeed, copy[j].currentSpeed)
+      assert.equal(cars[j].state, copy[j].state)
+    }
+  }
+})
 const separated = (rear, front) => assert.ok(front.distance - rear.distance >= (rear.length + front.length) / 2 + 2 - 1e-7)
 const curve = (network, id, points) => {
   const route = prepareTrafficRoutes(C, { type: 'FeatureCollection', features: [{ type: 'Feature', id,
     properties: {}, geometry: { type: 'LineString', coordinates: points.map(p => point(...p)) } }] }, { allowOpen: true }).get(id)
   Object.assign(network.routes.get(id), route)
 }
+
+test('cooperative junction preparation preserves control zones and vehicle trajectories', async () => {
+  const network = await graph([['in', 'a', 'j', [0, 0], [60, 0], { spawn: true }],
+    ['left', 'j', 'l', [60, 0], [60, 100]], ['right', 'j', 'r', [60, 0], [150, 0]]])
+  const referenceCars = [car('a', network.routes.get('in'), 20)]
+  const streamedCars = [car('a', network.routes.get('in'), 20)]
+  const reference = new TrafficSimulation(C, referenceCars, network)
+  let checkpoints = 0
+  const streamed = new TrafficSimulation(C, streamedCars, network, async () => { checkpoints++ })
+  await streamed.readyPromise
+  assert(checkpoints > 1)
+  assert.deepEqual([...streamed.zones], [...reference.zones])
+  for (let i = 0; i < 200; i++) {
+    reference.advance(.05); streamed.advance(.05)
+    assert.equal(streamedCars[0].route, referenceCars[0].route)
+    assert.equal(streamedCars[0].distance, referenceCars[0].distance)
+    assert.equal(streamedCars[0].state, referenceCars[0].state)
+  }
+  reference.destroy(); streamed.destroy()
+})
 
 test('fast followers decelerate and never overtake a stationary leader', () => {
   const route = loop(), front = car('front', route, 35, 0), rear = car('rear', route, 0, 20)

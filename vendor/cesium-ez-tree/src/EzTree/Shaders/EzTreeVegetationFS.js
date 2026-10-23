@@ -13,6 +13,7 @@ uniform vec2 u_barkTextureScale;
 uniform bool u_useBarkTexture;
 uniform sampler2D u_assetColorTexture;
 uniform bool u_useAssetColorTexture;
+uniform bool u_assetColorPremultiplied;
 uniform bool u_roundedLeafNormals;
 
 float ezTree_leafMask(vec2 st)
@@ -50,6 +51,10 @@ void main()
     vec4 assetTexel = vec4(1.0);
     if (u_useAssetColorTexture) {
         assetTexel = texture(u_assetColorTexture, v_st);
+        // Filter premultiplied texels, then restore straight color for opaque cutout lighting.
+        if (u_assetColorPremultiplied) {
+            assetTexel.rgb /= max(assetTexel.a, 0.0001);
+        }
         mask = u_alphaFromColor
             ? max(assetTexel.r, max(assetTexel.g, assetTexel.b))
             : assetTexel.a;

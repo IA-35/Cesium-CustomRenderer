@@ -1,3 +1,4 @@
+import BindingScope143 from './renderer/BindingScope143.js'
 import { normalizeOptions, normalizeColorGrading, defaultFilters } from './presets.js'
 import createColorGrading from './stages/colorGrading.js'
 import configureShadowBias from './shadowBias143.js'
@@ -79,6 +80,8 @@ export default class VisualPipeline {
     this.sceneAdapter = new CesiumSceneAdapter143(Cesium, viewer.scene)
     this.drawDispatcher = viewer.scene.context?.draw ? new ContextDrawDispatcher143(viewer.scene.context,{label:'CCR/VisualPipeline'}) : null
     this.drawDispatcher?.install()
+    this.bindingScope = new BindingScope143(viewer.scene, () => this.enabled && !this.destroyed
+      && !this.suspensions.size && this.options.materialBatchingEnabled)
     this.renderGraph.setTransientAllocator(this.rhi?.createTransientAllocator('graph') || null)
     this.detachRenderGraph = attachHdrGraph(viewer.scene, this.renderGraph)
     this.color = createColorGrading(Cesium, () => this.options, () => this.enabled && !this.suspensions.size)
@@ -843,34 +846,19 @@ export default class VisualPipeline {
     this.apply()
     return this.getDiagnostics()
   }
-  /**
-   * Phase 6 batching state, measured from the live batch plan rather than hard-coded, so the
-   * flag cannot claim an optimisation that produced no mergeable program runs.
-   *
-   * 注意 `active` 用**实际**绑定次数判定，而不是计划上限：执行器逐条提交、Cesium
-   * `Context.beginDraw` 每条都 `_bind()`，所以只要没接上真正的批提交路径，
-   * `programBindReduction` 恒为 0，这里必然报 `active: false`。
-   * `plannedProgramBindReduction` 只表示「如果接上能省多少」。
-   */
+  /** Actual GL calls from the most recent synchronous scene submission, not planner estimates. */
   _batchingFeature() {
-    if (this.options.materialBatchingEnabled !== true) return { requested: false, active: false, reason: 'Material batching is disabled' }
-    if (!this.drawDispatcher?.installed) return { requested: true, active: false, reason: 'Dispatcher is not installed' }
-    const plan = this.transparentForward?.batchPlan || this.transparentForward?.stats?.batchPlan
-    if (!plan) return { requested: true, active: false, reason: 'No batch plan for this frame' }
-    const reducing = plan.programBindReduction > 0
-    const planned = Number(plan.plannedProgramBindReduction) || 0
-    return {
-      requested: true, active: reducing,
-      reason: reducing ? null : (planned > 0
-        ? 'Batch plan groups programs, but submission is still per-item so no bind is saved yet'
-        : 'Batch plan found no mergeable program runs'),
-      batchCount: plan.batchCount, programBinds: plan.programBinds,
-      programBindReduction: plan.programBindReduction,
-      plannedProgramBinds: plan.plannedProgramBinds,
-      plannedProgramBindReduction: planned,
-      optimizationSuccess: plan.optimizationSuccess, correctness: plan.correctness
-    }
+    if (!this.options.materialBatchingEnabled) return { requested: false, active: false, reason: 'Binding deduplication is disabled' }
+    const measured = this.bindingScope?.getDiagnostics()
+    const plan = this.transparentForward?.batchPlan
+    const active = measured?.measured === true && (measured.programBinds < measured.programRequests
+      || measured.textureBinds < measured.textureRequests)
+    return { requested: true, active, ...measured,
+      reason: active ? null : measured?.measured ? 'No redundant bindings in the measured scope' : 'No completed color submission measured',
+      batchCount: plan?.batchCount ?? null, plannedProgramBinds: plan?.plannedProgramBinds ?? null,
+      optimizationSuccess: active ? 'binding-calls-reduced' : 'not-measured' }
   }
+
   /**
    * B11: coverage flags for the deferred-default gate.
    *
@@ -924,8 +912,15 @@ export default class VisualPipeline {
     return { enabled: false, valid: false, mode: 'cube-map', sceneReflections: false,
       reason: 'Transparent scene reflections disabled', requested: { enabled: false } }
   }
-  invalidateShadows() {
-    if (this.customShadow && !this.destroyed) this.customShadow.invalidate()
+  /**
+   * Drop the static shadow cache. `immediate` (the default) also forces the next
+   * rendered frame to redraw the depth maps, regardless of `shadowUpdateInterval`.
+   * Pass `{ immediate: false }` when casters keep moving: the signature is dropped but
+   * the configured update interval still governs the redraw rate. Animating every
+   * frame with the immediate form makes the interval setting unreachable.
+   */
+  invalidateShadows(options) {
+    if (this.customShadow && !this.destroyed) this.customShadow.invalidate(options)
   }
 
   /**
@@ -1057,6 +1052,7 @@ export default class VisualPipeline {
 
   destroy() {
     if (this.destroyed) return
+    this.selectedIdPass?.destroy()
     this.contextCanvas?.removeEventListener('webglcontextlost', this.onContextLost)
     // Drop the governor first: it must stop listening before the scene is torn down.
     if (this.governor) { this.governor.detach(); this.governor = null }
@@ -1093,6 +1089,7 @@ export default class VisualPipeline {
     if (this.shadowMap && !this.shadowMap.isDestroyed()) this.shadowMap.destroy()
     if (this.releaseOitCompatibility) this.releaseOitCompatibility()
     this.releaseOitCompatibility = undefined
+    this.bindingScope?.destroy()
     this.drawDispatcher?.destroy();this.drawDispatcher=null
      this.rhi?.destroy()
     this.rhi = null

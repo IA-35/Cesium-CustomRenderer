@@ -5,7 +5,7 @@ const onRoad = vehicle => vehicle.state === 'driving' || vehicle.state === 'spaw
 const clearance = (a, b) => (a.length + b.length) / 2 + GAP
 
 export default class TrafficSimulation {
-  constructor(C, vehicles, network = null) {
+  constructor(C, vehicles, network = null, checkpoint) {
     this.C = C
     this.vehicles = vehicles
     this.network = network
@@ -17,6 +17,7 @@ export default class TrafficSimulation {
     this.blockedCorridors = new Set()
     this.totals = { spawned: 0, despawned: 0 }
     this.destroyed = false
+    this.collisionFootprints = new Map()
     const accepted = []
     for (const vehicle of vehicles) {
       const scale = vehicle.scale ?? 1
@@ -49,11 +50,17 @@ export default class TrafficSimulation {
           throw new Error(`Traffic lane ${route.id} is too short (${route.length.toFixed(2)} m); merge connectors to provide at least ${minimum.toFixed(2)} m`)
         }
       }
-      this._prepareControlZones()
+      const steps = this._prepareControlZones()
+      if (checkpoint) this.readyPromise = this._finishControlZones(steps, checkpoint)
+      else for (const step of steps) { /* 同步调用保留原初始化契约。 */ }
     }
   }
 
-  _prepareControlZones() {
+  async _finishControlZones(steps, checkpoint) {
+    for (const step of steps) await checkpoint()
+  }
+
+  *_prepareControlZones() {
     const body = { length: Math.max(...this.vehicles.map(v => v.length)), width: Math.max(...this.vehicles.map(v => v.width)) }
     const cell = body.length + body.width + 0.4
     const samples = new Map()
@@ -62,6 +69,7 @@ export default class TrafficSimulation {
       if (route.closed) continue
       const ends = { start: { grid: new Map(), points: [] }, end: { grid: new Map(), points: [] } }
       for (let distance = 0; distance <= route.length / 2; distance += 0.5) {
+        if (distance % 16 === 0) yield
         for (const side of ['start', 'end']) {
           const footprint = this._footprint(body, route, side === 'start' ? distance : route.length - distance)
           footprint.along = distance
@@ -74,13 +82,15 @@ export default class TrafficSimulation {
       }
       samples.set(route, ends)
     }
-    const compare = (first, second) => {
+    const compare = function* (first, second) {
         const a = this.network.routes.get(first.id), b = this.network.routes.get(second.id)
         if (a.closed || b.closed || a === b || (a.corridor && a.corridor === b.corridor)) return
         // Only this endpoint's half-lane belongs to its local conflict region.
         // The other endpoint has its own independently controlled junction.
         const grid = samples.get(a)[first.side].grid
+        let processed = 0
         for (const departure of samples.get(b)[second.side].points) {
+          if (processed++ % 16 === 0) yield
           const [x,y,z] = [departure.p.x, departure.p.y, departure.p.z].map(value => Math.floor(value / cell))
           for (let dx=-1;dx<=1;dx++) for (let dy=-1;dy<=1;dy++) for (let dz=-1;dz<=1;dz++) {
             for (const arrival of grid.get(`${x+dx},${y+dy},${z+dz}`) || []) {
@@ -90,10 +100,10 @@ export default class TrafficSimulation {
             }
           }
         }
-    }
+    }.bind(this)
     for (const node of this.network.nodes.values()) {
       const ends = [...node.incoming.map(id => ({ id, side: 'end' })), ...node.outgoing.map(id => ({ id, side: 'start' }))]
-      for (let a=0;a<ends.length;a++) for (let b=a+1;b<ends.length;b++) compare(ends[a],ends[b])
+      for (let a=0;a<ends.length;a++) for (let b=a+1;b<ends.length;b++) yield* compare(ends[a],ends[b])
     }
     for (const [route, zone] of this.zones) {
       if (!route.closed && zone.start + zone.end >= route.length) {
@@ -136,7 +146,18 @@ export default class TrafficSimulation {
   }
 
   _physicalOverlap(vehicle, route, distance, other) {
-    return this._footprintsOverlap(this._footprint(vehicle, route, distance), this._footprint(other, other.route, other.distance))
+    return this._footprintsOverlap(this._collisionFootprint(vehicle, route, distance),
+      this._collisionFootprint(other, other.route, other.distance))
+  }
+
+  _collisionFootprint(vehicle, route, distance) {
+    let record = this.collisionFootprints.get(vehicle)
+    if (!record || record.route !== route || record.distance !== distance ||
+        record.length !== vehicle.length || record.width !== vehicle.width) {
+      record = { ...this._footprint(vehicle, route, distance), route, distance }
+      this.collisionFootprints.set(vehicle, record)
+    }
+    return record
   }
 
   _footprint(vehicle, route, distance) {
@@ -286,6 +307,8 @@ export default class TrafficSimulation {
   }
 
   _step(events) {
+    // Pairwise checks reuse poses within this tick, including after conflict rollback.
+    this.collisionFootprints.clear()
     this.time += STEP
     const frameSnapshot = new Map(this.vehicles.map(vehicle => [vehicle, {
       route: vehicle.route, distance: vehicle.distance, state: vehicle.state, currentSpeed: vehicle.currentSpeed
@@ -439,6 +462,7 @@ export default class TrafficSimulation {
     this.zones.clear()
     this.blockedCorridors.clear()
     this.vehicles = []
+    this.collisionFootprints.clear()
     this.network = null
   }
 }

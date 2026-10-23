@@ -54,6 +54,7 @@ export default class TaaPass143 {
     this.historyValid = false
     this.historyAge = 0
     this.staticFrames = 0
+    this.stableCoverage = false
     this.historySize = null
     this.active = 0
     this.view = new C.Matrix4()
@@ -80,7 +81,7 @@ export default class TaaPass143 {
 
   _sceneDestroyed() { return !!(this.scene.isDestroyed && this.scene.isDestroyed()) }
 
-  _scopeReason() {
+  _scopeReason(preparingColor = false) {
     if (this.destroyed || this._sceneDestroyed()) return 'Destroyed'
     if (!this.supported) return `Missing ${this.missing.join(', ')}`
     if (!this.enabled) return this.failed ? 'TAA failed; disable before retrying' : 'Disabled'
@@ -90,9 +91,9 @@ export default class TaaPass143 {
     // Cesium runs the post-process chain for picking and depth-only passes as well. Blending
     // those into the history would corrupt it, so only the colour render pass may resolve.
     const passes = this.scene.frameState.passes
-    if (!passes.render || passes.pick || passes.depth) return 'Requires color render frame'
+    if (!preparingColor && (!passes.render || passes.pick || passes.depth)) return 'Requires color render frame'
     if (!(this.scene.camera.frustum instanceof this.C.PerspectiveFrustum)) return 'Requires a perspective camera'
-    const frustums = this.scene._view && this.scene._view.frustumCommandsList
+    const frustums = !preparingColor && this.scene._view && this.scene._view.frustumCommandsList
     if (frustums && frustums.length !== 1) return 'Requires single-frustum depth'
     if (this.getOptions().antialiasing !== 'taa') return 'Not the active anti-aliasing mode'
     return null
@@ -119,6 +120,7 @@ export default class TaaPass143 {
       u_acquisitionAge: () => this.staticFrames > 0 ? Math.min(this.historyAge, this.staticFrames) : this.historyAge,
       u_jitterSamples: () => this.jitter.samples,
       u_cameraStill: () => this.staticFrames > 0,
+      u_stableCoverage: () => this.stableCoverage,
       u_currentInverseRasterProjection: () => this.currentInverseRasterProjection,
       u_previousInverseRasterProjection: () => this.previousInverseRasterProjection,
       u_currentProjection: () => this.projection,
@@ -128,6 +130,7 @@ export default class TaaPass143 {
       u_cameraNearFar: () => this.cameraNearFar,
       u_motionTexture: () => this.motion?.textureForResolve || fallback(),
       u_hasMotionTexture: () => !!this.motion?.textureForResolve,
+      u_hasPreviousFootprint: () => (this.motion?.stats.previousFootprints || 0) > 0,
       u_depthThreshold: () => this.getOptions().taaDepthThreshold ?? 0.0005,
       u_edgeDepthDiff: () => this.getOptions().taaEdgeDepthDiff ?? 0.001,
       u_maxVelocityLength: () => this.getOptions().taaMaxVelocityLength ?? 128,
@@ -146,7 +149,9 @@ export default class TaaPass143 {
       // Nearest filtering: a depth value must never be interpolated across a silhouette.
       pack: new C.PostProcessStage({
         name: `${name}_depth`, fragmentShader: taaDepthShader, uniforms: depthUniforms,
-        textureScale: 1, pixelFormat: C.PixelFormat.RED, pixelDatatype: C.PixelDatatype.FLOAT,
+        // RG keeps the footprint's closest and farthest eye depth, so a coverage
+        // change is not mistaken for a reveal; R alone remains the near label.
+        textureScale: 1, pixelFormat: C.PixelFormat.RG, pixelDatatype: C.PixelDatatype.FLOAT,
         sampleMode: C.PostProcessStageSampleMode.NEAREST, clearColor: new C.Color(0, 0, 0, 0)
       })
     }
@@ -189,7 +194,7 @@ export default class TaaPass143 {
     this.graphHistory = {
       colorA: graph.importResource('taa.history.colorA', { format: 'rgba32f', history: true }),
       colorB: graph.importResource('taa.history.colorB', { format: 'rgba32f', history: true }),
-      depth: graph.importResource('taa.history.depth', { format: 'r32f', history: true })
+      depth: graph.importResource('taa.history.depth', { format: 'rg32f', history: true })
     }
     return this.graphHistory
   }
@@ -274,7 +279,10 @@ export default class TaaPass143 {
     this._applyFallback()
     const samples = this.getOptions().taaJitterSamples || DEFAULT_JITTER_SAMPLES
     if (this.jitter.samples !== samples) { this.jitter.samples = samples; this.resetHistory() }
-    const defer = this.healthy && this.scene._view?.frustumCommandsList?.length === 1 && this.scene.msaaSamples === 1
+    // preRender runs before Cesium restores the colour frame state, so a picking pass
+    // still owns the frustum list here. Reuse the last resolved colour frame's count
+    // instead: a pick must not look like a scope change and drop the history.
+    const defer = this.healthy && (this.colorFrustums ?? 0) === 1 && this.scene.msaaSamples === 1
     if (defer && this.overlay && !this.overlay.active) { this.historyValid=false;this.historyAge=0 }
     this.overlay?.begin(defer)
     if (!this.healthy) this.jitter.restore()
@@ -284,7 +292,7 @@ export default class TaaPass143 {
       const pixel = this.jitter.holding ? this.jitter.pixel : { x: 0, y: 0 }
       projection[8] += 2 * pixel.x / this.scene.drawingBufferWidth
       projection[9] += 2 * pixel.y / this.scene.drawingBufferHeight
-      this.motion.begin(!this._scopeReason() && this.scene.msaaSamples === 1, this.scene.camera.viewMatrix,
+      this.motion.begin(!this._scopeReason(true), this.scene.camera.viewMatrix,
         projection, this.previousView, this.previousProjection, this.historyValid)
     }
   }
@@ -337,6 +345,7 @@ export default class TaaPass143 {
     this.historyValid = false
     this.historyAge = 0
     this.staticFrames = 0
+    this.stableCoverage = false
     this.healthy = false
     if (this.jitter) this.jitter.reset()
     this.motion?.reset()
@@ -349,13 +358,14 @@ export default class TaaPass143 {
     if (reason) {
       this.reason = reason
       if (reason !== 'Requires color render frame') {
-        this.healthy = false; this.historyValid = false; this.historyAge = 0; this.staticFrames = 0; this._fallback(true)
+        this.healthy = false; this.historyValid = false; this.historyAge = 0; this.staticFrames = 0; this.stableCoverage = false; this._fallback(true)
       }
       this.stats.bypasses++
       return this.overlay?.composite(color) || color
     }
     const viewport = this.C.BoundingRectangle.clone(context.uniformState.viewport)
     const inputSampler = color.sampler
+    this.colorFrustums = this.scene._view?.frustumCommandsList?.length ?? this.colorFrustums
     try {
       this.alphaSource = color
       this.jitter?.bridge?.restoreColorProjection()
@@ -410,8 +420,15 @@ export default class TaaPass143 {
       this.C.Matrix4.multiply(this.previousView, this.inverseView, this.prevViewFromCurrent)
       this.C.Matrix4.inverse(this.prevViewFromCurrent, this.currentViewFromPreviousEye)
       const change = this.prevViewFromCurrent
-      this.staticFrames = this.historyValid && this.C.Matrix4.equalsEpsilon(change, this.C.Matrix4.IDENTITY, 1e-7)
+      this.motion?.finish()
+      const sameProjection = [0, 5, 8, 9].every(i => Math.abs(this.projection[i] - this.previousProjection[i]) < 1e-7)
+      this.staticFrames = this.historyValid && sameProjection && this.C.Matrix4.equalsEpsilon(change, this.C.Matrix4.IDENTITY, 1e-7)
         ? this.staticFrames + 1 : 0
+      // Rigid motion is rejected per pixel; it must not disable accumulation on
+      // unrelated roads. Untracked changes/disappearances still require caution.
+      this.stableCoverage = this.staticFrames > 0 && !!this.motion?.coverageStable &&
+        this.C.JulianDate.equals(frame.time, this.previousTime)
+      this.previousTime = this.C.JulianDate.clone(frame.time, this.previousTime)
       if (this.historyValid && (change[0] + change[5] + change[10] < 2.9 ||
           Math.hypot(change[12], change[13], change[14]) > 500)) this.resetHistory()
 
@@ -518,6 +535,7 @@ export default class TaaPass143 {
       legacyIgnored: ['taaHistoryBlend', 'taaMotionBlend', 'taaVelocityThreshold', 'taaDepthTolerance', 'taaVarianceGammaStill', 'taaVarianceGammaMoving'],
       motion: this.motion?.getDiagnostics() || null,
       staticFrames: this.staticFrames,
+      stableCoverage: this.stableCoverage,
       jitter: this.jitter ? this.jitter.getDiagnostics() : null,
       overlay: this.overlay?.getDiagnostics() || null,
       samplers: { historyColor: sampler(this.historyColor), historyDepth: sampler(this.historyDepth) },

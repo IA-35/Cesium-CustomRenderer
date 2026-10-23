@@ -76,13 +76,25 @@ const same = getVisualPipeline(viewer)                              // 按 viewe
 
 ### 1.3 固定点位实例树木
 
-`createFixedTreeCollection` 独立于 `VisualPipeline` 生命周期，使用固定版本 `cesium-ez-tree` 的 `EzTreePrimitive`。GLB 与程序化来源都复用上游 20 字节量化实例属性、共享几何缓冲、空间剔除、分帧上传及缓存。常态 720 个点位由一个 primitive 管理，不再创建每块四个 Cesium Model，也不按距离稀释道路点位。
+`createFixedTreeCollection` 独立于 `VisualPipeline` 生命周期，使用固定版本 `cesium-ez-tree` 的 `EzTreePrimitive`。GLB 与程序化来源都复用上游 20 字节量化实例属性、共享几何缓冲、空间剔除、分帧上传及缓存。常态 720 个点位由一个 primitive 管理，不再创建每块四个 Cesium Model。枝叶分别按距离抽稀，超过各自最大距离后不再提交。
 
 校园示例默认使用 `source:'glb'`，通过 ez-tree 的 GLB 通道加载三种四级 LOD 树模型。`?treeSource=procedural` 可切回轻量程序化 Pine 作为性能对照。输入清单由 `scripts/prepare-fixed-tree-assets.cjs` 生成。
 
-GLB 树按未抖动相机的投影高度选择几何 LOD，默认阈值为 `[180, 80, 12]` 像素并带 15% 滞回。叶片 Alpha cutoff 随 LOD 使用 `[0.35, 0.30, 0.24, 0.18]`，补偿远景 mipmap 和简化几何的覆盖损失；颜色与阴影通道使用同一 cutoff。
+GLB 树按未抖动相机的投影高度选择几何 LOD，默认阈值为 `[180, 80, 12]` 像素并带 15% 滞回。带颜色纹理的叶片 Alpha cutoff 上限为 `0.12`（保留材质原本更低的值）；颜色与阴影通道使用同一 cutoff。MASK 纹理在解码及上传时预乘 alpha，采样后还原 RGB 再参与光照，避免滤波边缘变暗；这不会改变 mipmap 的 alpha 覆盖率。
+
+距离选项同时应用于 GLB 和程序化树。`maximumTreeBranchDistance` / `maximumTreeLeafDistance` 默认 `6000` / `4000` 米；`treeBranchLodNearDistance` / `treeLeafLodNearDistance` 默认 `1200` / `800` 米；`treeBranchMinimumLodRatio` / `treeLeafMinimumLodRatio` 默认 `0.35` / `0.2`。从 near 至 maximum 线性减少批次提交的实例数，距离按相机到批次包围球表面的距离计算。枝叶独立抽稀，叶片最大距离较短时远景会只剩枝干，超过枝干最大距离则整树不再提交。
 
 已适配 CCR 阴影投射/接收及 Mask 轮廓。树木使用上游前向植被着色器，不是完整 Model PBR/MRT；不能宣称它已接入延迟材质通道或成为 SSR 材质接收面。SMAA 等颜色后处理照常覆盖最终画面。
+
+`cellSize`（米，默认 80）是这张表里最影响 draw call 的参数。ez-tree 按空间方格切分实例，并对每个「glTF primitive × 方格」各发一条 draw command，所以 draw 数 ≈ 方格数 × 每模型 primitive 数，基本与株数无关。同一校区实测（相机静止、1108 株）：
+
+| `cellSize` | 720 株方格数 | 该集合主屏 draw | 树合计 draw | 全场景每帧 draw |
+|---|---|---|---|---|
+| 80（默认） | 79 | 158 | 442 | 2008.6 |
+| 240 | 23 | 46 | 120 | 1486.5 |
+| 480 | 13 | 26 | 50 | 1395.5 |
+
+放大方格会把空间剔除做得更粗：远景整片树会一起出现/消失。按可接受的跳变程度取值，不要一味追大。撒点生成的集合每格株数更少（同等 `cellSize` 下方格数更多），对 `cellSize` 更敏感。
 
 ```js
 const trees = CCR.createFixedTreeCollection({
@@ -90,6 +102,13 @@ const trees = CCR.createFixedTreeCollection({
   viewer,
   manifestUrl: '/assets/vegetation/manifest.json',
   source: 'glb', // 校园默认；程序化对照使用 'procedural'
+  cellSize: 240, // 空间分批方格边长（米），默认 80；越大 draw 越少、剔除越粗
+  maximumTreeLeafDistance: 1500,
+  maximumTreeBranchDistance: 2000,
+  treeLeafLodNearDistance: 600,
+  treeBranchLodNearDistance: 800,
+  treeLeafMinimumLodRatio: 0.35,
+  treeBranchMinimumLodRatio: 0.5,
   clampToGround: true,
   heightOffset: 0.1,
   // 排除旧树木层，避免新树贴到旧树冠上。

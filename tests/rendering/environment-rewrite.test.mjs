@@ -80,7 +80,7 @@ test('cloud sunlight integrates the same density field as the view ray', () => {
   assert.match(shader, /opticalDepth \+= ccrCloudDensity\(samplePosition\) \* stepLength/)
   const sunBody = shader.slice(shader.indexOf('float ccrCloudSunOpticalDepth'), shader.indexOf('float ccrCloudSunVisibility'))
   assert.match(sunBody, /ccrCloudShellIntervals\(position, sunDirectionAtmo, 1\.0e9\)/)
-  assert.match(sunBody, /ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals\)/)
+  assert.match(sunBody, /ccrCloudOpticalDepth\(position, sunDirectionAtmo, intervals, sampleCount\)/)
   assert.doesNotMatch(sunBody, /inside \+=|> 0\.35/)
 })
 

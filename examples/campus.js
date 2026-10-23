@@ -2,6 +2,7 @@ import CampusAssetCompatibility from './compat/CampusAssetCompatibility.js'
 import { loadCampusGlbs, assertCampusGlbBase } from './campus-glb.js'
 import { SharedGlbTextureCache } from './shared-glb-textures.js'
 import { prepareCampusTraffic } from './campus-traffic-placement.js'
+import { buildPolygonTreeData } from './campus-polygon-trees.js'
 // examples/campus.js
 //
 // 南湖校区实景示例的脚本部分，从 examples/campus.html 内联的 <script type="module"> 拆出。
@@ -23,9 +24,10 @@ const aaActual = document.querySelector('#aaActual')
 const errors = []
 const query = new URLSearchParams(location.search)
 const trafficParam = query.get('traffic')
-const trafficManifestUrl = ['0', 'none'].includes(trafficParam) ? null :
-  (trafficParam && trafficParam !== '1' ? trafficParam : '/examples/campus-traffic/traffic.json')
-let traffic = null
+const trafficManifestUrl = false
+// ['0', 'none'].includes(trafficParam) ? null :
+//   (trafficParam && trafficParam !== '1' ? trafficParam : '/examples/campus-traffic/traffic.json')
+let traffic = false
 let campusAssetsLoaded = false, trafficLoading = null
 const lightweightVegetation = query.get('vegetation') !== 'legacy'
 // 固定点位树木默认启用；?trees=none 关闭，?trees=<url> 可替换清单。
@@ -36,6 +38,7 @@ const treeManifestUrl = treeParam && !['0', 'none', '1'].includes(treeParam)
   : (lightweightVegetation && query.get('treeSource') !== 'procedural'
     ? '/assets/vegetation/ez-tree/manifest.json' : '/assets/vegetation/manifest.json')
 const treeSource = query.get('treeSource') === 'procedural' ? 'procedural' : 'glb'
+const polygonTreesEnabled = treeEnabled && lightweightVegetation
 // 面内程序化草地默认启用；?grass=none 关闭，?grass=<url> 可替换面数据。
 // 轻量草默认 4 簇/平方米，按面采样地面高度；?vegetation=legacy 对照旧资产。
 const grassParam = query.get('grass')
@@ -69,7 +72,10 @@ const glbBaseCandidates = query.get('glbAssets')
   ? [query.get('glbAssets')]
   : [glbManifest.baseUrl, ...(glbManifest.fallbackBaseUrls || [])]
 const BUSINESS_TILESETS = [
-  { name: 'SM_NH_Terr', url: 'SM_NH_Terr/tileset.json', height: 2 },
+  // 地形只接收阴影、不投射（RECEIVE_ONLY）。地形是一整块起伏网格，自阴影的视觉收益很低，
+  // 却要在自定义级联阴影里整块再画一遍：实测 792K 三角形、每帧 65 次阴影 draw。
+  // 保留接收侧，建筑和树的影子仍会落在地面上。
+  { name: 'SM_NH_Terr', url: 'SM_NH_Terr/tileset.json', height: 2, shadows: Cesium.ShadowMode.RECEIVE_ONLY },
   // { name: 'SM_NH_Shu', url: 'SM_NH_Shu/tileset.json', height: 2 },
   // { name: 'SM_NH_Building', url: 'SM_NH_Building/tileset.json', height: 2 },
   // { name: 'SM_NH_YFL', url: 'SM_NH_YFL/SW/tileset.json', height: 2 },
@@ -133,11 +139,12 @@ const assetsReady = () => tiles.length === activeTilesets.length && tiles.every(
 const contextTiles = []
 let contextTilesReady = Promise.resolve()
 let trees = null
+let polygonTrees = null
 let grass = null
 let water = null
 let sharedGlbTextures = modelMode === 'glb' ? new SharedGlbTextureCache(Cesium) : null
-window.campus = { viewer, pipeline, tiles, models, modelMode, glbBase, cameraCenter, assetsReady, contextTiles, errors, base, trees, grass, water, sharedGlbTextures,
-  treeReady: null, grassReady: null, waterReady: null, expectedTiles: activeTilesets.length, expectedModels: modelMode === 'glb' ? glbManifest.models.length : 0 }
+window.campus = { viewer, pipeline, tiles, models, modelMode, glbBase, cameraCenter, assetsReady, contextTiles, errors, base, trees, polygonTrees, grass, water, sharedGlbTextures,
+  treeReady: null, polygonTreeReady: null, grassReady: null, waterReady: null, expectedTiles: activeTilesets.length, expectedModels: modelMode === 'glb' ? glbManifest.models.length : 0 }
 // Legacy asset fixes belong to this example, not to the renderer.
 const assetCompatibility = new CampusAssetCompatibility(Cesium, viewer.scene)
 const updateAssetCompatibility = () => assetCompatibility.setEnabled(
@@ -147,7 +154,7 @@ const updateAssetCompatibility = () => assetCompatibility.setEnabled(
 const removeAssetCompatibility = viewer.scene.preUpdate.addEventListener(updateAssetCompatibility)
 updateAssetCompatibility()
 window.addEventListener('pagehide', () => { removeAssetCompatibility(); assetCompatibility.destroy() }, { once: true })
-window.addEventListener('pagehide', () => { traffic?.destroy(); sharedGlbTextures?.destroy(); water?.destroy(); grass?.destroy(); trees?.destroy(); pipeline.destroy(); viewer.destroy() }, { once: true })
+window.addEventListener('pagehide', () => { traffic?.destroy(); sharedGlbTextures?.destroy(); water?.destroy(); grass?.destroy(); polygonTrees?.destroy(); trees?.destroy(); pipeline.destroy(); viewer.destroy() }, { once: true })
 
 Object.defineProperty(window.campus, 'geometry', { get: () => pipeline.geometry })
 
@@ -168,6 +175,7 @@ const ui = {
   reflection: { enabled: false, strength: 1 },
   governor: false,
   trees: { visible: true, source: treeSource === 'glb' ? (lightweightVegetation ? 'EZ-Tree 松树／松柏' : '原 GLB 四级 LOD') : 'ez-tree 程序化松树', state: treeEnabled ? '等待加载' : '未启用', instances: 0, batches: 0, lods: '0 / 0 / 0 / 0' },
+  polygonTrees: { visible: true, state: polygonTreesEnabled ? '等待加载' : '未启用', instances: 0, batches: 0 },
   grass: { visible: true, state: grassEnabled ? '等待加载' : '未启用', polygons: 0, area: 0, instances: 0, draws: 0 },
   water: { visible: true, state: waterEnabled ? '等待加载' : '未启用', features: 0, heights: '' },
   environment: { on: false, high: false, playing: false, cloudCoverage: 0, cloudThickness: 1200 }
@@ -402,6 +410,49 @@ treeFolder.add(ui.trees, 'lods').name('几何细节').listen().disable()
 action(treeFolder, '读取诊断', () => dump(trees ? trees.getDiagnostics() : '固定树木尚未加载'))
 treeFolder.close()
 
+const syncPolygonTreeUI = () => {
+  if (!polygonTrees) return
+  const diagnostics = polygonTrees.getDiagnostics()
+  for (const key of ['visible', 'state', 'instances', 'batches']) ui.polygonTrees[key] = diagnostics[key]
+}
+async function loadPolygonTrees() {
+  if (polygonTrees) return polygonTrees.readyPromise
+  ui.polygonTrees.state = 'loading'
+  // The manifest anchors each prototype's relative url, so it must live beside the
+  // generated glb files: the polygon variant reuses the same prototypes.
+  const manifestUrl = new URL('/assets/vegetation/ez-tree/polygon-manifest.json', location.href).href
+  const data = Promise.all(['./DS_NH_plantpolygon.json', '/assets/vegetation/ez-tree/manifest.json'].map(async url => {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`面内树木数据加载失败：${url} (HTTP ${response.status})`)
+    return response.json()
+  })).then(([source, template]) => buildPolygonTreeData(Cesium, source, template))
+  polygonTrees = createFixedTreeCollection({
+    Cesium, viewer, manifestUrl, source: 'glb',
+    fetchJson: async url => (await data)[url === manifestUrl ? 'manifest' : 'points'],
+    clampToGround: false, heightOffset: 1.5, cellSize: 480, show: ui.polygonTrees.visible
+  })
+  window.campus.polygonTrees = polygonTrees
+  try {
+    await polygonTrees.readyPromise
+    syncPolygonTreeUI()
+    return polygonTrees
+  } catch (error) {
+    polygonTrees.destroy(); polygonTrees = null; window.campus.polygonTrees = null
+    ui.polygonTrees.state = 'error'
+    throw error
+  }
+}
+window.campus.loadPolygonTrees = loadPolygonTrees
+const polygonTreeFolder = gui.addFolder('面内散布树木（松柏／松树／阔叶／银杏／樱花）')
+action(polygonTreeFolder, '加载树木', () => {
+  window.campus.polygonTreeReady = loadPolygonTrees().then(() => dump(polygonTrees.getDiagnostics())).catch(error => dump(error.message))
+})
+polygonTreeFolder.add(ui.polygonTrees, 'visible').name('显示').listen().onChange(value => polygonTrees?.setVisible(value))
+polygonTreeFolder.add(ui.polygonTrees, 'state').name('状态').listen().disable()
+polygonTreeFolder.add(ui.polygonTrees, 'instances').name('株数').listen().disable()
+polygonTreeFolder.add(ui.polygonTrees, 'batches').name('批次').listen().disable()
+polygonTreeFolder.close()
+
 // const syncGrassUI = () => {
 //   if (!grass) return
 //   const diagnostics = grass.getDiagnostics()
@@ -598,6 +649,7 @@ let aaDisplayFrame = 0
 viewer.scene.postRender.addEventListener(() => {
   if (++aaDisplayFrame % 60 || window.campus.measuring) return
   syncTreeUI()
+  syncPolygonTreeUI()
   const d = pipeline.getRenderDiagnostics().antiAliasing
   const actual = d.allocatedAttachments && d.allocatedAttachments.scene
   aaActual.textContent = `后处理：${d.postProcess.effective === 'off' ? '关闭' : d.postProcess.effective.toUpperCase()} · MSAA ${actual && actual.colorRenderbufferSamples || 1}× · ${viewer.canvas.width}×${viewer.canvas.height}`
@@ -625,7 +677,7 @@ try {
   for (const asset of activeTilesets) {
     try {
       const tile = await Cesium.Cesium3DTileset.fromUrl(`${base}/${asset.url}`, {
-        maximumScreenSpaceError: 32, shadows: Cesium.ShadowMode.ENABLED
+        maximumScreenSpaceError: 32, shadows: asset.shadows ?? Cesium.ShadowMode.ENABLED
       })
       const cartographic = Cesium.Cartographic.fromCartesian(tile.boundingSphere.center)
       const surface = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0)
@@ -687,6 +739,15 @@ if (treeEnabled) {
     status.textContent += ` 已加载固定树木 ${trees.getDiagnostics().instances} 株。`
   } catch (error) {
     status.textContent = reportFailure('固定树木', error)
+  }
+}
+if (polygonTreesEnabled) {
+  window.campus.polygonTreeReady = loadPolygonTrees()
+  try {
+    await window.campus.polygonTreeReady
+    status.textContent += ` 已生成面内程序化树木 ${polygonTrees.getDiagnostics().instances} 株（35 株/公顷）。`
+  } catch (error) {
+    status.textContent = reportFailure('面内程序化树木', error)
   }
 }
 // if (grassEnabled) {

@@ -1,5 +1,73 @@
 // Reuse the native silhouette and its pick shaders. Only the redundant opaque
 // occluder redraw is replaced, by copying the depth already rendered this frame.
+export function attachSelectedStageCache(collection) {
+  const records = new Map(), previous = collection.update
+  const hadOwn = Object.prototype.hasOwnProperty.call(collection, 'update')
+  let active = true
+  const visit = stage => {
+    if (!stage) return // Collection.remove leaves a hole until its next update.
+    if (typeof stage.length === 'number') {
+      for (let i = 0; i < stage.length; i++) visit(stage.get(i))
+      return
+    }
+    if (records.has(stage)) return
+    const record = { update: stage.update, hadOwn: Object.prototype.hasOwnProperty.call(stage, 'update') }
+    record.hook = function(...args) {
+      if (!active) return record.update.apply(this, args)
+      const parent = this._parentSelected, length = this._parentSelectedLength, command = this._command
+      // Cesium 1.143 compares the parent array itself with its cached numeric length.
+      // Supply its expected sentinel only when the uploaded selection is still identical.
+      const stable = parent && command && this._selectedIdTexture && parent === this._parentSelectedShadow &&
+        parent.length === length && record.parent === parent && record.items?.length === parent.length &&
+        parent.every((item, i) => {
+          const saved = record.items[i], ids = item.pickIds
+          return item === saved.item && item.pickId === saved.id && (ids
+            ? ids.length === saved.ids?.length && ids.every((id, j) => id === saved.ids[j])
+            : !saved.ids)
+        })
+      if (stable) this._parentSelectedLength = parent
+      try {
+        const result = record.update.apply(this, args)
+        // createDrawCommand replaces the quad without releasing its old cache reference.
+        if (command && this._command && command !== this._command) command.shaderProgram.destroy()
+        if (!stable) {
+          record.parent = parent
+          record.items = parent?.map(item => ({ item, id: item.pickId, ids: item.pickIds?.slice() }))
+        }
+        return result
+      } finally {
+        if (this._parentSelectedLength === parent) this._parentSelectedLength = length
+      }
+    }
+    stage.update = record.hook
+    records.set(stage, record)
+  }
+  const restore = (stage, record) => {
+    if (stage.update !== record.hook) return
+    if (record.hadOwn) stage.update = record.update
+    else delete stage.update
+  }
+  const update = function(...args) {
+    if (active) {
+      for (const [stage, record] of records) if (stage.isDestroyed?.()) {
+        restore(stage, record); records.delete(stage)
+      }
+      visit(collection)
+    }
+    return previous.apply(this, args)
+  }
+  collection.update = update
+  return () => {
+    active = false
+    if (collection.update === update) {
+      if (hadOwn) collection.update = previous
+      else delete collection.update
+    }
+    for (const [stage, record] of records) restore(stage, record)
+    records.clear()
+  }
+}
+
 export function selectedOwners(C, selected) {
   const models = new Set(), tilesets = new Set()
   for (const item of selected) {
@@ -28,6 +96,7 @@ export default class SelectedIdPass143 {
   constructor(C, scene, active = () => true) {
     this.C = C; this.scene = scene; this.active = active; this.enabled = true
     this.stats = { skipped: 0, drawn: 0, copies: 0, reason: 'not requested' }
+    this.restoreStageCache = attachSelectedStageCache(scene.postProcessStages)
     const context = scene.context, dispatcher = context._ccrDrawDispatcher, previous = context.draw, pass = this
     this.previous = previous
     this.hook = function(command, passState, ...args) {
@@ -89,6 +158,7 @@ export default class SelectedIdPass143 {
   destroy() {
     if (this.dead) return
     this.dead = true; this.owners = null; this.dispatcherOff?.(); this.dispatcherOff = null
+    this.restoreStageCache()
     if (this.scene.context.draw === this.hook) this.scene.context.draw = this.previous
   }
 

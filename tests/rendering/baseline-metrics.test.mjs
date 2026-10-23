@@ -50,6 +50,7 @@ test('baseline sample is recorded once by the ledger and does not double count n
 })
 
 test('counter deltas preserve per-frame state without adding cumulative snapshots', () => {
+  assert.deepEqual(counterDelta({ programBinds: null, materialBinds: null, drawCalls: 7 }), { drawCalls: 7 })
   assert.deepEqual(counterDelta({ drawHookInvocations: 10, programBinds: 4 }, { drawHookInvocations: 7, programBinds: 3 }), {
     drawHookInvocations: 3, programBinds: 1,
   })

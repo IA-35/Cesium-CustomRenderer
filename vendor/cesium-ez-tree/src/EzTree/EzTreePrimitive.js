@@ -516,6 +516,9 @@ function createCommand(options) {
     u_assetColorTexture: function () {
       return assetColorTexture ?? context.defaultTexture;
     },
+    u_assetColorPremultiplied: function () {
+      return assetColorTexture?.preMultiplyAlpha === true;
+    },
     u_useAssetColorTexture: function () {
       return defined(assetColorTexture) ? 1 : 0;
     },
@@ -1330,7 +1333,7 @@ function pushGltfAssetRecord(resources, asset, path, wind) {
   return record;
 }
 
-const externalTreeLeafCutoffs = Object.freeze([0.35, 0.30, 0.24, 0.18]);
+const externalTreeLeafCutoffs = Object.freeze([0.12, 0.12, 0.12, 0.12]);
 
 function externalTreeAlphaCutoff(materialCutoff, lod, hasColorTexture) {
   if (!hasColorTexture || !Number.isInteger(lod) || lod < 0 || lod > 3) return materialCutoff;
@@ -1414,11 +1417,19 @@ function addGltfAssetCommandRecords(options) {
           alphaCutoff: commandAlphaCutoff,
           alphaFromColor: options.alphaFromColor,
           roundedLeafNormals: assetPrimitive.roundedLeafNormals === true,
-          maximumDistance: maximumDistance,
+          maximumDistance: external
+            ? (assetPrimitive.alphaMode === "MASK" ? primitive.maximumTreeLeafDistance : primitive.maximumTreeBranchDistance)
+            : maximumDistance,
           boundingSphere: computeBoundingSphere(primitive, cellGroup.instances),
-          lodNearDistance: lodNearDistance,
-          lodFarDistance: lodFarDistance,
-          minimumLodRatio: minimumLodRatio,
+          lodNearDistance: external
+            ? (assetPrimitive.alphaMode === "MASK" ? primitive.treeLeafLodNearDistance : primitive.treeBranchLodNearDistance)
+            : lodNearDistance,
+          lodFarDistance: external
+            ? (assetPrimitive.alphaMode === "MASK" ? primitive.treeLeafLodFarDistance : primitive.treeBranchLodFarDistance)
+            : lodFarDistance,
+          minimumLodRatio: external
+            ? (assetPrimitive.alphaMode === "MASK" ? primitive.treeLeafMinimumLodRatio : primitive.treeBranchMinimumLodRatio)
+            : minimumLodRatio,
           cellX: cellGroup.cellX,
           cellY: cellGroup.cellY,
         }),
@@ -1433,7 +1444,6 @@ function addGroundAssetRecords(primitive, context, resources) {
       assetRecord: resources.gltfAssetMap.get(asset.id),
       instances: primitive._instances.filter(i => i.kind === "externalTree" && i.asset === asset.id),
       colorMode: { fallbackColor: Color.WHITE }, cutoutType: CUTOUT_NONE,
-      maximumDistance: Number.POSITIVE_INFINITY, minimumLodRatio: 1,
       externalAsset: asset });
   }
   const grassInstances = collectInstances(primitive._instances, "grass");

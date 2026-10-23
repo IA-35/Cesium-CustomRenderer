@@ -44,6 +44,11 @@ test('unsupported GPU timing is explicit and never invents values', () => {
   assert.match(report.frame.gpuMs.reason, /unavailable/i)
   assert.equal(report.frame.gpuMs.p50, null)
   assert.equal(report.frame.gpuMs.p95, null)
+  assert.equal(report.state.programBinds, null)
+  assert.equal(report.state.materialBinds, null)
+  ledger.recordState({ programBinds: 0, drawCalls: 2 })
+  assert.equal(ledger.getReport().state.programBinds, 0)
+  assert.equal(ledger.getReport().state.drawCalls, 2)
 })
 
 test('disjoint and configuration changes invalidate samples and are counted', () => {

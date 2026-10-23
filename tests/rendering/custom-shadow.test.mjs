@@ -185,6 +185,90 @@ test('sub-pixel TAA jitter does not invalidate the shadow frame cache', () => {
   assert.equal(withJitter, withoutJitter, 'TAA jitter must not force a shadow-map redraw')
 })
 
+test('a deferred invalidation drops the cache signature without pinning a full redraw', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const root = {}
+  const scene = { primitives: { length: 1, _primitives: [root] } }
+  const camera = {
+    viewMatrix: engine.Matrix4.clone(engine.Matrix4.IDENTITY),
+    positionWC: new engine.Cartesian3(0, 0, 1),
+    frustum: { near: 1, far: 4000, fovy: 1, aspectRatio: 1 }
+  }
+  const options = { shadowCascades: 1, shadowSize: 2048, shadowDistance: 4000, shadowUpdateInterval: 3 }
+  const caster = { castShadows: true, shaderProgram: {}, pass: engine.Pass.OPAQUE }
+  const list = () => [caster, { pass: engine.Pass.COMPUTE }]
+  const setup = () => {
+    const pass = Object.create(DirectionalShadowPass.prototype)
+    Object.assign(pass, {
+      C: engine, scene, enabled: true, ready: true, forceShadowUpdate: false, version: 0,
+      lastCameraView: engine.Matrix4.clone(camera.viewMatrix),
+      lastLightDirection: engine.Cartesian3.clone(engine.Cartesian3.UNIT_Z),
+      lastCommandCount: 1, lastCommandRefs: [caster], lastPrimitiveCount: 1, lastPrimitiveRefs: [root],
+      lastFrustumKey: pass.cameraFrustumKey(camera), lastShadowOptionsKey: pass.shadowOptionsKey(options),
+      lastShadowFrame: 10, shadowFrameCounter: 10, stats: { updates: 0, cacheHits: 0, skippedFrames: 0, lastSkipReason: '' },
+      levels: [{ target: { size: 2048 }, cache: new ShadowCache() }]
+    })
+    return pass
+  }
+  // Immediate is the default and must still force the next frame to redraw.
+  const immediate = setup()
+  immediate.invalidate()
+  assert.equal(immediate.forceShadowUpdate, true)
+  assert.equal(immediate.ready, false)
+  assert.equal(immediate.shouldReuseShadowFrame({ frameNumber: 11 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false)
+
+  // Deferred keeps the interval authoritative: the next frame after a redraw may reuse,
+  // which is what a continuously moving caster needs.
+  const deferred = setup()
+  deferred.invalidate({ immediate: false })
+  assert.equal(deferred.forceShadowUpdate, false)
+  assert.equal(deferred.ready, true)
+  assert.equal(deferred.levels[0].cache.matches(null), false, 'the signature is dropped so the contents are rebuilt at the next scheduled update')
+  deferred.rememberShadowFrame({ frameNumber: 10 }, camera, list(), engine.Cartesian3.UNIT_Z, options)
+  assert.equal(deferred.shouldReuseShadowFrame({ frameNumber: 11 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true,
+    'deferring must not make every frame miss the reuse gate')
+  assert.equal(deferred.shouldReuseShadowFrame({ frameNumber: 13 }, camera, list(), engine.Cartesian3.UNIT_Z, options), false,
+    'the configured interval still refreshes mutable casters')
+})
+
+test('continuous per-frame invalidation with the deferred form keeps the shadow duty cycle at the interval', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const root = {}
+  const scene = { primitives: { length: 1, _primitives: [root] } }
+  const camera = {
+    viewMatrix: engine.Matrix4.clone(engine.Matrix4.IDENTITY),
+    positionWC: new engine.Cartesian3(0, 0, 1),
+    frustum: { near: 1, far: 4000, fovy: 1, aspectRatio: 1 }
+  }
+  const options = { shadowCascades: 1, shadowSize: 2048, shadowDistance: 4000, shadowUpdateInterval: 3 }
+  const caster = { castShadows: true, shaderProgram: {}, pass: engine.Pass.OPAQUE }
+  const list = () => [caster, { pass: engine.Pass.COMPUTE }]
+  const run = immediate => {
+    const pass = Object.create(DirectionalShadowPass.prototype)
+    Object.assign(pass, {
+      C: engine, scene, enabled: true, ready: true, forceShadowUpdate: false, version: 0,
+      lastCameraView: engine.Matrix4.clone(camera.viewMatrix),
+      lastLightDirection: engine.Cartesian3.clone(engine.Cartesian3.UNIT_Z),
+      lastCommandCount: 1, lastCommandRefs: [caster], lastPrimitiveCount: 1, lastPrimitiveRefs: [root],
+      lastFrustumKey: pass.cameraFrustumKey(camera), lastShadowOptionsKey: pass.shadowOptionsKey(options),
+      lastShadowFrame: 10, shadowFrameCounter: 10, stats: { updates: 0, cacheHits: 0, skippedFrames: 0, lastSkipReason: '' },
+      levels: [{ target: { size: 2048 }, cache: new ShadowCache() }]
+    })
+    let updates = 0
+    for (let i = 0; i < 30; i++) {
+      // A moving caster touches the cache every frame, exactly like TrafficSystem does.
+      pass.invalidate({ immediate })
+      const frame = { frameNumber: 11 + i }
+      if (pass.shouldReuseShadowFrame(frame, camera, list(), engine.Cartesian3.UNIT_Z, options)) continue
+      updates++
+      pass.rememberShadowFrame(frame, camera, list(), engine.Cartesian3.UNIT_Z, options)
+    }
+    return updates
+  }
+  assert.equal(run(true), 30, 'the immediate form redraws every frame, which is the defect being fixed')
+  assert.equal(run(false), 10, 'the deferred form restores the configured every-third-frame cadence')
+})
+
 test('adaptive shadow reuse ignores scheduling commands and never skips consecutive frames', () => {
   const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
   const root = {}

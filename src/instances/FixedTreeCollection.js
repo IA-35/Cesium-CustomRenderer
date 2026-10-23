@@ -95,7 +95,20 @@ export class FixedTreeCollection {
     this.scene = options.viewer.scene
     this.manifestUrl = new URL(options.manifestUrl, typeof document !== 'undefined' ? document.baseURI : undefined).href
     this.fetchJson = options.fetchJson || fetchJson
-    this.cellSize = options.cellSize ?? 80
+    // Spatial cell size, in metres, used to split the point cloud into instanced batches. This is
+    // the dominant cost knob: cesium-ez-tree emits one draw command per (glTF primitive × cell), so
+    // a 80 m grid turns 720 trees into 79 cells × 2 primitives = 158 draws. A campus measured on a
+    // real scene went 442 → 120 → 50 draws at 80 → 240 → 480 m. Larger cells cull coarser (whole
+    // patches appear at once), so raise it until the pop-in is acceptable rather than maximising it.
+    this.cellSize = Number.isFinite(options.cellSize) && options.cellSize > 0 ? options.cellSize : 80
+    this._treeDistanceOptions = {
+      maximumTreeBranchDistance: options.maximumTreeBranchDistance ?? 6000,
+      maximumTreeLeafDistance: options.maximumTreeLeafDistance ?? 4000,
+      treeBranchLodNearDistance: options.treeBranchLodNearDistance ?? 1200,
+      treeLeafLodNearDistance: options.treeLeafLodNearDistance ?? 800,
+      treeBranchMinimumLodRatio: options.treeBranchMinimumLodRatio ?? 0.35,
+      treeLeafMinimumLodRatio: options.treeLeafMinimumLodRatio ?? 0.2,
+    }
     this.source = options.source === 'glb' ? 'glb' : 'procedural'
     this.scale = Number.isFinite(options.scale) && options.scale > 0 ? options.scale : 1
     this.heightOffset = options.heightOffset ?? 0
@@ -248,11 +261,10 @@ export class FixedTreeCollection {
       this._runtime.configureEzTree({useWorkers:false,assetBaseUrl:new URL('./eztree/',this.manifestUrl).href})
       this.primitive = new this._runtime.EzTreePrimitive({
         modelMatrix:this._modelMatrix,instances,treeAssets:this.source === 'glb' ? assets : [],treePresets:presets,show:this.visible,
-        maximumTreeBranchDistance:Infinity,maximumTreeLeafDistance:Infinity,
-        treeBranchMinimumLodRatio:1,treeLeafMinimumLodRatio:1,
+        ...this._treeDistanceOptions,
         lodCellSize:this.cellSize,cullingTileSize:320,windStrength:0,windFrequency:0,
-        castShadows:true,workerPacking:false,maximumCommandBuildsPerFrame:8,
-        maximumUploadBytesPerFrame:512*1024,statisticsUpdateInterval:30
+        castShadows:false,workerPacking:false,maximumCommandBuildsPerFrame:2,
+        maximumUploadBytesPerFrame:128*1024,statisticsUpdateInterval:30
       })
       this.scene.primitives.add(this.primitive)
       await this._waitForAssets()
@@ -273,12 +285,37 @@ export class FixedTreeCollection {
         const resources=this.primitive?._resources
         const failed=resources?.gltfAssetRecords.find(a=>a.record.error)?.record || [...(resources?.barkTextureRecords.values()||[])].find(a=>a.error)
         if(failed){finish(failed.error);return}
-        if(resources?.gltfRecordsBuilt && resources.pendingTextureCount===0) finish()
+        if(resources?.gltfRecordsBuilt && resources.pendingTextureCount===0){
+          try{this._alignExternalLod()}catch(error){finish(error);return}
+          finish()
+        }
       })
       const timer=setTimeout(()=>finish(new Error('cesium-ez-tree asset loading timed out')),90000)
       this._cancelReady=()=>finish(new Error('Tree collection destroyed while loading'))
       this.scene.requestRender()
     })
+  }
+
+  /**
+   * 外部树 GLB 自带的几何层数决定可选 LOD。打包时每个节点用 extras.ccrLod 标注层级；
+   * 单层模型（例如全部几何都在 lod 0）若沿用默认阈值 [180,80,12]，远距离会选到不存在的
+   * 第 3 级，EzTreePrimitive 的 `geometryLod !== currentLod` 判定会跳过整批，表现为资产
+   * 全部就绪却一笔都不画。因此单层模型把阈值收到该级始终命中。
+   */
+  _alignExternalLod() {
+    const p=this.primitive,resources=p&&p._resources
+    if(this.source!=='glb'||!resources?.gltfAssetRecords)return
+    const levels=new Set()
+    for(const asset of resources.gltfAssetRecords){
+      for(const record of asset.record.primitives||[]){
+        if(Number.isInteger(record.lod))levels.add(record.lod)
+      }
+    }
+    if(levels.size!==1)return
+    const only=[...levels][0]
+    p._externalThresholds=[0.001,0.001,0.001]
+    for(const group of p._externalLodGroups.values())group.currentLod=only
+    this.scene.requestRender()
   }
 
   setVisible(value) {

@@ -29,15 +29,8 @@ export default class RenderItemExecutor143 {
     for (const item of items || []) results.push(this.execute(item, context, passState, typeof overrides === 'function' ? overrides(item) : overrides))
     return results
   }
-  // Phase 6: submit a batch that shares one program/render state. Per-item uniforms are still
-  // applied per draw. A batch that throws is abandoned at the failing item so the caller can
-  // replay it natively.
-  //
-  // 不要再在这里预绑定 program：Cesium 的 `Context.beginDraw`（1.143
-  // `Source/Renderer/Context.js:1313`）对每条命令无条件 `shaderProgram._bind()`，
-  // 预绑定只会多出一次 GL 调用（n 条命令 = n+1 次绑定），是净亏损。
-  // 真正的「一批一次绑定」需要绕开原生 draw 才能真正省下来，见
-  // `RenderBatchPlanner143.js` 的 `programBinds` 口径说明。
+  // Execute every command in order. A surrounding BindingScope143 may skip redundant GL binds;
+  // this method itself neither prebinds state nor measures savings.
   executeBatch(batch, context, passState, nativeSubmit = null) {
     const items = batch?.items?.length ? batch.items : []
     if (!items.length) return { submitted: 0, failedAt: -1 }

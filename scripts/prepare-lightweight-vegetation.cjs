@@ -2,7 +2,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const webpack = require('webpack')
-const { PROTOTYPES, parseGlb } = require('./prepare-fixed-tree-assets.cjs')
+const { parseGlb } = require('./prepare-fixed-tree-assets.cjs')
 const root = path.resolve(__dirname, '..')
 const upstream = 'dcf309bd86bd521083d9c70f01f2de45fdc7c457'
 
@@ -21,12 +21,12 @@ async function loadGenerator() {
   return require(path.join(output, 'generator.cjs'))
 }
 
-function packTree(levels, leafPng, height, bounds, leafTint) {
+function packTree(levels, leafPng, height, bounds, leafTint, materialName = 'pine-needles') {
   const json = { asset: { version: '2.0', generator: `dgreenheck/ez-tree@${upstream}` },
     scene: 0, scenes: [{ nodes: [] }], nodes: [], meshes: [], accessors: [], bufferViews: [], buffers: [],
     materials: [
       { name: 'bark', pbrMetallicRoughness: { baseColorFactor: [0.22, 0.12, 0.055, 1], metallicFactor: 0, roughnessFactor: 1 } },
-      { name: 'pine-needles', alphaMode: 'MASK', alphaCutoff: 0.35, doubleSided: true,
+      { name: materialName, alphaMode: 'MASK', alphaCutoff: 0.35, doubleSided: true,
         extras: { roundedLeafNormals: true },
         pbrMetallicRoughness: { baseColorTexture: { index: 0 }, baseColorFactor: leafTint, metallicFactor: 0, roughnessFactor: 1 } },
     ], textures: [{ source: 0 }], images: [] }
@@ -80,35 +80,58 @@ function packTree(levels, leafPng, height, bounds, leafTint) {
 
 async function prepare() {
   const { Tree } = await loadGenerator()
+  const { render: renderLeaf } = require('./leaf-textures.cjs')
   const output = path.join(root, 'assets/vegetation/ez-tree')
   fs.mkdirSync(output, { recursive: true })
-  const leafPng = fs.readFileSync(path.join(root, 'vendor/ez-tree-generator/src/app/public/textures/leaves/pine.png'))
-  if (leafPng.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('Missing PNG data for official pine texture')
+  const pinePng = fs.readFileSync(path.join(root, 'vendor/ez-tree-generator/src/app/public/textures/leaves/pine.png'))
+  if (pinePng.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('Missing PNG data for official pine texture')
+  const leafPng = { pine: pinePng, ginkgo: renderLeaf('ginkgo', 256), sakura: renderLeaf('sakura', 256) }
   const details = [{ sectionStride: 2, segmentFactor: 0.5 },
     { sectionStride: 3, segmentFactor: 0.5, leafStride: 2, leafScale: 1.5, billboard: 'single' },
     { sectionStride: 6, segmentFactor: 0.5, leafStride: 8, leafScale: 2.2, billboard: 'single' },
     { sectionStride: 12, segmentFactor: 0.4, leafStride: 36, leafScale: 3.8, billboard: 'single' }]
-  const profiles = [
-    { preset: 'Pine Small', form: 'columnar', height: 10.5, seed: 13977, tint: [0.82, 0.92, 0.78, 1], configure(options) {
+  // The first three keep the fixed-point ids so points.json resolves unchanged; the
+  // last two only feed the polygon scatter, whose type list is this typeMap's keys.
+  const species = [
+    { id: 'pine-02b', type: '松柏', leaf: 'pine', material: 'pine-needles', preset: 'Pine Small', form: 'columnar', height: 10.5, seed: 13977, tint: [0.82, 0.92, 0.78, 1], configure(options) {
       options.branch.length[0] = 48; options.branch.length[1] = 10
       options.branch.start[1] = 0.06; options.branch.children[0] = 104
       options.leaves.count = 26; options.leaves.size = 1.15; options.leaves.sizeVariance = 0.42
     } },
-    { preset: 'Pine Medium', form: 'spreading', height: 11.5, seed: 24831, tint: [0.95, 1, 0.84, 1], configure(options) {
+    { id: 'pine-02c', type: '松树', leaf: 'pine', material: 'pine-needles', preset: 'Pine Medium', form: 'spreading', height: 11.5, seed: 24831, tint: [0.95, 1, 0.84, 1], configure(options) {
       options.branch.length[0] = 48; options.branch.length[1] = 29
       options.branch.start[1] = 0.22; options.branch.children[0] = 76
       options.leaves.count = 34; options.leaves.size = 1.7; options.leaves.sizeVariance = 0.48
     } },
-    { preset: 'Oak Medium', form: 'rounded', height: 9.5, seed: 38617, tint: [0.75, 0.88, 0.68, 1], configure(options) {
+    { id: 'pine-02i', type: '松树01', leaf: 'pine', material: 'pine-needles', preset: 'Oak Medium', form: 'rounded', height: 9.5, seed: 38617, tint: [0.75, 0.88, 0.68, 1], configure(options) {
       options.branch.start[1] = 0.38; options.branch.length[1] = 22
       options.branch.length[2] = 12; options.branch.length[3] = 6
       options.branch.children[0] = 6; options.branch.children[1] = 3; options.branch.children[2] = 2
       options.leaves.count = 24; options.leaves.size = 2.8; options.leaves.sizeVariance = 0.6
     } },
+    // Ginkgo: tall, wide, flat-fan leaves. Wider crown and fewer, larger cards keep
+    // the fan shape legible instead of turning into a green haze.
+    { id: 'ginkgo-01', type: '银杏', leaf: 'ginkgo', material: 'ginkgo-leaves', preset: 'Oak Medium', form: 'rounded', height: 12, seed: 57103, tint: [1, 0.86, 0.24, 1], configure(options) {
+      options.branch.length[0] = 44; options.branch.length[1] = 26
+      options.branch.start[1] = 0.42; options.branch.angle[1] = 58
+      options.branch.length[2] = 13; options.branch.length[3] = 7
+      options.branch.children[0] = 6; options.branch.children[1] = 3; options.branch.children[2] = 2
+      options.branch.radius[0] = 1.5
+      options.leaves.count = 26; options.leaves.size = 3.4; options.leaves.sizeVariance = 0.35
+    } },
+    // Cherry: small understory tree, pink blossom cards. Halved height and a
+    // shallower crown read as a planted ornamental, not a canopy tree.
+    { id: 'sakura-01', type: '樱花', leaf: 'sakura', material: 'sakura-blossom', preset: 'Oak Small', form: 'rounded', height: 6.5, seed: 62219, tint: [1, 0.62, 0.78, 1], configure(options) {
+      options.branch.length[0] = 30; options.branch.length[1] = 18
+      options.branch.start[1] = 0.5; options.branch.angle[1] = 58
+      options.branch.length[2] = 10; options.branch.length[3] = 6
+      options.branch.children[0] = 5; options.branch.children[1] = 3; options.branch.children[2] = 2
+      options.branch.radius[0] = 1.1
+      options.leaves.count = 30; options.leaves.size = 2.2; options.leaves.sizeVariance = 0.3
+    } },
   ]
   const report = []
-  for (const [i, definition] of PROTOTYPES.entries()) {
-    const profile = profiles[i]
+  for (const profile of species) {
     const tree = new Tree()
     tree.loadPreset(profile.preset)
     tree.options.seed = profile.seed
@@ -121,19 +144,22 @@ async function prepare() {
       for (let j = 1; j < a.length; j += 3) { bounds.min = Math.min(bounds.min, a[j]); bounds.max = Math.max(bounds.max, a[j]) }
     }
     const height = profile.height
-    const bytes = packTree(levels, leafPng, height, bounds, profile.tint)
+    const bytes = packTree(levels, leafPng[profile.leaf], height, bounds, profile.tint, profile.material)
     const { json } = parseGlb(bytes)
     const triangles = json.meshes.map(mesh => mesh.primitives.reduce((n, p) => n + json.accessors[p.indices].count / 3, 0))
-    if (triangles[0] > 14000 || triangles[3] > 900) throw new Error(`Tree budget exceeded for ${definition.id}: ${triangles}`)
-    fs.writeFileSync(path.join(output, `${definition.id}.glb`), bytes)
-    report.push({ id: definition.id, species: ['松柏', '松树', '松树01'][i], form: profile.form,
-      generatorPreset: profile.preset, height, url: `${definition.id}.glb`, triangles, bytes: bytes.length })
+    if (triangles[0] > 14000 || triangles[3] > 900) throw new Error(`Tree budget exceeded for ${profile.id}: ${triangles}`)
+    fs.writeFileSync(path.join(output, `${profile.id}.glb`), bytes)
+    report.push({ id: profile.id, species: profile.type, form: profile.form,
+      generatorPreset: profile.preset, height, url: `${profile.id}.glb`, triangles, bytes: bytes.length })
     for (const level of levels) { level.branches.dispose(); level.leaves.dispose() }
   }
   const original = JSON.parse(fs.readFileSync(path.join(root, 'assets/vegetation/manifest.json')))
   const generator = { repository: 'https://github.com/dgreenheck/ez-tree', commit: upstream }
-  fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ ...original, points: '../points.json', generator, prototypes: report }, null, 2) + '\n')
+  // Street points only name the three pine types; the extra keys are what makes the
+  // polygon scatter rotate through five species.
+  const typeMap = { ...original.typeMap, 银杏: 'ginkgo-01', 樱花: 'sakura-01' }
+  fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ ...original, typeMap, points: '../points.json', generator, prototypes: report }, null, 2) + '\n')
   fs.copyFileSync(path.join(root, 'vendor/ez-tree-generator/LICENSE'), path.join(output, 'LICENSE'))
-  console.log(JSON.stringify({ generator, prototypes: report }, null, 2))
+  console.log(JSON.stringify({ generator, typeMap, prototypes: report }, null, 2))
 }
 if (require.main === module) prepare().catch(error => { console.error(error); process.exitCode = 1 })

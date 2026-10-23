@@ -80,6 +80,10 @@ test('prepares four mutually exclusive LOD descriptors with shared resources', a
 
   const manifest = await prepareFixedTreeAssets({ modelsDirectory: models, pointsFile, outputDirectory: output })
   assert.equal(manifest.pointCount, 3)
+  for (const file of ['pine_color_1k.jpg', 'oak_color_1k.jpg']) {
+    assert.deepEqual(fs.readFileSync(path.join(output, 'eztree/bark', file)),
+      fs.readFileSync(new URL(`../../vendor/cesium-ez-tree/assets/bark/${file}`, import.meta.url)))
+  }
   assert.deepEqual(manifest.typeMap, { 松柏: 'pine-02b', 松树: 'pine-02c', 松树01: 'pine-02i' })
   for (const prototype of manifest.prototypes) {
     assert.equal(prototype.lods.length, 4)

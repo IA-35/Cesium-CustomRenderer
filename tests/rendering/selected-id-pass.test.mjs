@@ -1,8 +1,98 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import SelectedIdPass143, { selectedOwners, keepIdCommand } from '../../src/selection/SelectedIdPass143.js'
+import SelectedIdPass143, { selectedOwners, keepIdCommand, attachSelectedStageCache } from '../../src/selection/SelectedIdPass143.js'
 
 const C={Model:class{},Cesium3DTileset:class{},Cesium3DTileFeature:class{},Pass:{TRANSLUCENT:8}}
+
+function selectedStageFixture() {
+  let references = 0, uploads = 0
+  const program = { destroy() { references--; assert.ok(references >= 0) } }
+  const stage = {
+    enabled: true, _parentSelected: [{}],
+    update() {
+      if (!this.enabled) {
+        this._command?.shaderProgram.destroy()
+        this._command = this._selectedIdTexture = undefined
+        return
+      }
+      // Reproduce the pinned engine's parent-array/length comparison and command replacement.
+      const dirty = this._parentSelected !== this._parentSelectedShadow ||
+        this._parentSelected !== this._parentSelectedLength
+      this._parentSelectedShadow = this._parentSelected
+      this._parentSelectedLength = this._parentSelected.length
+      if (dirty) {
+        this._selectedIdTexture = { upload: ++uploads }
+        references++
+        this._command = { shaderProgram: program }
+      }
+    }
+  }
+  const collection = { length: 1, get: () => stage, update() { stage.update() } }
+  const restore = attachSelectedStageCache(collection)
+  return { stage, collection, restore, get uploads() { return uploads }, get references() { return references } }
+}
+
+test('unchanged selected parent reuses its ID texture and shader reference across frames', () => {
+  const f = selectedStageFixture()
+  for (let i = 0; i < 120; i++) f.collection.update()
+  assert.equal(f.uploads, 1)
+  assert.equal(f.references, 1)
+  assert.equal(f.stage._parentSelectedLength, 1)
+  f.stage.enabled = false; f.collection.update()
+  assert.equal(f.references, 0)
+  f.restore()
+})
+
+test('selection replacement, in-place edits and re-enable upload correctly without leaking old commands', () => {
+  const f = selectedStageFixture()
+  f.collection.update()
+  f.stage._parentSelected[0] = {}; f.collection.update()
+  f.stage._parentSelected.push({}); f.collection.update()
+  f.stage._parentSelected = [{}]; f.collection.update()
+  assert.equal(f.uploads, 4)
+  assert.equal(f.references, 1)
+  f.stage.enabled = false; f.collection.update()
+  assert.equal(f.references, 0)
+  f.stage.enabled = true; f.collection.update()
+  assert.equal(f.uploads, 5)
+  assert.equal(f.references, 1)
+  f.stage.enabled = false; f.collection.update(); f.restore()
+})
+
+test('selection cache teardown preserves later wrappers and stops retaining selected objects', () => {
+  const f = selectedStageFixture()
+  f.collection.update()
+  const original = f.collection.update, later = (...args) => original(...args)
+  f.collection.update = later
+  f.restore()
+  assert.equal(f.collection.update, later)
+  f.stage.enabled = false; f.collection.update()
+  assert.equal(f.references, 0)
+})
+
+test('stage removal holes are left for the native collection to compact', () => {
+  const f = selectedStageFixture()
+  f.collection.update()
+  f.stage.enabled = false; f.collection.update()
+  f.collection.get = () => undefined
+  assert.doesNotThrow(() => f.collection.update())
+  assert.equal(f.references, 0)
+  f.restore()
+})
+
+test('an unchanged selected model still updates when asynchronous content changes its pick IDs', () => {
+  const f = selectedStageFixture(), model = { pickIds: [] }
+  f.stage._parentSelected = [model]
+  f.collection.update()
+  model.pickIds.push({}); f.collection.update()
+  assert.equal(f.uploads, 2)
+  model.pickIds[0] = {}; f.collection.update()
+  assert.equal(f.uploads, 3)
+  f.collection.update()
+  assert.equal(f.uploads, 3)
+  assert.equal(f.references, 1)
+  f.stage.enabled = false; f.collection.update(); f.restore()
+})
 test('feature selection includes its content model, not unrelated tiles in the same tileset',()=>{
  const model=new C.Model(),other=new C.Model(),feature=new C.Cesium3DTileFeature()
  feature.content={_model:model}

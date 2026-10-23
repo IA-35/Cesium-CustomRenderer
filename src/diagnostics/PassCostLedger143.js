@@ -7,7 +7,7 @@ const MEMORY_FIELDS = [
   'ccrTextureBytes', 'tilesetReportedBytes', 'jsHeapBytes'
 ]
 const STATE_FIELDS = [
-  'drawHookInstallations', 'drawHookInvocations', 'programBinds', 'materialBinds',
+  'drawHookInstallations', 'drawHookInvocations', 'programBinds', 'drawCalls', 'materialBinds',
   'uniformUploads', 'textureBinds'
 ]
 
@@ -101,7 +101,7 @@ export default class PassCostLedger143 {
       configChanges: 0, assetChanges: 0, readinessChanges: 0, invalidReasons: {} }
     this._frames = []
     this._passes = new Map()
-    this._state = Object.fromEntries(STATE_FIELDS.map(field => [field, 0]))
+    this._state = Object.fromEntries(STATE_FIELDS.map(field => [field, null]))
     this._memory = Object.fromEntries(MEMORY_FIELDS.map(field => [field, null]))
     this._memoryPeaks = Object.fromEntries(MEMORY_FIELDS.map(field => [field, 0]))
   }
@@ -154,7 +154,7 @@ export default class PassCostLedger143 {
 
   recordState(state = {}) {
     if (!state) return
-    for (const field of STATE_FIELDS) if (finite(state[field])) this._state[field] += state[field]
+    for (const field of STATE_FIELDS) if (finite(state[field])) this._state[field] = (this._state[field] ?? 0) + state[field]
   }
 
   recordMemory(memory = {}) {

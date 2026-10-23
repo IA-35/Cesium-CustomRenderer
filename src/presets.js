@@ -25,11 +25,13 @@ export const defaults = Object.freeze({
   // term instead of being blamed on "the lighting" as a whole.
   lightingMode: 'enhanced', lightingDirect: true, lightingIndirect: true, lightingEmissive: true,
   lightingShadow: true, lightingAo: true, lightingAoStrength: 1, lightingDebugMode: 0,
-  // Direct-submit and batching are opt-in: their executors exist and are covered by unit tests,
+  // Direct-submit remains opt-in: their executors exist and are covered by unit tests,
   // but the real-scene equivalence (transparent OIT order, deferred replay parity) has not been
   // verified yet. Defaulting them off keeps the shipped path on the reviewed native/dispatcher
   // route; enable explicitly when validating a specific scenario.
-  renderItemDirectSubmit: false, transparentDirectSubmit: false, materialBatchingEnabled: false,
+  renderItemDirectSubmit: false, transparentDirectSubmit: false,
+  // Preserve every draw and its order; eliminate only repeated GL binding calls.
+  materialBatchingEnabled: true,
   screenSpaceAoEnabled: false, screenSpaceAoAlgorithm: 'ssao', screenSpaceAoRadius: 3, screenSpaceAoStrength: 1, screenSpaceAoBias: 0.08,
   environmentReflectionEnabled: false, environmentReflectionStrength: 1, environmentReflectionMap: null,
   screenSpaceReflectionEnabled: false, screenSpaceReflectionDistance: 150, screenSpaceReflectionThickness: 0.5, screenSpaceReflectionStrength: 1,

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>EZ-Tree 调参预览</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #9fb4c7; overflow: hidden; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 12px; top: 12px; color: #fff; font: 13px/1.5 system-ui, sans-serif;
+    background: rgba(0,0,0,.55); padding: 10px 12px; border-radius: 6px; white-space: pre; }
+</style>
+</head>
+<body>
+<div id="hud">加载中…</div>
+<script src="/build/.generated/tree-preview/preview.js"></script>
+<script>
+const { THREE, Tree, TreePreset } = window.__TREE__
+
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.setPixelRatio(1)
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0xb9c9d6)
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 500)
+
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x556644, 2.2))
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.6)
+sun.position.set(12, 20, 9)
+scene.add(sun)
+const ground = new THREE.Mesh(new THREE.CircleGeometry(140, 64), new THREE.MeshLambertMaterial({ color: 0x6d8a52 }))
+ground.rotation.x = -Math.PI / 2
+scene.add(ground)
+
+// 与 prepare-lightweight-vegetation.cjs 一致的材质，保证预览和游戏内同色。
+const barkMaterial = new THREE.MeshStandardMaterial({ color: 0x39201a, roughness: 1, metalness: 0 })
+const leafTexture = new THREE.TextureLoader().load('/vendor/ez-tree-generator/src/app/public/textures/leaves/pine.png')
+leafTexture.colorSpace = THREE.SRGBColorSpace
+const leafMaterial = new THREE.MeshStandardMaterial({
+  map: leafTexture, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 1, metalness: 0,
+  color: 0xffffff,
+})
+
+/** 与 GLB 导出相同的 LOD0 细节规格。 */
+const DETAIL_LOD0 = { sectionStride: 2, segmentFactor: 0.5 }
+
+function triangleCount(geometry) {
+  return geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3
+}
+
+/**
+ * 生成一棵树并返回统计。options 是 TreeOptions 的局部覆盖。
+ */
+function grow(presetName, overrides = {}, seed) {
+  const tree = new Tree()
+  tree.loadPreset(presetName)
+  if (seed !== undefined) tree.options.seed = seed
+  for (const [path, value] of Object.entries(overrides)) {
+    const parts = path.split('.')
+    let cursor = tree.options
+    for (let i = 0; i < parts.length - 1; i++) cursor = cursor[parts[i]]
+    cursor[parts.at(-1)] = value
+  }
+  tree.generate()
+  const level = tree.createGeometry(DETAIL_LOD0)
+  const branches = triangleCount(level.branches)
+  const leaves = triangleCount(level.leaves)
+  const group = new THREE.Group()
+  group.add(new THREE.Mesh(level.branches, barkMaterial))
+  group.add(new THREE.Mesh(level.leaves, leafMaterial))
+  const box = new THREE.Box3().setFromObject(group)
+  const height = box.max.y - box.min.y
+  group.position.y = -box.min.y
+  return { group, branches, leaves, total: branches + leaves, height, width: Math.max(box.max.x - box.min.x, box.max.z - box.min.z) }
+}
+
+let current = null
+let spin = 0
+let framing = { radius: 14, centerY: 6 }
+
+/** 生成并在画面中央显示，同时把相机推到能装下整棵树的位置。 */
+function show(label, presetName, overrides, seed) {
+  if (current) { scene.remove(current.group); disposeTree(current.group) }
+  current = grow(presetName, overrides, seed)
+  scene.add(current.group)
+  const { height, width } = current
+  const span = Math.max(height, width)
+  camera.position.set(span * 0.62, height * 0.62, span * 0.95)
+  camera.lookAt(0, height * 0.5, 0)
+  framing = { radius: span, centerY: height * 0.5 }
+  window.__TREE_STATS__ = {
+    label, preset: presetName, seed: seed ?? null, overrides,
+    branches: current.branches, leaves: current.leaves, total: current.total,
+    height: +height.toFixed(2), width: +width.toFixed(2),
+  }
+  document.getElementById('hud').textContent = `${label}  (${presetName})\n`
+    + `三角形 ${current.total}  枝 ${current.branches} / 叶 ${current.leaves}\n`
+    + `高 ${height.toFixed(1)} m  冠幅 ${width.toFixed(1)} m`
+  renderer.render(scene, camera)
+}
+
+function disposeTree(group) {
+  for (const child of group.children) child.geometry.dispose()
+}
+
+// 页面通过 window.__TUNE__(presetName, overrides, seed) 调参；截图脚本传参调用。
+window.__TUNE__ = (presetName, overrides, seed, label) => {
+  show(label || presetName, presetName, overrides || {}, seed)
+  return window.__TREE_STATS__
+}
+window.__PRESETS__ = Object.keys(TreePreset)
+window.__SET_SPIN__ = value => { spin = value }
+// 相机 hook：截图脚本用它取近景（树冠细节）而不是整树。
+window.__CAMERA__ = (azimuthDeg, elevationDeg, distance) => {
+  const a = azimuthDeg * Math.PI / 180, e = elevationDeg * Math.PI / 180
+  const target = new THREE.Vector3(0, framing.centerY, 0)
+  camera.position.set(
+    Math.cos(a) * Math.cos(e) * distance,
+    framing.centerY + Math.sin(e) * distance,
+    Math.sin(a) * Math.cos(e) * distance,
+  )
+  camera.lookAt(target)
+  renderer.render(scene, camera)
+}
+
+function animate() {
+  requestAnimationFrame(animate)
+  if (spin && current) current.group.rotation.y += 0.01
+  renderer.render(scene, camera)
+}
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+})
+
+show('现状 pine-02c（松树）', 'Pine Medium', {
+  'branch.length.0': 48, 'branch.length.1': 29, 'branch.start.1': 0.22,
+  'branch.children.0': 76, 'leaves.count': 34, 'leaves.size': 1.7, 'leaves.sizeVariance': 0.48,
+}, 24831)
+animate()
+window.__READY__ = true
+</script>
+</body>
+</html>

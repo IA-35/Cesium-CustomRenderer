@@ -3,10 +3,12 @@ import { getRenderTargetPool } from '../pipeline/RenderTargetPool143.js'
 export function resolveTransientPixelFormat143(C, value) {
   const format = C?.PixelFormat || {}
   if (value === format.RED || String(value) === String(format.RED)) return format.RED
+  if (value === format.RG || String(value) === String(format.RG)) return format.RG
   if (value === format.RGBA || String(value) === String(format.RGBA)) return format.RGBA
   if (typeof value === 'string') {
     const normalized = value.toLowerCase().replace(/[-_]/g, '')
     if (normalized === 'red' || normalized === 'r16f' || normalized === 'r32f' || normalized === 'redinteger') return format.RED
+    if (normalized === 'rg' || normalized === 'rg16f' || normalized === 'rg32f') return format.RG
     if (normalized === 'rgba' || normalized === 'rgba8' || normalized === 'rgba16f' || normalized === 'rgba32f') return format.RGBA
   }
   return format.RGBA
@@ -19,8 +21,8 @@ export function resolveTransientPixelDatatype143(C, value) {
   if (value === datatype.UNSIGNED_BYTE || String(value) === String(datatype.UNSIGNED_BYTE)) return datatype.UNSIGNED_BYTE
   if (typeof value === 'string') {
     const normalized = value.toLowerCase().replace(/[-_]/g, '')
-    if (normalized === 'float' || normalized === 'float32' || normalized === 'r32f' || normalized === 'rgba32f') return datatype.FLOAT
-    if (normalized === 'halffloat' || normalized === 'float16' || normalized === 'r16f' || normalized === 'rgba16f') return datatype.HALF_FLOAT
+    if (normalized === 'float' || normalized === 'float32' || normalized === 'r32f' || normalized === 'rg32f' || normalized === 'rgba32f') return datatype.FLOAT
+    if (normalized === 'halffloat' || normalized === 'float16' || normalized === 'r16f' || normalized === 'rg16f' || normalized === 'rgba16f') return datatype.HALF_FLOAT
     if (normalized === 'ubyte' || normalized === 'unsignedbyte' || normalized === 'rgba8') return datatype.UNSIGNED_BYTE
   }
   return datatype.UNSIGNED_BYTE
