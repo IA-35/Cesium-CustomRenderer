@@ -16,7 +16,8 @@ export default class GlobeNightLighting143 {
     if (this.supported) {
       this.dispatcher = getContextDrawDispatcher143(context) || new ContextDrawDispatcher143(context)
       this.dispatcher.install()
-      this.off = this.dispatcher.addHandler(event => this.draw(event), { name: 'globe-night-lighting', priority: -30 })
+      this.off = this.dispatcher.addHandler(event => this.draw(event), { name: 'globe-night-lighting', priority: -30,
+        passes: [C.Pass?.GLOBE], frame: { render: true, pick: false, pickVoxel: false } })
     }
   }
 

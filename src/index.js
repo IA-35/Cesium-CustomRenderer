@@ -34,6 +34,7 @@ export { default as RenderItemExecutor143 } from './renderer/RenderItemExecutor1
 export { default as RenderItemQueue143 } from './renderer/RenderItemQueue143.js'
 export { default as RenderBatchPlanner143, planRenderBatches143 } from './renderer/RenderBatchPlanner143.js'
 export { default as ContextDrawDispatcher143, getContextDrawDispatcher143 } from './pipeline/ContextDrawDispatcher143.js'
+export { acquireSceneTargets143, TARGET_KINDS, FRAME_BITS } from './pipeline/SceneTargets143.js'
 export { default as WebGLDevice143 } from './rhi/WebGLDevice143.js'
 export { default as CesiumSceneAdapter143 } from './scene/CesiumSceneAdapter143.js'
 export { resolveRendererCapabilities143 } from './diagnostics/CapabilityResolver143.js'

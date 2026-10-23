@@ -29,6 +29,7 @@ import { resolveRendererCapabilities143 } from './diagnostics/CapabilityResolver
 import CesiumSceneAdapter143 from './scene/CesiumSceneAdapter143.js'
 import SelectedIdPass143 from './selection/SelectedIdPass143.js'
 import ContextDrawDispatcher143 from './pipeline/ContextDrawDispatcher143.js'
+import { acquireSceneTargets143 } from './pipeline/SceneTargets143.js'
 
 // Registry supports business tools without placing renderer objects in Vue data.
 const pipelines = new WeakMap()
@@ -81,6 +82,9 @@ export default class VisualPipeline {
     this.sceneAdapter = new CesiumSceneAdapter143(Cesium, viewer.scene)
     this.drawDispatcher = viewer.scene.context?.draw ? new ContextDrawDispatcher143(viewer.scene.context,{label:'CCR/VisualPipeline'}) : null
     this.drawDispatcher?.install()
+    // 每次 updateAndExecuteCommands 调用一份的目标快照，让 handler 按 pass/目标/帧类型预筛选。
+    this.sceneTargetsLease = this.drawDispatcher && typeof viewer.scene.updateAndExecuteCommands === 'function' ? acquireSceneTargets143(viewer.scene) : null
+    this.drawDispatcher?.attachTargets(this.sceneTargetsLease?.targets)
     this.bindingScope = new BindingScope143(viewer.scene, () => this.enabled && !this.destroyed
       && !this.suspensions.size && this.options.materialBatchingEnabled)
     this.renderGraph.setTransientAllocator(this.rhi?.createTransientAllocator('graph') || null)
@@ -1108,6 +1112,7 @@ export default class VisualPipeline {
     this.releaseOitCompatibility = undefined
     this.bindingScope?.destroy()
     this.drawDispatcher?.destroy();this.drawDispatcher=null
+    this.sceneTargetsLease?.release();this.sceneTargetsLease=null
      this.rhi?.destroy()
     this.rhi = null
     this.suspensions.clear()

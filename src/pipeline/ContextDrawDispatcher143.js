@@ -2,6 +2,40 @@
 // observers are readonly and cannot change the draw decision.
 const installations = new WeakMap()
 const allowed = new Set(['pass', 'replace', 'skip', 'continue'])
+const TARGET_INDEX = { default: 0, other: 1, sceneColor: 2, globeColor: 3, selectedId: 4, oitTranslucent: 5, oitAlpha: 6 }
+const TARGET_KINDS = Object.keys(TARGET_INDEX)
+const UNKNOWN_TARGET = 7, UNKNOWN_FRAME = 16, OTHER_PASS = 31
+const FRAME_FLAGS = { render: 1, pick: 2, depth: 4, pickVoxel: 8 }
+
+// 过滤器只是预筛选：它只能表达 handler 自己本来就检查的条件，去掉过滤器不应改变任何决定。
+// 目标与帧类型未知（没有 attachTargets）时视为匹配，只有 pass 过滤仍然生效。
+function compileFilter({ passes, targets, frame } = {}) {
+  if (!passes && !targets && !frame) return null
+  // 有任何无法识别的 pass（例如测试桩里没有 C.Pass）就放弃 pass 过滤，宁可多调也不漏调。
+  const passFilter = passes && passes.every(pass => Number.isInteger(pass) && pass >= 0 && pass < OTHER_PASS)
+  let passMask = 0
+  if (passFilter) for (const pass of passes) passMask |= 1 << pass
+  let targetMask = 0
+  for (const kind of targets || []) {
+    if (!(kind in TARGET_INDEX)) throw new Error(`ContextDrawDispatcher143 unknown target kind: ${kind}`)
+    targetMask |= 1 << TARGET_INDEX[kind]
+  }
+  let frameMask = 0, frameValue = 0
+  for (const [flag, value] of Object.entries(frame || {})) {
+    if (!(flag in FRAME_FLAGS)) throw new Error(`ContextDrawDispatcher143 unknown frame flag: ${flag}`)
+    frameMask |= FRAME_FLAGS[flag]; if (value) frameValue |= FRAME_FLAGS[flag]
+  }
+  if (!passFilter && !targets && !frame) return null
+  return { passMask: passFilter ? passMask : -1, targetMask: targets ? targetMask : -1, frameMask, frameValue }
+}
+
+function filterMatches(filter, pass, target, frame) {
+  if (!filter) return true
+  if (filter.passMask !== -1 && !(filter.passMask & (1 << pass))) return false
+  if (filter.targetMask !== -1 && target !== UNKNOWN_TARGET && !(filter.targetMask & (1 << target))) return false
+  if (filter.frameMask && frame !== UNKNOWN_FRAME && (frame & filter.frameMask) !== filter.frameValue) return false
+  return true
+}
 
 // 每层重入深度复用一个事件对象：handler 可能在 draw 里再发起 draw（补画派生命令），
 // 所以按深度分配，不能全局共用一个。native / aroundDraw / deferRestore 在构造时绑定一次，
@@ -16,13 +50,13 @@ class DrawEvent {
     this.deferRestore = fn => { if (typeof fn === 'function') this.restores.push(fn); return fn }
     this.end()
   }
-  begin(args) {
-    this.args = args; this.command = args[0]; this.passState = args[1]
+  begin(args, target, frameBits) {
+    this.args = args; this.command = args[0]; this.passState = args[1]; this.target = target; this.frameBits = frameBits
     for (let i = 2; i < args.length; i++) this.overrides.push(args[i])
   }
   // 清掉引用，避免池里的事件对象拖住上一帧的命令和 framebuffer。
   end() {
-    this.args = null; this.command = undefined; this.passState = undefined; this.phase = undefined
+    this.args = null; this.command = undefined; this.passState = undefined; this.phase = undefined; this.target = undefined; this.frameBits = undefined
     this.error = undefined; this.restoreError = undefined; this.decision = undefined; this.result = undefined
     // 截断数组走 V8 慢路径，空数组跳过（绝大多数 draw 三个都是空的）。
     if (this.scopes.length) this.scopes.length = 0
@@ -42,8 +76,10 @@ export default class ContextDrawDispatcher143 {
     this.context = context; this.label = label; this.native = context.draw; this.handlers = []; this.observers = []
     this.bypassDepth = 0
     this.events = []; this.depth = 0
+    // 按 (pass, 目标种类, 帧类型) 缓存的 handler 列表；增删 handler 时清空。
+    this.targets = null; this.filtered = 0; this.routes = new Map()
     this.installed = false; this.destroyed = false; this.generation = 0
-    this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0,
+    this.stats = { drawHookInstallations: 0, drawHookInvocations: 0, nativeFallbackDraws: 0, shortCircuits: 0, handlerErrors: 0, observerErrors: 0, handlerCalls: 0,
       programBinds: null, materialBinds: null, textureBinds: null, uniformUploads: null }
     this._bindTracking = null
     this.wrapper = (...args) => this._dispatch(args)
@@ -98,11 +134,28 @@ export default class ContextDrawDispatcher143 {
     this.context.draw = this.wrapper; this.context._ccrDrawDispatcher = this; this.installed = true; this.generation++; this.stats.drawHookInstallations++
     return this
   }
-  addHandler(fn, { name = `handler-${this.handlers.length}`, priority = 0, enabled = true } = {}) {
+  // 可选：接入 SceneTargets143 后，目标与帧类型过滤才能排除 handler。
+  attachTargets(targets) { this.targets = targets || null; this.routes.clear(); return this }
+  addHandler(fn, { name = `handler-${this.handlers.length}`, priority = 0, enabled = true, passes, targets, frame } = {}) {
     if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 handler must be a function')
-    const record = { fn, name, priority, enabled, active: true }
+    const record = { fn, name, priority, enabled, active: true, filter: compileFilter({ passes, targets, frame }) }
     this.handlers.push(record); this.handlers.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
-    return () => { record.active = false; record.fn = null; this.handlers = this.handlers.filter(item => item !== record) }
+    this._handlersChanged()
+    return () => { record.active = false; record.fn = null; this.handlers = this.handlers.filter(item => item !== record); this._handlersChanged() }
+  }
+  _handlersChanged() { this.filtered = this.handlers.filter(record => record.filter).length; this.routes.clear() }
+  _route(command, passState) {
+    const targets = this.targets, raw = command?.pass
+    const pass = Number.isInteger(raw) && raw >= 0 && raw < OTHER_PASS ? raw : OTHER_PASS
+    const target = targets ? TARGET_INDEX[targets.kindOf(command?.framebuffer || passState?.framebuffer)] : UNKNOWN_TARGET
+    const frame = targets ? targets.frameBits : UNKNOWN_FRAME
+    const key = pass | target << 5 | frame << 8
+    let route = this.routes.get(key)
+    if (!route) {
+      route = { handlers: this.handlers.filter(record => filterMatches(record.filter, pass, target, frame)), target: targets ? TARGET_KINDS[target] : undefined, frame: targets ? frame : undefined }
+      this.routes.set(key, route)
+    }
+    return route
   }
   addObserver(fn, { name = `observer-${this.observers.length}`, priority = 0, enabled = true } = {}) {
     if (typeof fn !== 'function') throw new Error('ContextDrawDispatcher143 observer must be a function')
@@ -112,16 +165,19 @@ export default class ContextDrawDispatcher143 {
   _dispatch(args) {
     if (this.bypassDepth > 0 || !this.installed || this.destroyed) return this.native.apply(this.context, args)
     this.stats.drawHookInvocations++
-    const handlers = this.handlers, observers = this.observers
-    if (!handlers.length && !observers.length) { this.stats.nativeFallbackDraws++; return this.native.apply(this.context, args) }
+    const observers = this.observers
+    if (!this.handlers.length && !observers.length) { this.stats.nativeFallbackDraws++; return this.native.apply(this.context, args) }
+    // 没有任何带过滤器的 handler 时不做分类，走原路径。
+    const route = this.filtered ? this._route(args[0], args[1]) : null, handlers = route ? route.handlers : this.handlers
     const event = this.events[this.depth] ??= new DrawEvent(this)
-    event.begin(args)
+    event.begin(args, route?.target, route?.frame)
     this.depth++
     let decision = 'continue', result
     try {
       for (const record of handlers) {
         if (!record.active || !record.enabled) continue
         try {
+          this.stats.handlerCalls++
           const returned = record.fn(event)
           if (allowed.has(returned)) decision = returned
           if (returned === 'pass' || returned === 'replace' || returned === 'skip') break

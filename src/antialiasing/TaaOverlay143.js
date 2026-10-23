@@ -1,5 +1,7 @@
 import {particleBillboards} from '../pipeline/particleBillboards143.js'
 
+const overlayTargets=new Set(['sceneColor','globeColor','oitTranslucent','oitAlpha'])
+
 // Screen-facing UI has no surface velocity/depth suitable for scene TAA.
 // Defer its native commands, then composite on a separate target so UI pixels
 // never contaminate the temporal history. Picking/ID commands remain native.
@@ -12,8 +14,9 @@ export default class TaaOverlay143 {
     this.handler=event=>{
       const command=event.command,passState=event.passState,passes=scene.frameState.passes,view=scene._view
       if(overlay.active&&!overlay.drawing&&passes.render&&!passes.pick&&!passes.depth&&overlay.isOverlay(command)){
-        const framebuffer=command.framebuffer||passState?.framebuffer
-        if(framebuffer&&framebuffer!==view?.sceneFramebuffer?.idFramebuffer&&
+        const framebuffer=command.framebuffer||passState?.framebuffer,target=event.target
+        // 有调度器快照时直接比目标种类，否则逐级读取 scene._view。
+        if(target!==undefined?overlayTargets.has(target):framebuffer&&framebuffer!==view?.sceneFramebuffer?.idFramebuffer&&
           (framebuffer===view?.globeDepth?.framebuffer||framebuffer===view?.sceneFramebuffer?.framebuffer||
            framebuffer===view?.oit?._translucentFBO?.framebuffer||framebuffer===view?.oit?._alphaFBO?.framebuffer)){
           overlay.skipped++;return 'skip'
@@ -26,7 +29,8 @@ export default class TaaOverlay143 {
       if(decision==='skip')return
       return overlay.previous.call(this,command,passState,...args)
     }
-    if(this.dispatcher)this.offDispatcher=this.dispatcher.addHandler(this.handler,{name:'taa-overlay',priority:-20})
+    if(this.dispatcher)this.offDispatcher=this.dispatcher.addHandler(this.handler,{name:'taa-overlay',priority:-20,
+      targets:[...overlayTargets],frame:{render:true,pick:false,depth:false}})
     else context.draw=this.hook
   }
   isOverlay(command) {

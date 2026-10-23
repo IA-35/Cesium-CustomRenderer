@@ -69,7 +69,7 @@ export default class TaaMotion143 {
     const dispatcher = this.scene.context._ccrDrawDispatcher
     if (!dispatcher) { this.reason = 'No draw dispatcher'; return }
     this.detach = dispatcher.addHandler(event => {
-      if (!this.active || !this.isSceneColor(event.command, event.passState)) return 'continue'
+      if (!this.active || !this.isSceneColor(event.command, event.passState, event.target)) return 'continue'
       event.aroundDraw(invoke => {
         const result = invoke()
         try { this.capture(event) } catch (error) {
@@ -78,11 +78,14 @@ export default class TaaMotion143 {
         return result
       })
       return 'continue'
-    }, { name: 'traa-r186-motion', priority: -30 })
+    }, { name: 'traa-r186-motion', priority: -30, passes: [this.C.Pass?.OPAQUE], targets: ['sceneColor', 'globeColor'],
+      frame: { render: true, pick: false, depth: false } })
   }
-  isSceneColor(command, passState) {
+  // kind 是调度器按本次调用快照给出的目标种类；没有快照时退回逐级读取 scene._view。
+  isSceneColor(command, passState, kind) {
     const { scene, C } = this, passes = scene.frameState.passes
     if (!passes.render || passes.pick || passes.depth || command.pass !== C.Pass.OPAQUE) return false
+    if (kind !== undefined) return kind === 'sceneColor' || kind === 'globeColor'
     const target = command.framebuffer || passState?.framebuffer, view = scene._view
     return target && (target === view?.sceneFramebuffer?._colorFramebuffer?.framebuffer || target === view?.globeDepth?.colorFramebufferManager?.framebuffer)
   }

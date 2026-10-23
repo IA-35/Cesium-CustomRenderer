@@ -43,7 +43,12 @@ export default class OcclusionCulling143 {
       }
       return previous.call(this,command,ps,...args)
     }
-         if(dispatcher)this.dispatcherOff=dispatcher.addHandler(event=>{const command=event.command,ps=event.passState,fb=command.framebuffer||ps?.framebuffer,view=s._view;if(token.active&&self.shouldCull(command)&&(fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer)){self.recordSkip(command);return 'skip'}return 'continue'},{name:'occlusion',priority:0})
+         if(dispatcher)this.dispatcherOff=dispatcher.addHandler(event=>{const command=event.command,ps=event.passState,target=event.target
+           if(!token.active||!self.shouldCull(command))return 'continue'
+           // 有调度器快照时直接比目标种类，否则逐级读取 scene._view。
+           const fb=command.framebuffer||ps?.framebuffer,view=s._view
+           if(target!==undefined?target==='sceneColor'||target==='globeColor':fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer){self.recordSkip(command);return 'skip'}
+           return 'continue'},{name:'occlusion',priority:0,passes:[C.Pass?.OPAQUE,C.Pass?.CESIUM_3D_TILE],targets:['sceneColor','globeColor'],frame:{render:true,pick:false,depth:false}})
      else ctx.draw=this.hook
     this.proxy={update:state=>{if(state.passes.render)state.commandList.unshift({pass:C.Pass.COMPUTE,execute:()=>this.prepare()})},isDestroyed:()=>false,destroy(){}}
     s.primitives.add(this.proxy);this.offUpdate=s.preUpdate.addEventListener(()=>keepPrimitiveLast(s.primitives,this.proxy))

@@ -117,12 +117,13 @@ export default class SelectedIdPass143 {
       const command=event.command,passState=event.passState
       if (!scene._environmentState?.usePostProcessSelected) { pass.owners=null; return 'continue' }
       if (pass.dead||!pass.enabled||!active()||!scene.frameState.passes.render||scene.frameState.passes.pick||scene.frameState.passes.pickVoxel) return 'continue'
-      const id=scene._view?.sceneFramebuffer?.idFramebuffer
-      if (!id||(command.framebuffer||passState?.framebuffer)!==id)return 'continue'
-      if (pass.frame!==scene.frameState.frameNumber)pass.prepare(id)
+      // 有调度器快照时直接比目标种类，只在每帧第一次 ID 绘制时才去取 idFramebuffer。
+      if (event.target!==undefined){ if (event.target!=='selectedId') return 'continue' }
+      else { const id=scene._view?.sceneFramebuffer?.idFramebuffer; if (!id||(command.framebuffer||passState?.framebuffer)!==id) return 'continue' }
+      if (pass.frame!==scene.frameState.frameNumber)pass.prepare(scene._view.sceneFramebuffer.idFramebuffer)
       if (pass.owners&&!keepIdCommand(C,command,pass.owners)){pass.stats.skipped++;return 'skip'}
       pass.stats.drawn++;return 'continue'
-    },{name:'selected-id',priority:-10})
+    },{name:'selected-id',priority:-10,targets:['selectedId'],frame:{render:true,pick:false,pickVoxel:false}})
     else context.draw = this.hook
   }
 
