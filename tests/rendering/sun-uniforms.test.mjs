@@ -23,8 +23,9 @@ test('released sun leases reject updates and cannot reactivate retained draw wra
 })
 test('solar draw batches bind once and release their scope after an exception',()=>{
  const f=fixture(),gl=f.scene.context._gl,read=gl.getParameter
- let queries=0
+ let queries=0,blockBinds=0
  gl.getParameter=key=>{queries++;return read(key)}
+ gl.uniformBlockBinding=()=>{blockBinds++}
  gl.UNIFORM_BLOCK_DATA_SIZE=7;gl.UNIFORM_BLOCK_BINDING=8
  gl.getUniformBlockIndex=()=>0;gl.getProgramParameter=()=>1
  gl.getActiveUniformBlockParameter=(program,index,key)=>key===7?48:0
@@ -35,8 +36,8 @@ test('solar draw batches bind once and release their scope after an exception',(
    throw new Error('consumer failure')
  }),/consumer failure/)
  assert.ok(queries<10,'a batch must not query bindings per draw')
- const before=queries
+ const before=blockBinds
  assert.equal(f.scene.context.draw({shaderProgram:program}),1)
- assert.ok(queries>before,'an out-of-scope draw must bind safely again')
+ assert.equal(blockBinds-before,2,'an out-of-scope draw must bind (and restore) again')
  lease.release();assert.throws(()=>lease.withPrograms([program],()=>{}),/released/)
 })

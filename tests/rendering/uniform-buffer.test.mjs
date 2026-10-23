@@ -85,3 +85,66 @@ test('binding selection avoids foreign blocks used by programs in the same batch
   assert.equal(f.indexed.get(23).buffer, foreign)
   buffer.destroy()
 })
+
+// 统计会同步回读驱动状态的查询；镜像方案下，看过一次的绑定状态不应再查询。
+const QUERIES = ['getParameter', 'getIndexedParameter', 'getActiveUniformBlockParameter', 'getProgramParameter', 'getUniformBlockIndex']
+function counted(f) {
+  const counts = Object.fromEntries(QUERIES.map(name => [name, 0]))
+  for (const name of QUERIES) { const original = f.gl[name]; f.gl[name] = (...args) => { counts[name]++; return original(...args) } }
+  const calls = { uniformBlockBinding: 0, bindBufferBase: 0 }
+  for (const name of Object.keys(calls)) { const original = f.gl[name]; f.gl[name] = (...args) => { calls[name]++; return original(...args) } }
+  return { counts, calls, total: () => QUERIES.reduce((n, name) => n + counts[name], 0), reset: () => QUERIES.forEach(name => { counts[name] = 0 }) }
+}
+
+test('repeated binds of a seen program make no driver queries and still bind and restore every time', () => {
+  const f = fixture(), buffer = new UniformBuffer143(f.gl, 16), program = { _program: {} }, foreign = {}
+  f.gl.bindBufferRange(f.gl.UNIFORM_BUFFER, 23, foreign, 64, 16)
+  const q = counted(f)
+  withUniformBlocks(f.gl, [program], [{ name: 'Frame', buffer }], () => {})
+  q.reset()
+  for (let i = 0; i < 100; i++) {
+    withUniformBlocks(f.gl, [program], [{ name: 'Frame', buffer }], () => {
+      assert.equal(f.indexed.get(23).buffer, buffer.buffer)
+      assert.equal(f.blockBindings.get(program._program), 23)
+    })
+    assert.deepEqual(f.indexed.get(23), { buffer: foreign, offset: 64, size: 16 })
+    assert.equal(f.blockBindings.get(program._program), 0)
+  }
+  assert.deepEqual(q.counts, Object.fromEntries(QUERIES.map(name => [name, 0])), 'per-draw binds must not query the driver')
+  assert.equal(q.calls.uniformBlockBinding, 202, 'each of the 101 binds still maps and restores the block')
+  assert.equal(q.calls.bindBufferBase, 101)
+  buffer.destroy()
+})
+
+test('nested binds on the same binding point and program restore the outer binding exactly', () => {
+  const f = fixture(), outer = new UniformBuffer143(f.gl, 16), inner = new UniformBuffer143(f.gl, 16)
+  const a = { _program: {} }, b = { _program: {} }, generic = {}
+  f.gl.bindBuffer(f.gl.UNIFORM_BUFFER, generic)
+  const run = () => withUniformBlocks(f.gl, [a], [{ name: 'Frame', buffer: outer }], () => {
+    for (const program of [a, b]) {
+      withUniformBlocks(f.gl, [program], [{ name: 'Frame', buffer: inner }], () => {
+        assert.equal(f.indexed.get(23).buffer, inner.buffer)
+        assert.equal(f.blockBindings.get(program._program), 23)
+      })
+      assert.equal(f.indexed.get(23).buffer, outer.buffer, 'the outer buffer is back on the shared point')
+      assert.equal(f.blockBindings.get(a._program), 23, 'the outer program still reads the outer point')
+    }
+  })
+  run(); run() // 第二轮全部走镜像
+  assert.equal(f.indexed.get(23).buffer, null)
+  assert.equal(f.blockBindings.get(a._program), 0)
+  assert.equal(f.blockBindings.get(b._program), 0)
+  assert.equal(f.bound, generic, 'the generic binding is restored without re-reading it')
+  outer.destroy(); inner.destroy()
+})
+
+test('a second buffer on the same context reuses the mirrored point and block state', () => {
+  const f = fixture(), first = new UniformBuffer143(f.gl, 16), data = new Float32Array(4), program = { _program: {} }
+  first.update(data)
+  withUniformBlocks(f.gl, [program], [{ name: 'Frame', buffer: first }], () => {})
+  const q = counted(f), second = new UniformBuffer143(f.gl, 16)
+  second.update(data)
+  withUniformBlocks(f.gl, [program], [{ name: 'Frame', buffer: second }], () => assert.equal(f.indexed.get(23).buffer, second.buffer))
+  assert.equal(q.counts.getIndexedParameter + q.counts.getActiveUniformBlockParameter, 0)
+  first.destroy(); second.destroy()
+})

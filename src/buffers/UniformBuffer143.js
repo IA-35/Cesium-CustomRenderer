@@ -47,19 +47,20 @@ export default class UniformBuffer143 {
 
   withBinding(point, callback) {
     if (this.destroyed) throw new Error('Uniform buffer is destroyed')
-    const gl = this.gl
-    if (!Number.isInteger(point) || point < 0 || point >= gl.getParameter(gl.MAX_UNIFORM_BUFFER_BINDINGS)) throw new Error('Invalid uniform binding point')
-    const previous = gl.getParameter(gl.UNIFORM_BUFFER_BINDING)
-    const buffer = gl.getIndexedParameter(gl.UNIFORM_BUFFER_BINDING, point)
-    const offset = gl.getIndexedParameter(gl.UNIFORM_BUFFER_START, point)
-    const size = gl.getIndexedParameter(gl.UNIFORM_BUFFER_SIZE, point)
+    const gl = this.gl, mirror = bindingMirror(gl)
+    if (!Number.isInteger(point) || point < 0 || point >= mirror.limit) throw new Error('Invalid uniform binding point')
+    const previous = mirror.genericBinding(), saved = mirror.point(point)
     try {
       gl.bindBufferBase(gl.UNIFORM_BUFFER, point, this.buffer)
+      mirror.points.set(point, { buffer: this.buffer, offset: 0, size: 0 })
       return callback()
     } finally {
-      if (buffer && size > 0) gl.bindBufferRange(gl.UNIFORM_BUFFER, point, buffer, offset, size)
-      else gl.bindBufferBase(gl.UNIFORM_BUFFER, point, buffer)
+      // bindBufferBase/Range 同时改变通用绑定，所以最后恢复它；镜像随每次 GL 调用同步更新。
+      if (saved.buffer && saved.size > 0) gl.bindBufferRange(gl.UNIFORM_BUFFER, point, saved.buffer, saved.offset, saved.size)
+      else gl.bindBufferBase(gl.UNIFORM_BUFFER, point, saved.buffer)
+      mirror.points.set(point, saved)
       gl.bindBuffer(gl.UNIFORM_BUFFER, previous)
+      mirror.generic = previous
     }
   }
 
@@ -85,10 +86,50 @@ export function uniformBuffersSupported(context){
 // Cache only that static part so repeated binds (per draw for the sun frame, per
 // frame for AO/SSR/environment) stop re-querying the driver. Current binding values
 // are intentionally re-read each call because they are mutated and restored here.
-const blockLayoutCache = new WeakMap() // WebGLProgram -> { count, blocks: Map<name, {block,size}|null> }
+const blockLayoutCache = new WeakMap() // WebGLProgram -> { count, blocks: Map<name, {block,size}|null>, bindings: Map<block, point> }
+
+// UBO 绑定状态的 JS 镜像（每个 GL 上下文一份）：每项第一次用到时向驱动查询一次，
+// 之后由本文件的每次 set/restore 同步更新，每次 draw 不再同步回读驱动。
+// 成立前提：Cesium 1.143 从不调用 uniformBlockBinding/bindBufferBase/bindBufferRange，
+// 本文件是这些状态的唯一写入方且总会恢复；外部代码若在两次调用之间改了这些绑定，镜像会过期。
+// 嵌套调用也正确：镜像记录的是当前值（可能是外层刚设的），不是「静止」值。
+const bindingMirrors = new WeakMap() // WebGL2RenderingContext -> mirror
+function bindingMirror(gl) {
+  let mirror = bindingMirrors.get(gl)
+  if (!mirror) {
+    mirror = {
+      limit: gl.getParameter(gl.MAX_UNIFORM_BUFFER_BINDINGS),
+      generic: undefined,
+      points: new Map(), // point -> { buffer, offset, size }
+      genericBinding() {
+        if (this.generic === undefined) this.generic = gl.getParameter(gl.UNIFORM_BUFFER_BINDING)
+        return this.generic
+      },
+      point(index) {
+        let state = this.points.get(index)
+        if (!state) {
+          state = { buffer: gl.getIndexedParameter(gl.UNIFORM_BUFFER_BINDING, index),
+            offset: gl.getIndexedParameter(gl.UNIFORM_BUFFER_START, index), size: gl.getIndexedParameter(gl.UNIFORM_BUFFER_SIZE, index) }
+          this.points.set(index, state)
+        }
+        return state
+      },
+    }
+    bindingMirrors.set(gl, mirror)
+  }
+  return mirror
+}
+function blockBinding(gl, program, layout, block) {
+  let point = layout.bindings.get(block)
+  if (point === undefined) {
+    point = gl.getActiveUniformBlockParameter(program, block, gl.UNIFORM_BLOCK_BINDING)
+    layout.bindings.set(block, point)
+  }
+  return point
+}
 
 export function withUniformBlocks(gl, programs, bindings, callback) {
-  const limit = gl.getParameter(gl.MAX_UNIFORM_BUFFER_BINDINGS)
+  const limit = bindingMirror(gl).limit
   if (bindings.length > limit) throw new Error('Not enough uniform buffer bindings')
   const mappings = [], used = new Set(), occupied = new Set()
   try {
@@ -98,7 +139,7 @@ export function withUniformBlocks(gl, programs, bindings, callback) {
       if (!program._program) throw new Error('Uniform block program not initialized')
       let layout = blockLayoutCache.get(program._program)
       if (!layout) {
-        layout = { count: gl.getProgramParameter(program._program, gl.ACTIVE_UNIFORM_BLOCKS), blocks: new Map() }
+        layout = { count: gl.getProgramParameter(program._program, gl.ACTIVE_UNIFORM_BLOCKS), blocks: new Map(), bindings: new Map() }
         blockLayoutCache.set(program._program, layout)
       }
       const requested = new Set()
@@ -113,13 +154,13 @@ export function withUniformBlocks(gl, programs, bindings, callback) {
         }
         if (!entry) return
         if (entry.size !== buffer.byteLength) throw new Error(`Uniform block ${name} layout size ${entry.size} differs from ${buffer.byteLength}`)
-        const previous = gl.getActiveUniformBlockParameter(program._program, entry.block, gl.UNIFORM_BLOCK_BINDING)
-        mappings.push({ program: program._program, block: entry.block, previous, index, applied: false })
+        const previous = blockBinding(gl, program._program, layout, entry.block)
+        mappings.push({ program: program._program, layout, block: entry.block, previous, index, applied: false })
         requested.add(entry.block)
         used.add(index)
       })
       for (let block = 0; block < layout.count; block++) {
-        if (!requested.has(block)) occupied.add(gl.getActiveUniformBlockParameter(program._program, block, gl.UNIFORM_BLOCK_BINDING))
+        if (!requested.has(block)) occupied.add(blockBinding(gl, program._program, layout, block))
       }
     }
     const indices = [...used]
@@ -132,12 +173,17 @@ export function withUniformBlocks(gl, programs, bindings, callback) {
     }
     for (const mapping of mappings) {
       gl.uniformBlockBinding(mapping.program, mapping.block, points.get(mapping.index))
+      mapping.layout.bindings.set(mapping.block, points.get(mapping.index))
       mapping.applied = true
     }
     const bind = index => index === indices.length ? callback()
       : bindings[indices[index]].buffer.withBinding(points.get(indices[index]), () => bind(index + 1))
     return bind(0)
   } finally {
-    for (const { program, block, previous, applied } of mappings.reverse()) if (applied) gl.uniformBlockBinding(program, block, previous)
+    for (const { program, layout, block, previous, applied } of mappings.reverse()) {
+      if (!applied) continue
+      gl.uniformBlockBinding(program, block, previous)
+      layout.bindings.set(block, previous)
+    }
   }
 }
