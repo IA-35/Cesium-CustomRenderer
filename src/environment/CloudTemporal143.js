@@ -20,6 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 
 export const cloudTemporalResolveShader = `
 precision highp sampler2D;
@@ -98,6 +99,8 @@ void main() {
 const copyDepthShader = `uniform highp sampler2D u_currentDepth;
 in vec2 v_textureCoordinates;
 void main() { out_FragColor = texture(u_currentDepth, v_textureCoordinates); }`
+// 着色器预热用：两个全屏 pass 都在环境门控之后执行。
+export const CLOUD_TEMPORAL_SHADERS = Object.freeze([cloudTemporalResolveShader, copyDepthShader])
 
 // Independent cloud-only history: color.rgb is linear radiance, color.a is T;
 // Input depth.r is weighted camera-ray distance in metres (20M means no cloud),
@@ -180,7 +183,7 @@ export default class CloudTemporal143 {
       for (const key of ['color', 'depth']) {
         const framebuffer = new C.Framebuffer({ context, colorTextures: [target[key]], destroyAttachments: false })
         target[`${key}Framebuffer`] = framebuffer
-        if (framebuffer.status !== context._gl.FRAMEBUFFER_COMPLETE) throw new Error('Cloud history framebuffer incomplete')
+        if (!checkFramebufferComplete143(context, framebuffer)) throw new Error('Cloud history framebuffer incomplete')
       }
     }
     this.renderState = C.RenderState.fromCache({ viewport: new C.BoundingRectangle(0, 0, width, height), depthTest: { enabled: false }, depthMask: false })

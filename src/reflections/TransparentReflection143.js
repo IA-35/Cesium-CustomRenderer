@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { usesOit, oitAccumulationTextureOf, oitRevealageTextureOf, oitMrtSupported, frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { transparentReflectionSources } from './transparentReflectionShader143.js'
@@ -169,7 +170,7 @@ export default class TransparentReflection143 {
     for (const name of ['delta', 'output']) {
       target[name] = new C.Texture({ context, width, height, pixelFormat: C.PixelFormat.RGBA, pixelDatatype: C.PixelDatatype.FLOAT, sampler })
       target[`${name}Framebuffer`] = new C.Framebuffer({ context, colorTextures: [target[name]], destroyAttachments: false })
-      if (target[`${name}Framebuffer`].status !== context._gl.FRAMEBUFFER_COMPLETE) throw new Error('Transparent reflection framebuffer is incomplete')
+      if (!checkFramebufferComplete143(context, target[`${name}Framebuffer`])) throw new Error('Transparent reflection framebuffer is incomplete')
     }
     target.passState = new C.PassState(context)
     target.passState.viewport = new C.BoundingRectangle(0, 0, width, height)

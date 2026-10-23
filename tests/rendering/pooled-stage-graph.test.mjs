@@ -16,7 +16,7 @@ function engine() {
 
 test('pooled stage cache declares slots and transfers acquired leases to Render Graph', () => {
   const C = engine()
-  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1, canvas: new EventTarget() } }
+  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1, getParameter() {}, bindFramebuffer() {}, canvas: new EventTarget() } }
   const scene = { context, drawingBufferWidth: 16, drawingBufferHeight: 8 }
   const stages = [
     { name: 'raw', textureScale: 0.5, pixelFormat: 1, pixelDatatype: 2, uniforms: {}, clearColor: {} },

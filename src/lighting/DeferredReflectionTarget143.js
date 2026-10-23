@@ -1,4 +1,5 @@
 // Optional lighting outputs. No geometry replay and no additional G-buffer slots.
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 export default class DeferredReflectionTarget143 {
   constructor(C,scene,device=null){this.C=C;this.scene=scene;this.device=device}
   update(color){
@@ -19,7 +20,7 @@ export default class DeferredReflectionTarget143 {
       t.auxiliary=framebuffer([t.reflectionSpecular,t.reflectionResponse])
       t.snapshot=framebuffer([t.opaqueColor])
       t.color=framebuffer([color])
-      for(const name of ['lighting','auxiliary','snapshot','color'])if(t[name].status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Deferred reflection target incomplete')
+      for(const name of ['lighting','auxiliary','snapshot','color'])if(!checkFramebufferComplete143(ctx,t[name]))throw new Error('Deferred reflection target incomplete')
       t.clear=new C.ClearCommand({framebuffer:t.auxiliary,color:C.Color.TRANSPARENT})
       t.options={depthTest:{enabled:false},depthMask:false,blending:{enabled:false}}
       t.copy=ctx.createViewportQuadCommand('uniform sampler2D source;in vec2 v_textureCoordinates;void main(){out_FragColor=texture(source,v_textureCoordinates);}',{renderState:C.RenderState.fromCache(t.options),uniformMap:{source:()=>this.input}})

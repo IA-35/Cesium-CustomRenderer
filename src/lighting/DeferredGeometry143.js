@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { frustumBinsOf, usesOit, usesWebVR, usesInvertClassification, globeTranslucent, globeColorManagerOf, sceneColorManagerOf, globeColorFramebufferOf, sceneColorFramebufferOf } from '../scene/cesiumPrivate143.js'
 import { materialSources } from '../channels/materialShader143.js'
 import { invalidMaterialSources, transparencySources } from '../channels/MaterialChannels143.js'
@@ -185,7 +186,7 @@ export default class DeferredGeometry143 {
       for (const manager of [globeColorManagerOf(s),sceneColorManagerOf(s)]) {
         const native=manager?.framebuffer
         if(native?.depthStencilTexture||native?.depthTexture) {
-          if(this.alias(native).status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Native-depth MRT alias incomplete')
+          if(!checkFramebufferComplete143(ctx,this.alias(native)))throw new Error('Native-depth MRT alias incomplete')
         }
       }
       this.frame = s.frameState.frameNumber
@@ -214,7 +215,7 @@ export default class DeferredGeometry143 {
       const coverageFramebuffer=device ? (resources.push(device.createFramebuffer([transparency])),resources.at(-1).framebuffer) : new C.Framebuffer({context:ctx,colorTextures:[transparency],destroyAttachments:false})
       this.target={width:w,height:h,normalRoughMetal,emissiveFlags,eyeDepth,albedoOcclusion,transparency,colors,textures,resources,framebuffer,coverageFramebuffer}
       this.bindGraphTargets()
-      if(this.target.framebuffer.status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Compact MRT incomplete')
+      if(!checkFramebufferComplete143(ctx,this.target.framebuffer))throw new Error('Compact MRT incomplete')
       this.target.clear=new C.ClearCommand({framebuffer:this.target.framebuffer,color:C.Color.TRANSPARENT})
       this.target.clearCoverage=new C.ClearCommand({framebuffer:this.target.coverageFramebuffer,color:C.Color.TRANSPARENT})
     } catch(error) {

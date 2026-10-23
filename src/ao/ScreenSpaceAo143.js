@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { aoShader, bilateralShader, resolveShader } from './aoShaders143.js'
 import { hbaoShader } from './hbaoShader143.js'
@@ -133,7 +134,7 @@ export default class ScreenSpaceAo143 {
     const gl = context._gl, read = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), draw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING)
     try {
       for (const target of pending) {
-        if (target.status !== gl.FRAMEBUFFER_COMPLETE) throw new Error('AO framebuffer is incomplete')
+        if (!checkFramebufferComplete143(context, target)) throw new Error('AO framebuffer is incomplete')
         this.validatedTargets.add(target)
       }
     } finally { gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw) }

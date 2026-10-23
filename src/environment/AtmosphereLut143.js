@@ -1,11 +1,14 @@
 /* Hillaire atmosphere LUT scheduling adapted from webgpu-cesium, Apache-2.0.
  * See reference/hillaire/NOTICE.md. Cesium owns the WebGL context. */
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { PLANET_RADIUS_M, ATMOSPHERE_RADIUS_M, RAYLEIGH_BETA, MIE_BETA, ABSORPTION_BETA,
   RAYLEIGH_SCALE_HEIGHT, MIE_SCALE_HEIGHT, OZONE_CENTER_HEIGHT, OZONE_FALLOFF, MIE_G } from './atmosphereScattering143.js'
 import { hillaireTransmittanceShader, hillaireMultipleScatteringShader, hillaireSkyViewShader } from './hillaireAtmosphereGLSL143.js'
 
 export const ATMOSPHERE_LUT_SIZES = Object.freeze({ transmittance: [256, 64], multipleScattering: [32, 32], skyView: [192, 108] })
 const shaders = { transmittance: hillaireTransmittanceShader, multipleScattering: hillaireMultipleScatteringShader, skyView: hillaireSkyViewShader }
+// 着色器预热用：这三个 LUT pass 在环境门控之后才执行（见 HdrEnvironmentPass143）。
+export const ATMOSPHERE_LUT_SHADERS = Object.freeze(Object.values(shaders))
 const passKeys = { transmittance: 'atmosphere.transmittanceLut', multipleScattering: 'atmosphere.multiscatterLut', skyView: 'atmosphere.skyViewLut' }
 const components = (v, fallback) => fallback.map((value, index) => v?.[index] ?? v?.[['x', 'y', 'z', 'w'][index]] ?? value)
 const finite = values => values.every(Number.isFinite)
@@ -133,7 +136,7 @@ export default class AtmosphereLut143 {
         if (this.rhi) { framebufferResource = this.rhi.createFramebuffer([texture]); this.resources.push(framebufferResource) }
         else framebufferResource = own(new C.Framebuffer({ context, colorTextures: [texture], destroyAttachments: false }), 'framebuffer')
         const framebuffer = framebufferResource.framebuffer
-        if (framebuffer.status !== context._gl.FRAMEBUFFER_COMPLETE) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
+        if (!checkFramebufferComplete143(context, framebuffer)) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
         target[name] = { texture, framebuffer }
         if (!this.states[name]) this.states[name] = C.RenderState.fromCache({ viewport: new C.BoundingRectangle(0, 0, width, height), depthTest: { enabled: false }, depthMask: false })
       }
@@ -193,9 +196,9 @@ export default class AtmosphereLut143 {
         command.renderState = this.states[name]; passState.viewport = this.states[name].viewport
         // framebuffer.status 和 getError 都是同步 GL 查询，只在介质变化（含首次构建）时检查；
         // 仅 Sky-View 的高频更新沿用已验证过的目标。分配时已逐个检查过完整性。
-        if (mediumDirty && target.framebuffer.status !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
-        // Cesium 1.143's status getter binds/unbinds raw GL without repairing
-        // Context's binding cache. Force the real draw to bind its target.
+        if (mediumDirty && !checkFramebufferComplete143(context, target.framebuffer)) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
+        // The surrounding scene pass may have rebound framebuffers with raw GL.
+        // Force the real draw to bind its target instead of trusting the cache.
         context._currentFramebuffer = undefined
         let executed = false
         const result = this.runPass(passKeys[name], () => { command.execute(context, passState); executed = true; return true })

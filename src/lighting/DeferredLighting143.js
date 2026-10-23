@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { oitOpaqueTextureOf } from '../scene/cesiumPrivate143.js'
 import { createFrameBridge } from '../pipeline/FrameBridge143.js'
 import DeferredGeometry143 from './DeferredGeometry143.js'
@@ -127,7 +128,7 @@ export default class DeferredLighting143 {
     if(!this.targets.has(texture)){
       const resource=this.rhi?this.rhi.createFramebuffer([texture]):new C.Framebuffer({context:ctx,colorTextures:[texture],destroyAttachments:false})
        const fb=this._framebufferOf(resource)
-      if(fb.status!==ctx._gl.FRAMEBUFFER_COMPLETE){this._releaseFramebuffer(resource);throw new Error('Lighting target incomplete')}
+      if(!checkFramebufferComplete143(ctx,fb)){this._releaseFramebuffer(resource);throw new Error('Lighting target incomplete')}
       this.targets.set(texture,resource)
     }
     return this._framebufferOf(this.targets.get(texture))

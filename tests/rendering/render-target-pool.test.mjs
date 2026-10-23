@@ -10,26 +10,26 @@ function engine(){
 }
 const spec={width:64,height:32,pixelFormat:1,pixelDatatype:2,samples:1}
 test('leases reuse only matching released targets and invalidate old handles',()=>{
- const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1}}),a=pool.acquire('ao',spec),texture=a.texture
+ const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}}),a=pool.acquire('ao',spec),texture=a.texture
  const b=pool.acquire('bloom',spec);assert.notEqual(b.texture,texture)
  a.release();assert.throws(()=>a.texture,/expired/)
  const c=pool.acquire('bloom',spec);assert.equal(c.texture,texture);assert.equal(pool.getDiagnostics().reused,1)
  b.release();c.release();pool.destroy();assert.equal(texture.isDestroyed(),true)
 })
 test('read reservations prohibit framebuffer feedback even after a lease is released',()=>{
- const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1}}),a=pool.acquire('ao',spec),texture=a.texture
+ const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}}),a=pool.acquire('ao',spec),texture=a.texture
  const unreserve=pool.reserve([texture]);a.release();const b=pool.acquire('bloom',spec)
  assert.notEqual(b.texture,texture);unreserve();b.release();pool.destroy()
 })
 test('descriptor and context identity separate targets; owner invalidation releases only its leases',()=>{
- const C=engine(),ctx={_gl:{FRAMEBUFFER_COMPLETE:1}},pool=new RenderTargetPool143(C,ctx),a=pool.acquire('ao',spec)
+ const C=engine(),ctx={_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}},pool=new RenderTargetPool143(C,ctx),a=pool.acquire('ao',spec)
  assert.throws(()=>pool.acquire('wrong',{...spec,context:{}}),/context/)
  const b=pool.acquire('bloom',{...spec,width:32});pool.releaseOwner('ao')
  assert.throws(()=>a.framebuffer,/expired/);assert.ok(b.framebuffer);assert.equal(pool.getDiagnostics().live,1)
  b.release();pool.destroy();assert.equal(pool.getDiagnostics().currentBytes,0)
 })
 test('resize invalidates every generation and frees storage without touching borrowed inputs',()=>{
- const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1}}),a=pool.acquire('ao',spec),texture=a.texture,borrowed={dead:false}
+ const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}}),a=pool.acquire('ao',spec),texture=a.texture,borrowed={dead:false}
  const unreserve=pool.reserve([borrowed]);pool.invalidate();assert.equal(texture.isDestroyed(),true);assert.throws(()=>a.texture,/expired/)
  assert.equal(borrowed.dead,false);unreserve();pool.destroy()
 })
@@ -37,13 +37,13 @@ test('failed framebuffer allocation releases the texture',()=>{
  const C=engine();let texture
  const Original=C.Texture;C.Texture=class extends Original{constructor(o){super(o);texture=this}}
  C.Framebuffer=class{constructor(){throw new Error('allocation failed')}}
- const pool=new RenderTargetPool143(C,{_gl:{FRAMEBUFFER_COMPLETE:1}})
+ const pool=new RenderTargetPool143(C,{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}})
  assert.throws(()=>pool.acquire('ao',spec),/allocation failed/);assert.equal(texture.dead,true);assert.equal(pool.getDiagnostics().live,0)
  pool.destroy()
 })
 
 test('retired storage survives an outstanding reader but its lease expires immediately',()=>{
- const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1}}),a=pool.acquire('ao',spec),texture=a.texture
+ const pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}}),a=pool.acquire('ao',spec),texture=a.texture
  const unreserve=pool.reserve([texture]);pool.invalidate()
  assert.equal(a.valid,false);assert.throws(()=>a.texture,/expired/);assert.equal(texture.isDestroyed(),false)
  const b=pool.acquire('bloom',spec);assert.notEqual(b.texture,texture)
@@ -51,7 +51,7 @@ test('retired storage survives an outstanding reader but its lease expires immed
 })
 
 test('context loss invalidates live handles and releases their owned attachments',()=>{
- const canvas=new EventTarget(),pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1,canvas}})
+ const canvas=new EventTarget(),pool=new RenderTargetPool143(engine(),{_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {},canvas}})
  const a=pool.acquire('ao',spec),texture=a.texture,framebuffer=a.framebuffer
  canvas.dispatchEvent(new Event('webglcontextlost'))
  assert.equal(a.valid,false);assert.equal(texture.isDestroyed(),true);assert.equal(framebuffer.isDestroyed(),true)
@@ -60,7 +60,7 @@ test('context loss invalidates live handles and releases their owned attachments
 })
 
 test('a later HDR consumer failure releases the current pooled color lease',()=>{
- const ctx={_gl:{FRAMEBUFFER_COMPLETE:1}},pool=getRenderTargetPool(engine(),ctx),lease=pool.acquire('ao',spec),texture=lease.texture
+ const ctx={_gl:{FRAMEBUFFER_COMPLETE:1, getParameter() {}, bindFramebuffer() {}}},pool=getRenderTargetPool(engine(),ctx),lease=pool.acquire('ao',spec),texture=lease.texture
  const scene={postProcessStages:{execute(){assert.fail('native tonemap must not retry after failure')}}}
  const removeAo=registerHdrEffect(scene,10,()=>texture)
  const removeNext=registerHdrEffect(scene,20,()=>{throw new Error('consumer failed')})

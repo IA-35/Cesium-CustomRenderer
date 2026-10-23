@@ -58,7 +58,7 @@ function transientFixture() {
       destroy() {}
     },
   }
-  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1, canvas: { addEventListener() {}, removeEventListener() {} } } }
+  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1, getParameter() {}, bindFramebuffer() {}, canvas: { addEventListener() {}, removeEventListener() {} } } }
   return { C, scene: { context }, created }
 }
 

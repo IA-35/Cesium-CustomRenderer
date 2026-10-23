@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 import { sceneColorFramebufferOf, globeColorFramebufferOf } from '../scene/cesiumPrivate143.js'
 import RenderItemExecutor143 from '../renderer/RenderItemExecutor143.js'
 import { motionSources143 } from './motionShaders143.js'
@@ -134,7 +135,7 @@ export default class TaaMotion143 {
     if (rhi) { this.colorResource = rhi.createTexture(options); this.texture = this.colorResource.texture
       this.fbResource = rhi.createFramebuffer([this.texture]); this.framebuffer = this.fbResource.framebuffer }
     else { this.texture = new C.Texture(options); this.framebuffer = new C.Framebuffer({ context, colorTextures: [this.texture], destroyAttachments: false }) }
-    if (this.framebuffer.status !== context._gl.FRAMEBUFFER_COMPLETE) throw new Error('TRAA motion framebuffer incomplete')
+    if (!checkFramebufferComplete143(context, this.framebuffer)) throw new Error('TRAA motion framebuffer incomplete')
     this.clear = new C.ClearCommand({ framebuffer: this.framebuffer, color: C.Color.TRANSPARENT })
   }
   alias(native) {
@@ -144,7 +145,7 @@ export default class TaaMotion143 {
       if (!depth) throw new Error('TRAA requires native depth texture')
       value = new this.C.Framebuffer({ context: this.scene.context, colorTextures: [this.texture], ...depth, destroyAttachments: false })
       this.aliases.set(native, value)
-      if (value.status !== this.scene.context._gl.FRAMEBUFFER_COMPLETE) throw new Error('TRAA native depth alias incomplete')
+      if (!checkFramebufferComplete143(this.scene.context, value)) throw new Error('TRAA native depth alias incomplete')
     }
     return value
   }

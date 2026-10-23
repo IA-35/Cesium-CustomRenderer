@@ -114,6 +114,10 @@ viewer.timeline.zoomTo(
 const singleFrustumSample = query.get('singleFrustum') === '1'
 if (singleFrustumSample) viewer.camera.frustum.far = 50000
 viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#52654c')
+// 校园地形是 3D Tiles；globe 没有地形服务、默认也没有影像，只是一张底色椭球。默认 SSE 2 在近地视角
+// 要画 253 块瓦片（每块一条 draw），8 降到 49 块，scene.render CPU 约 −2.5 ms；三个视角的画面差异
+// 只在建筑与地面交界处的个别像素（2026-10-23 实测）。加影像时可酌情调回。
+viewer.scene.globe.maximumScreenSpaceError = 8
 viewer.scene.renderError.addEventListener((scene, error) => { errors.push(error.message); status.textContent = error.message })
 const requestedShadow = query.get('shadow')
 // ?environment=off disables the volumetric environment pass (clouds + volumetric fog) so its

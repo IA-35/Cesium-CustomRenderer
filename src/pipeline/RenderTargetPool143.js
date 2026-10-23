@@ -1,3 +1,4 @@
+import { checkFramebufferComplete143 } from '../rhi/framebufferState143.js'
 const pools=new WeakMap()
 export function getRenderTargetPool(C,context){
   let pool=pools.get(context)
@@ -31,7 +32,7 @@ export default class RenderTargetPool143 {
         texture=new C.Texture({context:this.context,width:spec.width,height:spec.height,pixelFormat:spec.pixelFormat,pixelDatatype:spec.pixelDatatype,
           sampler:new C.Sampler({minificationFilter:C.TextureMinificationFilter.NEAREST,magnificationFilter:C.TextureMagnificationFilter.NEAREST})})
         framebuffer=new C.Framebuffer({context:this.context,...(spec.depth?{depthTexture:texture}:{colorTextures:[texture]}),destroyAttachments:false})
-        if(framebuffer.status!==this.context._gl.FRAMEBUFFER_COMPLETE)throw new Error('Pooled framebuffer incomplete')
+        if(!checkFramebufferComplete143(this.context,framebuffer))throw new Error('Pooled framebuffer incomplete')
       }catch(error){if(framebuffer&&!framebuffer.isDestroyed())framebuffer.destroy();if(texture&&!texture.isDestroyed())texture.destroy();throw error}
       entry={id:this.nextId++,key,texture,framebuffer,descriptor,version:0,bytes:texture.sizeInBytes};this.entries.push(entry);this.allocated++
     }

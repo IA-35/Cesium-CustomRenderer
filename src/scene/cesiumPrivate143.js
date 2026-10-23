@@ -43,3 +43,9 @@ export const clearsGlobeDepth = scene => scene?._environmentState?.clearGlobeDep
 export const usesDepthPlane = scene => scene?._environmentState?.useDepthPlane === true
 export const depthPlaneCommandOf = scene => scene?._depthPlane?._command
 export const globeTranslucent = scene => scene?._globeTranslucencyState?.translucent === true
+
+// ---- Context ----
+// Cesium 的 framebuffer 绑定缓存：bindFramebuffer 只在目标与它不同时才真正绑定。
+// 直接用原生 GL 改绑定的代码必须让它与实际绑定保持一致（见 src/rhi/framebufferState143.js）。
+export const currentFramebufferOf = context => context?._currentFramebuffer
+export const setCurrentFramebuffer = (context, framebuffer) => { if (context) context._currentFramebuffer = framebuffer }

@@ -18,7 +18,7 @@ test('Deferred reflection auxiliary targets allocate through the WebGL RHI', () 
     createTexture(spec) { const texture = { ...spec, isDestroyed: () => false }; return { texture, release: () => released.push(texture) } },
     createFramebuffer(colorTextures) { const framebuffer = { colorTextures, status: 1, isDestroyed: () => false }; return { framebuffer, release: () => released.push(framebuffer) } }
   }
-  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1 }, createViewportQuadCommand() { return { shaderProgram: { isDestroyed: () => true }, execute() {} } } }
+  const context = { _gl: { FRAMEBUFFER_COMPLETE: 1, getParameter() {}, bindFramebuffer() {} }, createViewportQuadCommand() { return { shaderProgram: { isDestroyed: () => true }, execute() {} } } }
   const target = new DeferredReflectionTarget143(C, { context }, device)
   const color = { width: 8, height: 4 }
   const output = target.update(color)
