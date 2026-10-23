@@ -1,3 +1,4 @@
+import { oitOpaqueTextureOf } from '../scene/cesiumPrivate143.js'
 import { createFrameBridge } from '../pipeline/FrameBridge143.js'
 import DeferredGeometry143 from './DeferredGeometry143.js'
 import { deferredLightingShaderSource } from './deferredLightingShader143.js'
@@ -112,7 +113,7 @@ export default class DeferredLighting143 {
   _releaseFramebuffer(resource){if(!resource)return;if(resource.release)resource.release();else if(!resource.isDestroyed?.())resource.destroy()}
   _framebufferOf(resource){return resource?.framebuffer||resource}
   writeTarget(){
-    const C=this.C,ctx=this.scene.context,texture=this.scene._view.oit?._opaqueTexture
+    const C=this.C,ctx=this.scene.context,texture=oitOpaqueTextureOf(this.scene)
     if(!texture||texture.isDestroyed())return null
     if(this.getOptions().screenSpaceReflectionEnabled){
       for(const fb of this.targets.values())this._releaseFramebuffer(fb)
@@ -151,7 +152,7 @@ export default class DeferredLighting143 {
         this.setGeometryAvailable(false)
         return
       }
-      const opaque=this.scene._view.oit._opaqueTexture
+      const opaque=oitOpaqueTextureOf(this.scene)
       const ao=this.terms.ao?this.prepareAo(opaque):null,shadow=this.terms.shadow?this.getShadowVisibility():null
       this.stats.lastAoValid=!!ao;this.stats.lastShadowValid=!!shadow
       const state=new C.PassState(ctx)

@@ -1,3 +1,4 @@
+import { sceneColorFramebufferOf, globeColorFramebufferOf } from '../scene/cesiumPrivate143.js'
 import RenderItemExecutor143 from '../renderer/RenderItemExecutor143.js'
 import { motionSources143 } from './motionShaders143.js'
 import { projectOcclusionBounds } from '../visibility/OcclusionCulling143.js'
@@ -86,8 +87,8 @@ export default class TaaMotion143 {
     const { scene, C } = this, passes = scene.frameState.passes
     if (!passes.render || passes.pick || passes.depth || command.pass !== C.Pass.OPAQUE) return false
     if (kind !== undefined) return kind === 'sceneColor' || kind === 'globeColor'
-    const target = command.framebuffer || passState?.framebuffer, view = scene._view
-    return target && (target === view?.sceneFramebuffer?._colorFramebuffer?.framebuffer || target === view?.globeDepth?.colorFramebufferManager?.framebuffer)
+    const target = command.framebuffer || passState?.framebuffer
+    return target && (target === sceneColorFramebufferOf(scene) || target === globeColorFramebufferOf(scene))
   }
   begin(active, currentView, currentProjection, previousView, previousProjection, historyValid) {
     this.active = !!active && !!this.detach && !this.failed

@@ -1,3 +1,4 @@
+import { frustumBinsOf, usesOit, usesWebVR, usesInvertClassification, globeTranslucent, globeColorManagerOf, sceneColorManagerOf, globeColorFramebufferOf, sceneColorFramebufferOf } from '../scene/cesiumPrivate143.js'
 import { materialSources } from '../channels/materialShader143.js'
 import { invalidMaterialSources, transparencySources } from '../channels/MaterialChannels143.js'
 import { materialTargetSupport } from '../channels/MaterialTarget143.js'
@@ -114,10 +115,10 @@ export default class DeferredGeometry143 {
     if (s.context._gl.isContextLost()) return 'Context lost'
     if (!s.highDynamicRange || s.mode !== C.SceneMode.SCENE3D || !(s.camera.frustum instanceof C.PerspectiveFrustum)) return 'Requires HDR 3D perspective'
     if (!s.frameState.passes.render || s.frameState.passes.pick || s.frameState.passes.depth) return 'Not a color frame'
-    if (!s._environmentState.useOIT) return 'Sorted transparency uses enhanced rendering'
+    if (!usesOit(s)) return 'Sorted transparency uses enhanced rendering'
     if (s.msaaSamples > 1) return 'MSAA uses enhanced rendering; compact geometry has single-sample native depth'
     if (o.antialiasing === 'taa') return 'TAA combination uses enhanced rendering until its deferred contract is available'
-    if (s._environmentState.useWebVR || s._environmentState.useInvertClassification || s._globeTranslucencyState?.translucent) return 'Unsupported view/classification mode'
+    if (usesWebVR(s) || usesInvertClassification(s) || globeTranslucent(s)) return 'Unsupported view/classification mode'
     return null
   }
 
@@ -129,7 +130,7 @@ export default class DeferredGeometry143 {
     this.reason = this.scopeReason()
     if (this.reason || this.owner.failed) { this.owner.setGeometryAvailable(false); return }
     const C = this.C, s = this.scene, ctx = s.context
-    const bins = s._view.frustumCommandsList
+    const bins = frustumBinsOf(s)
     if (!bins?.length) { this.reason = 'No geometry'; this.owner.setGeometryAvailable(false); return }
     for (const bin of bins) {
       if ([C.Pass.TERRAIN_CLASSIFICATION, C.Pass.CESIUM_3D_TILE_CLASSIFICATION,
@@ -181,7 +182,7 @@ export default class DeferredGeometry143 {
       this.allocate()
       this.target.clear.execute(ctx)
       this.target.clearCoverage.execute(ctx)
-      for (const manager of [s._view.globeDepth?.colorFramebufferManager,s._view.sceneFramebuffer?._colorFramebuffer]) {
+      for (const manager of [globeColorManagerOf(s),sceneColorManagerOf(s)]) {
         const native=manager?.framebuffer
         if(native?.depthStencilTexture||native?.depthTexture) {
           if(this.alias(native).status!==ctx._gl.FRAMEBUFFER_COMPLETE)throw new Error('Native-depth MRT alias incomplete')
@@ -272,8 +273,7 @@ export default class DeferredGeometry143 {
     if(!this.ready||this.frame!==s.frameState.frameNumber||!s.frameState.passes.render||s.frameState.passes.pick)return false
     if(![C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE].includes(command.pass))return false
     const fb=command.framebuffer||passState?.framebuffer
-    const view=s._view
-    return !!fb&&(fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer)
+    return !!fb&&(fb===globeColorFramebufferOf(s)||fb===sceneColorFramebufferOf(s))
   }
 
   alias(native) {
@@ -338,7 +338,7 @@ export default class DeferredGeometry143 {
     try {
       us.updateFrustum(s.camera.frustum)
       us.updatePass(C.Pass.TRANSLUCENT)
-      for(const bin of s._view.frustumCommandsList)for(let i=0;i<(bin.indices[C.Pass.TRANSLUCENT]||0);i++){
+      for(const bin of frustumBinsOf(s))for(let i=0;i<(bin.indices[C.Pass.TRANSLUCENT]||0);i++){
         let command=bin.commands[C.Pass.TRANSLUCENT][i]
         if(s.frameState.useLogDepth&&command.derivedCommands?.logDepth)command=command.derivedCommands.logDepth.command
         if(s.highDynamicRange&&command.derivedCommands?.hdr)command=command.derivedCommands.hdr.command

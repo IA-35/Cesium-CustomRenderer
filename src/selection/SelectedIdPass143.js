@@ -1,5 +1,6 @@
 // Reuse the native silhouette and its pick shaders. Only the redundant opaque
 // occluder redraw is replaced, by copying the depth already rendered this frame.
+import { usesPostProcessSelected, selectedIdFramebufferOf, frustumBinsOf, clearsGlobeDepth, usesInvertClassification, globeTranslucent, usesGlobeDepthFramebuffer, globeColorFramebufferOf, sceneColorFramebufferOf } from '../scene/cesiumPrivate143.js'
 export function attachSelectedStageCache(collection) {
   const records = new Map(), previous = collection.update
   const hadOwn = Object.prototype.hasOwnProperty.call(collection, 'update')
@@ -100,13 +101,13 @@ export default class SelectedIdPass143 {
     const context = scene.context, dispatcher = context._ccrDrawDispatcher, previous = context.draw, pass = this
     this.previous = previous
     this.hook = function(command, passState, ...args) {
-      if (!scene._environmentState?.usePostProcessSelected) {
+      if (!usesPostProcessSelected(scene)) {
         pass.owners = null
         return previous.call(this, command, passState, ...args)
       }
       if (pass.dead || !pass.enabled || !active() || !scene.frameState.passes.render ||
           scene.frameState.passes.pick || scene.frameState.passes.pickVoxel) return previous.call(this, command, passState, ...args)
-      const id = scene._view?.sceneFramebuffer?.idFramebuffer
+      const id = selectedIdFramebufferOf(scene)
       if (!id || (command.framebuffer || passState?.framebuffer) !== id) return previous.call(this, command, passState, ...args)
       if (pass.frame !== scene.frameState.frameNumber) pass.prepare(id)
       if (pass.owners && !keepIdCommand(C, command, pass.owners)) { pass.stats.skipped++; return }
@@ -115,12 +116,12 @@ export default class SelectedIdPass143 {
     }
     if (dispatcher) this.dispatcherOff = dispatcher.addHandler(event => {
       const command=event.command,passState=event.passState
-      if (!scene._environmentState?.usePostProcessSelected) { pass.owners=null; return 'continue' }
+      if (!usesPostProcessSelected(scene)) { pass.owners=null; return 'continue' }
       if (pass.dead||!pass.enabled||!active()||!scene.frameState.passes.render||scene.frameState.passes.pick||scene.frameState.passes.pickVoxel) return 'continue'
       // 有调度器快照时直接比目标种类，只在每帧第一次 ID 绘制时才去取 idFramebuffer。
       if (event.target!==undefined){ if (event.target!=='selectedId') return 'continue' }
-      else { const id=scene._view?.sceneFramebuffer?.idFramebuffer; if (!id||(command.framebuffer||passState?.framebuffer)!==id) return 'continue' }
-      if (pass.frame!==scene.frameState.frameNumber)pass.prepare(scene._view.sceneFramebuffer.idFramebuffer)
+      else { const id=selectedIdFramebufferOf(scene); if (!id||(command.framebuffer||passState?.framebuffer)!==id) return 'continue' }
+      if (pass.frame!==scene.frameState.frameNumber)pass.prepare(selectedIdFramebufferOf(scene))
       if (pass.owners&&!keepIdCommand(C,command,pass.owners)){pass.stats.skipped++;return 'skip'}
       pass.stats.drawn++;return 'continue'
     },{name:'selected-id',priority:-10,targets:['selectedId'],frame:{render:true,pick:false,pickVoxel:false}})
@@ -128,17 +129,17 @@ export default class SelectedIdPass143 {
   }
 
   prepare(id) {
-    const s = this.scene, state = s._environmentState, context = s.context, view = s._view
+    const s = this.scene, context = s.context
     this.frame = s.frameState.frameNumber; this.owners = null
     this.stats.skipped = 0; this.stats.drawn = 0
     this.stats.reason = 'native fallback: depth scope'
-    if (!context.webgl2 || s.mode !== this.C.SceneMode.SCENE3D || view.frustumCommandsList.length !== 1 ||
-        s.msaaSamples !== 1 || s.useWebVR || s.debugCommandFilter || state.clearGlobeDepth || state.useInvertClassification ||
-        s._globeTranslucencyState?.translucent) return
+    if (!context.webgl2 || s.mode !== this.C.SceneMode.SCENE3D || frustumBinsOf(s).length !== 1 ||
+        s.msaaSamples !== 1 || s.useWebVR || s.debugCommandFilter || clearsGlobeDepth(s) || usesInvertClassification(s) ||
+        globeTranslucent(s)) return
     const selected = []; collectSelected(s.postProcessStages, selected)
     const owners = selectedOwners(this.C, selected)
     if (!owners) { this.stats.reason = 'native fallback: selection type'; return }
-    const source = state.useGlobeDepthFramebuffer ? view.globeDepth?.framebuffer : view.sceneFramebuffer.framebuffer
+    const source = usesGlobeDepthFramebuffer(s) ? globeColorFramebufferOf(s) : sceneColorFramebufferOf(s)
     const depth = source?.depthStencilTexture, target = id.depthStencilTexture
     if (!depth || !target || source === id || depth.width !== target.width || depth.height !== target.height ||
         depth.pixelFormat !== target.pixelFormat || depth.pixelDatatype !== target.pixelDatatype) return

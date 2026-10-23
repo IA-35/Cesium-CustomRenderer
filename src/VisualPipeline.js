@@ -1,3 +1,4 @@
+import { frustumBinsOf, oitOf, oitMultipassSupported, oitAccumulationTextureOf, oitRevealageTextureOf, usesOit } from './scene/cesiumPrivate143.js'
 import BindingScope143 from './renderer/BindingScope143.js'
 import { normalizeOptions, normalizeColorGrading, defaultFilters } from './presets.js'
 import createColorGrading from './stages/colorGrading.js'
@@ -798,9 +799,7 @@ export default class VisualPipeline {
     const opaqueColor = false
     const albedo = !!this.options.albedoEnabled
     const attachmentsNeeded = 4 + (reflection ? 2 : 0) + (opaqueColor ? 1 : 0) + (albedo ? 1 : 0)
-    const oit = s && s._view && s._view.oit
-    const environment = (s && s._environmentState) || {}
-    const frusta = s && s._view && s._view.frustumCommandsList
+    const frusta = frustumBinsOf(s)
     // frameState 在极简测试夹具里可能不存在；能力探测用于诊断，绝不能因此抛错
     // 而拖垮整条诊断链。
     const frameState = s && s.frameState
@@ -813,11 +812,11 @@ export default class VisualPipeline {
       colorBufferFloat: !!(context && context.colorBufferFloat),
       halfFloatingPointTexture: !!(context && context.halfFloatingPointTexture),
       colorBufferHalfFloat: !!(context && context.colorBufferHalfFloat),
-      useOIT: !!environment.useOIT,
-      hasMrt: !!oit,
-      hasMultipass: !!(oit && oit._translucentMultipass),
-      accumulationTexture: !!(oit && oit._accumulationTexture),
-      revealageTexture: !!(oit && oit._revealageTexture),
+      useOIT: usesOit(s),
+      hasMrt: !!oitOf(s),
+      hasMultipass: oitMultipassSupported(s),
+      accumulationTexture: !!oitAccumulationTextureOf(s),
+      revealageTexture: !!oitRevealageTextureOf(s),
       requestedSamples: this.msaa ? this.msaa.requested : (s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1),
       selectedSamples: s && Number.isFinite(s.msaaSamples) ? s.msaaSamples : 1,
       deferredGeometryActive: !!(this.deferredLighting && this.deferredLighting.enabled === true &&

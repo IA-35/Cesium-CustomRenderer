@@ -1,3 +1,4 @@
+import { frustumBinsOf, globeTranslucent } from '../scene/cesiumPrivate143.js'
 import { registerHdrEffect } from './HdrCoordinator143.js'
 import {withUniformBlocks} from '../buffers/UniformBuffer143.js'
 import CloudTemporal143 from './CloudTemporal143.js'
@@ -44,11 +45,11 @@ export default class HdrEnvironmentPass143 {
     if (!this.scene.highDynamicRange) return 'HDR disabled'
     if (this.scene.mode !== this.C.SceneMode.SCENE3D) return 'requires 3D scene'
     if (this.scene.cameraUnderground) return 'underground camera'
-    if (this.scene._globeTranslucencyState && this.scene._globeTranslucencyState.translucent) return 'translucent globe depth'
+    if (globeTranslucent(this.scene)) return 'translucent globe depth'
     const frustum = this.scene.camera && this.scene.camera.frustum
     if ((this.C.OrthographicFrustum && frustum instanceof this.C.OrthographicFrustum) ||
         (this.C.OrthographicOffCenterFrustum && frustum instanceof this.C.OrthographicOffCenterFrustum)) return 'requires perspective camera'
-    const frustums = this.scene._view && this.scene._view.frustumCommandsList
+    const frustums = frustumBinsOf(this.scene)
     if (!frustums || (frustums.length !== 1 && !(frustums.length === 0 && this.allowEmptyFrustum()))) return 'requires single frustum depth'
     return null
   }
@@ -117,7 +118,7 @@ export default class HdrEnvironmentPass143 {
       this.inputColor = color
       this.environmentGraph?.beginFrame({color,depth})
       this.prepareAtmosphere?.(context)
-      if (this.allowEmptyFrustum() && this.scene._view.frustumCommandsList.length === 0) {
+      if (this.allowEmptyFrustum() && frustumBinsOf(this.scene).length === 0) {
         // A sky-only frame has no native geometry pass to update the projection.
         // Its shaders explicitly ignore both depth textures for this frame.
         uniformState.updateFrustum(this.scene.camera.frustum)
@@ -293,7 +294,7 @@ export default class HdrEnvironmentPass143 {
   getDiagnostics() {
     const unsupported = this._unsupportedReason()
     const scopeReason = this.enabled ? this._scopeReason() : null
-    const frustums = !this._sceneDestroyed() && this.scene._view && this.scene._view.frustumCommandsList
+    const frustums = !this._sceneDestroyed() && frustumBinsOf(this.scene)
     return {
       enabled: this.enabled,
       supported: !unsupported,

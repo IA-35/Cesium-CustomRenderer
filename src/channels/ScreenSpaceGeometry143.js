@@ -1,3 +1,4 @@
+import { frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import { geometryEncodingShader } from './geometryEncoding.js'
 
 let nextId = 0
@@ -146,7 +147,7 @@ export default class ScreenSpaceGeometry143 {
     if (this.destroyed || (scene.isDestroyed && scene.isDestroyed())) {
       return { valid: false, frustumCount: 0, reason: 'Destroyed' }
     }
-    const list = scene._view && scene._view.frustumCommandsList
+    const list = frustumBinsOf(scene)
     const frustumCount = list ? list.length : 0
     let reason = this.unsupportedReason
     if (!reason && !this.enabled) reason = 'Disabled'

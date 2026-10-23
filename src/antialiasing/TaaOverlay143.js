@@ -1,3 +1,4 @@
+import { selectedIdFramebufferOf, globeColorFramebufferOf, sceneColorFramebufferOf, oitTranslucentFramebufferOf, oitAlphaFramebufferOf, usesGlobeDepthFramebuffer } from '../scene/cesiumPrivate143.js'
 import {particleBillboards} from '../pipeline/particleBillboards143.js'
 
 const overlayTargets=new Set(['sceneColor','globeColor','oitTranslucent','oitAlpha'])
@@ -12,13 +13,13 @@ export default class TaaOverlay143 {
     this.previous=context.draw
     this.dispatcher=context._ccrDrawDispatcher
     this.handler=event=>{
-      const command=event.command,passState=event.passState,passes=scene.frameState.passes,view=scene._view
+      const command=event.command,passState=event.passState,passes=scene.frameState.passes
       if(overlay.active&&!overlay.drawing&&passes.render&&!passes.pick&&!passes.depth&&overlay.isOverlay(command)){
         const framebuffer=command.framebuffer||passState?.framebuffer,target=event.target
-        // 有调度器快照时直接比目标种类，否则逐级读取 scene._view。
-        if(target!==undefined?overlayTargets.has(target):framebuffer&&framebuffer!==view?.sceneFramebuffer?.idFramebuffer&&
-          (framebuffer===view?.globeDepth?.framebuffer||framebuffer===view?.sceneFramebuffer?.framebuffer||
-           framebuffer===view?.oit?._translucentFBO?.framebuffer||framebuffer===view?.oit?._alphaFBO?.framebuffer)){
+        // 有调度器快照时直接比目标种类，否则经网关实时读取。
+        if(target!==undefined?overlayTargets.has(target):framebuffer&&framebuffer!==selectedIdFramebufferOf(scene)&&
+          (framebuffer===globeColorFramebufferOf(scene)||framebuffer===sceneColorFramebufferOf(scene)||
+           framebuffer===oitTranslucentFramebufferOf(scene)||framebuffer===oitAlphaFramebufferOf(scene))){
           overlay.skipped++;return 'skip'
         }
       }
@@ -48,8 +49,8 @@ export default class TaaOverlay143 {
   composite(color) {
     const passes=this.scene.frameState.passes
     if(!this.active||!this.skipped||!passes.render||passes.pick||passes.depth)return color
-    const {C,scene}=this,context=scene.context,us=context.uniformState,view=scene._view
-    const source=scene._environmentState.useGlobeDepthFramebuffer?view.globeDepth.framebuffer:view.sceneFramebuffer.framebuffer
+    const {C,scene}=this,context=scene.context,us=context.uniformState
+    const source=usesGlobeDepthFramebuffer(scene)?globeColorFramebufferOf(scene):sceneColorFramebufferOf(scene)
     const depth=source.depthStencilTexture
     if(!depth)throw new Error('TAA overlay requires the native single-sample scene depth')
     if(!this.texture||this.texture.width!==color.width||this.texture.height!==color.height||this.texture.pixelDatatype!==color.pixelDatatype){

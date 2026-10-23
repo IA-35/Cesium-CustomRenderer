@@ -1,4 +1,5 @@
 // Cesium 1.143 experimental OIT bridge; scene management and picking remain native.
+import { viewOf, frustumBinsOf, oitOf, oitOpaqueTextureOf, oitOpaqueSamplesOf, usesOit } from '../scene/cesiumPrivate143.js'
 import { createFrameState143 } from '../core/FrameState143.js'
 import { createRenderItem143 } from '../renderer/RenderItem143.js'
 import RenderItemQueue143 from '../renderer/RenderItemQueue143.js'
@@ -30,7 +31,7 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   }
   function assertAlive() { if (state.destroyed) throw new Error('FrameBridge143 is destroyed') }
   function contextFor(phase) {
-    const view = scene._view, frameNumber = scene.frameState.frameNumber
+    const view = viewOf(scene), frameNumber = scene.frameState.frameNumber
     const newFrame = state.frameNumber !== frameNumber
     if (newFrame) {
       state.frameNumber = frameNumber; state.frameGeneration++; state.commandIndex = 0; stats.frames++
@@ -43,7 +44,7 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
       viewId: (scene.id || 'scene-0') + ':' + id, callIndex: id, frustumIndex: id < 0 ? 0 : id,
       frustum: current ? { near: current.x, far: current.y } : null,
       boundary: phase === 'translucent' ? 'oit-compose' : phase === 'resolve' ? 'post-resolve' : 'oit-frustum',
-      useOIT: scene._environmentState?.useOIT === true,
+      useOIT: usesOit(scene),
       drawingBuffer: { width: scene.context.drawingBufferWidth, height: scene.context.drawingBufferHeight } }
     // The frame's collectors must start empty *before* the first command is submitted, not when the
     // opaque phase is announced. Commands are collected during `createPotentiallyVisibleSet`, which
@@ -80,17 +81,17 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     token.records.push({ target, name, previous, wrapper, hadOwn })
   }
   function patchView(token) {
-    const oit = scene._view?.oit
+    const oit = oitOf(scene)
     if (!oit || token.oits.has(oit)) return
     token.oits.add(oit)
     patch(token, oit, 'executeCommands', function(native, args) {
-      if (isRender() && scene._environmentState?.useOIT && scene._view?.oit === oit) {
+      if (isRender() && usesOit(scene) && oitOf(scene) === oit) {
         stats.views++; dispatch('opaqueFrame'); dispatch('opaqueReadHook')
       }
       return native.apply(this, args)
     })
     patch(token, oit, 'execute', function(native, args) {
-      if (scene._view?.oit === oit && scene._environmentState?.useOIT) dispatch('translucent')
+      if (oitOf(scene) === oit && usesOit(scene)) dispatch('translucent')
       return native.apply(this, args)
     })
   }
@@ -210,10 +211,10 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     return () => { record.active = false; itemCallbacks.delete(record) }
   }
   function findOpaqueTargets() {
-    if (!scene._environmentState?.useOIT) return []
-    const oit = scene._view?.oit, texture = oit?._opaqueTexture
+    if (!usesOit(scene)) return []
+    const texture = oitOpaqueTextureOf(scene)
     if (!alive(texture) || !texture.width) return []
-    return [{ texture, mode: 'oit.opaqueTexture', samples: oit._opaqueFBO?._numSamples || 1 }]
+    return [{ texture, mode: 'oit.opaqueTexture', samples: oitOpaqueSamplesOf(scene) || 1 }]
   }
   function targetFramebuffer(texture) {
     if (state.scratch.texture !== texture || !alive(state.scratch.framebuffer)) {
@@ -239,15 +240,15 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
   }
   function writeReason() {
     if (!state.installed || !enabled || !isRender()) return 'bridge is inactive or this is not a supported render frame'
-    if (!scene._environmentState?.useOIT) return 'sorted transparency has no supported opaque write boundary'
-    if (!activeContext || activeContext.view !== scene._view ||
+    if (!usesOit(scene)) return 'sorted transparency has no supported opaque write boundary'
+    if (!activeContext || activeContext.view !== viewOf(scene) ||
         activeContext.frameNumber !== scene.frameState.frameNumber ||
         activeContext.generation !== state.generation) return 'opaque writes require a current bridge callback'
     if (!['opaqueReadHook','translucent'].includes(activeContext.phase)) return 'this phase is not an opaque write boundary'
     const target = findOpaqueTargets()[0]
     if (!target) return 'no live OIT opaque color target'
     if (activeContext.phase === 'opaqueReadHook' &&
-        (target.samples > 1 || scene._view.frustumCommandsList?.length > 1)) {
+        (target.samples > 1 || frustumBinsOf(scene)?.length > 1)) {
       return 'MSAA or multiple frustums require the final translucent (OIT compose) boundary'
     }
     return null
@@ -312,9 +313,9 @@ export function createFrameBridge({ Cesium: C, scene, priority = 0 } = {}) {
     return { ...stats, items: itemQueue.getDiagnostics(), callbacks: { ...stats.callbacks }, installed: state.installed,
       destroyed: state.destroyed, generation: state.generation, frameGeneration: state.frameGeneration,
       enabled, tokens: callbacks.size, errors: state.errors.slice(),
-      oitPatched: !!installation && !!scene._view?.oit && installation.oits.has(scene._view.oit),
+      oitPatched: !!installation && !!oitOf(scene) && installation.oits.has(oitOf(scene)),
       wrappers: installation?.records.map(r => ({ name: r.name, hadOwn: r.hadOwn })) || [],
-      unidentifiedPhases: scene._environmentState?.useOIT ? [] : [{ phase: 'opaqueReadHook', detail: 'sorted transparency is observation-only' }],
+      unidentifiedPhases: usesOit(scene) ? [] : [{ phase: 'opaqueReadHook', detail: 'sorted transparency is observation-only' }],
       limitations: ['Only 3D render frames, not picking/stereo/2D.',
         'Context loss retires the bridge; reinstall only after the host context has recovered.',
         'Sorted transparency is observation-only; opaque writes are rejected.',

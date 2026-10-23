@@ -1,5 +1,6 @@
 // Keep the default scene cost bounded. MSAA smooths geometry coverage, while
 // spatial AA also sees shading/texture edges; their combination is an explicit choice.
+import { viewOf, sceneColorManagerOf, globeColorManagerOf } from '../scene/cesiumPrivate143.js'
 export const antiAliasingDefaults = Object.freeze({ antialiasing: 'smaa', spatialAaQuality: 'balanced', msaaSamples: 1, resolutionMode: 'native', resolutionScale: 1 })
 
 const qualities = Object.freeze({
@@ -83,8 +84,7 @@ export function renderResolution(viewer) {
 // change subsequent rendering. Configured samples alone do not prove allocation.
 export function readMsaaAttachments(scene) {
   const gl = scene.context && scene.context._gl
-  const view = scene._view
-  if (!gl || !view || !scene.context.webgl2 || !gl.getRenderbufferParameter) return null
+  if (!gl || !viewOf(scene) || !scene.context.webgl2 || !gl.getRenderbufferParameter) return null
   const previous = gl.getParameter(gl.RENDERBUFFER_BINDING)
   const samples = buffer => {
     if (!buffer || buffer.isDestroyed()) return null
@@ -95,7 +95,6 @@ export function readMsaaAttachments(scene) {
     colorRenderbufferSamples: samples(manager.getColorRenderbuffer(0)),
     depthRenderbufferSamples: samples(manager.getDepthStencilRenderbuffer()) } : null
   try {
-    return { scene: inspect(view.sceneFramebuffer && view.sceneFramebuffer._colorFramebuffer),
-      globe: inspect(view.globeDepth && view.globeDepth.colorFramebufferManager) }
+    return { scene: inspect(sceneColorManagerOf(scene)), globe: inspect(globeColorManagerOf(scene)) }
   } finally { gl.bindRenderbuffer(gl.RENDERBUFFER, previous) }
 }

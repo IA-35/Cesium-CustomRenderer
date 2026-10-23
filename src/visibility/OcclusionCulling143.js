@@ -1,3 +1,4 @@
+import { globeColorFramebufferOf, sceneColorFramebufferOf, usesWebVR, usesInvertClassification, globeTranslucent, frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import OccluderCache143 from './OccluderCache143.js'
 import {createFrameBridge} from '../pipeline/FrameBridge143.js'
 import {getRenderTargetPool} from '../pipeline/RenderTargetPool143.js'
@@ -37,17 +38,17 @@ export default class OcclusionCulling143 {
     this.enabled=true;this.cache=new OccluderCache143(C,s);this.pool=getRenderTargetPool(C,ctx);this.pool.attach(this.owner)
     const previous=ctx.draw,dispatcher=ctx._ccrDrawDispatcher,token={active:true},self=this;this.previous=previous;this.token=token
     this.hook=function(command,ps,...args){
-      const fb=command.framebuffer||ps?.framebuffer,view=s._view
-      if(token.active&&self.shouldCull(command)&&(fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer)){
+      const fb=command.framebuffer||ps?.framebuffer
+      if(token.active&&self.shouldCull(command)&&(fb===globeColorFramebufferOf(s)||fb===sceneColorFramebufferOf(s))){
         self.recordSkip(command);return
       }
       return previous.call(this,command,ps,...args)
     }
          if(dispatcher)this.dispatcherOff=dispatcher.addHandler(event=>{const command=event.command,ps=event.passState,target=event.target
            if(!token.active||!self.shouldCull(command))return 'continue'
-           // 有调度器快照时直接比目标种类，否则逐级读取 scene._view。
-           const fb=command.framebuffer||ps?.framebuffer,view=s._view
-           if(target!==undefined?target==='sceneColor'||target==='globeColor':fb===view.globeDepth?.colorFramebufferManager?.framebuffer||fb===view.sceneFramebuffer?._colorFramebuffer?.framebuffer){self.recordSkip(command);return 'skip'}
+           // 有调度器快照时直接比目标种类，否则经网关实时读取。
+           const fb=command.framebuffer||ps?.framebuffer
+           if(target!==undefined?target==='sceneColor'||target==='globeColor':fb===globeColorFramebufferOf(s)||fb===sceneColorFramebufferOf(s)){self.recordSkip(command);return 'skip'}
            return 'continue'},{name:'occlusion',priority:0,passes:[C.Pass?.OPAQUE,C.Pass?.CESIUM_3D_TILE],targets:['sceneColor','globeColor'],frame:{render:true,pick:false,depth:false}})
      else ctx.draw=this.hook
     this.proxy={update:state=>{if(state.passes.render)state.commandList.unshift({pass:C.Pass.COMPUTE,execute:()=>this.prepare()})},isDestroyed:()=>false,destroy(){}}
@@ -66,7 +67,7 @@ export default class OcclusionCulling143 {
     if(!this.enabled)return
     const C=this.C,s=this.scene,commands=[]
     this.frame=s.frameState.frameNumber;this.stats.skippedDraws=0;this.stats.skippedTriangles=0
-    if(s.mode!==C.SceneMode.SCENE3D||!(s.camera.frustum instanceof C.PerspectiveFrustum)||s._environmentState.useWebVR||s._environmentState.useInvertClassification||s._globeTranslucencyState?.translucent){this.reset();this.setDemand(false);this.reason='Unsupported view or classification remains visible';return}
+    if(s.mode!==C.SceneMode.SCENE3D||!(s.camera.frustum instanceof C.PerspectiveFrustum)||usesWebVR(s)||usesInvertClassification(s)||globeTranslucent(s)){this.reset();this.setDemand(false);this.reason='Unsupported view or classification remains visible';return}
     // Apply scene.debugCommandFilter here too: it only suppresses drawing
     // inside Scene.executeCommand, so ignoring it here would let the cache
     // keep hiding objects that were occluded by a wall that is now filtered
@@ -74,7 +75,7 @@ export default class OcclusionCulling143 {
     // Excluding filtered commands makes the cache signature change, which bumps
     // the revision and invalidates the stale hidden state (review R6).
     const filter=s.debugCommandFilter
-    for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.OPAQUE,C.Pass.CESIUM_3D_TILE])for(let i=0;i<(bin.indices[pass]||0);i++){const command=bin.commands[pass][i];if(!filter||filter(command))commands.push(command)}
+    for(const bin of frustumBinsOf(s))for(const pass of [C.Pass.OPAQUE,C.Pass.CESIUM_3D_TILE])for(let i=0;i<(bin.indices[pass]||0);i++){const command=bin.commands[pass][i];if(!filter||filter(command))commands.push(command)}
     const snapshot=this.cache.update([...new Set(commands)]),key=this.viewKey()+':'+snapshot.revision
     if(key!==this.key){
       this.reset();this.key=key;this.stats.invalidations++;this.stableFrames=0

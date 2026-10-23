@@ -1,3 +1,4 @@
+import { frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { taaResolveShader, taaDepthShader, taaDisplayShader } from './taaShaders143.js'
 import TaaJitter143 from './TaaJitter143.js'
@@ -93,7 +94,7 @@ export default class TaaPass143 {
     const passes = this.scene.frameState.passes
     if (!preparingColor && (!passes.render || passes.pick || passes.depth)) return 'Requires color render frame'
     if (!(this.scene.camera.frustum instanceof this.C.PerspectiveFrustum)) return 'Requires a perspective camera'
-    const frustums = !preparingColor && this.scene._view && this.scene._view.frustumCommandsList
+    const frustums = !preparingColor && frustumBinsOf(this.scene)
     if (frustums && frustums.length !== 1) return 'Requires single-frustum depth'
     if (this.getOptions().antialiasing !== 'taa') return 'Not the active anti-aliasing mode'
     return null
@@ -365,7 +366,7 @@ export default class TaaPass143 {
     }
     const viewport = this.C.BoundingRectangle.clone(context.uniformState.viewport)
     const inputSampler = color.sampler
-    this.colorFrustums = this.scene._view?.frustumCommandsList?.length ?? this.colorFrustums
+    this.colorFrustums = frustumBinsOf(this.scene)?.length ?? this.colorFrustums
     try {
       this.alphaSource = color
       this.jitter?.bridge?.restoreColorProjection()

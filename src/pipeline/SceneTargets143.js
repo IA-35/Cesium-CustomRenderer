@@ -7,6 +7,7 @@
 //
 // 快照在 epoch 内第一次查询时才构建，此时一定已经过了 updateAndClearFramebuffers。
 // 最多给 5 个 framebuffer 实例打标签；未打标签的就是 'other'，不需要慢路径。
+import { sceneColorFramebufferOf, globeColorFramebufferOf, selectedIdFramebufferOf, oitTranslucentFramebufferOf, oitAlphaFramebufferOf } from '../scene/cesiumPrivate143.js'
 export const TARGET_KINDS = Object.freeze(['default', 'other', 'sceneColor', 'globeColor', 'selectedId', 'oitTranslucent', 'oitAlpha'])
 export const FRAME_BITS = Object.freeze({ render: 1, pick: 2, depth: 4, pickVoxel: 8 })
 
@@ -30,14 +31,14 @@ class SceneTargets143 {
 
   build() {
     this.builtEpoch = this.epoch
-    const tags = this.tags, view = this.scene._view, passes = this.scene.frameState?.passes
+    const tags = this.tags, scene = this.scene, passes = scene.frameState?.passes
     tags.clear()
     const tag = (framebuffer, kind) => { if (framebuffer && !tags.has(framebuffer)) tags.set(framebuffer, kind) }
-    tag(view?.sceneFramebuffer?._colorFramebuffer?.framebuffer, 'sceneColor')
-    tag(view?.globeDepth?.colorFramebufferManager?.framebuffer, 'globeColor')
-    tag(view?.sceneFramebuffer?.idFramebuffer, 'selectedId')
-    tag(view?.oit?._translucentFBO?.framebuffer, 'oitTranslucent')
-    tag(view?.oit?._alphaFBO?.framebuffer, 'oitAlpha')
+    tag(sceneColorFramebufferOf(scene), 'sceneColor')
+    tag(globeColorFramebufferOf(scene), 'globeColor')
+    tag(selectedIdFramebufferOf(scene), 'selectedId')
+    tag(oitTranslucentFramebufferOf(scene), 'oitTranslucent')
+    tag(oitAlphaFramebufferOf(scene), 'oitAlpha')
     this.bits = (passes?.render ? FRAME_BITS.render : 0) | (passes?.pick ? FRAME_BITS.pick : 0) |
       (passes?.depth ? FRAME_BITS.depth : 0) | (passes?.pickVoxel ? FRAME_BITS.pickVoxel : 0)
   }

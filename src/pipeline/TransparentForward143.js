@@ -1,3 +1,4 @@
+import { frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import { forwardShader } from './transparentForwardShader143.js'
 import { createFrameBridge } from './FrameBridge143.js'
 import {shadowUniforms} from '../shadows/shadowUniforms143.js'
@@ -212,7 +213,7 @@ export default class TransparentForward143 {
     if(this.destroyed)return
     this.beginFrame()
     const live=new Set()
-    for(const bin of this.scene._view?.frustumCommandsList||[])for(const pass of [this.C.Pass.OPAQUE,this.C.Pass.TRANSLUCENT])for(let i=0;i<(bin.indices[pass]||0);i++)live.add(bin.commands[pass][i])
+    for(const bin of frustumBinsOf(this.scene)||[])for(const pass of [this.C.Pass.OPAQUE,this.C.Pass.TRANSLUCENT])for(let i=0;i<(bin.indices[pass]||0);i++)live.add(bin.commands[pass][i])
     for(const [command,record]of this.commands)if(!live.has(command)||this.scopeReason()){this.restore(command,record);this.commands.delete(command)}
     for(const [key,last]of this.programFrames)if(last<this.scene.frameState.frameNumber-120){const program=this.programs.get(key);if(program&&!program.isDestroyed())program.destroy();this.programs.delete(key);this.programFrames.delete(key)}
     this.stats.trackedCommands=this.commands.size

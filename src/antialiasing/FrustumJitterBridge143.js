@@ -1,3 +1,4 @@
+import { selectedIdFramebufferOf, viewPassStateOf } from '../scene/cesiumPrivate143.js'
 import { nearPlaneOffsets } from './jitter143.js'
 
 // Cesium 1.143 instance adapter: only the active main camera and its clones may
@@ -59,8 +60,8 @@ export default class FrustumJitterBridge143 {
     }
     if (!entry || frustum === request.frustum || !(frustum instanceof this.C.PerspectiveFrustum)) return
     const resolution = { width: this.scene.drawingBufferWidth, height: this.scene.drawingBufferHeight }
-    const view = this.scene._view, id = view?.sceneFramebuffer?.idFramebuffer
-    const stableId = !!id && view.passState?.framebuffer === id
+    const id = selectedIdFramebufferOf(this.scene)
+    const stableId = !!id && viewPassStateOf(this.scene)?.framebuffer === id
     const offsets = nearPlaneOffsets(frustum, stableId ? {x: 0, y: 0} : request.pixel, resolution)
     if (!offsets) { this.stats.skipped++; return }
     const baseX = request.baseX || 0, baseY = request.baseY || 0

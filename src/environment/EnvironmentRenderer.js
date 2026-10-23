@@ -1,3 +1,4 @@
+import { frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import HdrEnvironmentPass143 from './HdrEnvironmentPass143.js'
 import EnvironmentLighting143 from './EnvironmentLighting143.js'
 import NativeMoonLighting143 from './NativeMoonLighting143.js'
@@ -115,7 +116,7 @@ export default class EnvironmentRenderer {
         }
       }
       if (this.state.cloudGeometry === 'shell') {
-        uniforms.shellEmptyScene = () => this.scene._view.frustumCommandsList.length === 0
+        uniforms.shellEmptyScene = () => frustumBinsOf(this.scene).length === 0
         for (const name of ['eyeToShell', 'shellUp', 'shellRadiusHeight', 'shellNoiseOrigin', 'sunDirectionShell']) {
           uniforms[name] = () => { this.updateShellCamera(); return this[name] }
         }

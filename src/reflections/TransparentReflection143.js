@@ -1,3 +1,4 @@
+import { usesOit, oitAccumulationTextureOf, oitRevealageTextureOf, oitMrtSupported, frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import { registerHdrEffect } from '../environment/HdrCoordinator143.js'
 import { transparentReflectionSources } from './transparentReflectionShader143.js'
 import { isSubPixelOffset } from '../antialiasing/jitter143.js'
@@ -65,9 +66,8 @@ export default class TransparentReflection143 {
     if (['eyeDepth', 'normalRoughMetal', 'emissiveFlags', 'transparency', 'reflectionSpecular', 'reflectionResponse', 'opaqueColor'].some(key => !textures[key])) return 'No current reflection material inputs'
     const levels = source.getDepthPyramidLevels()
     if (!levels || !levels.length || levels.some(level => !level.texture)) return 'No current Hi-Z'
-    const oit = scene._view.oit
-    if (scene._environmentState.useOIT && (!oit || !oit._accumulationTexture || !oit._revealageTexture)) return 'No current OIT textures'
-    if (!scene._view.frustumCommandsList || !scene._view.frustumCommandsList.length) return 'No current frusta'
+    if (usesOit(scene) && (!oitAccumulationTextureOf(scene) || !oitRevealageTextureOf(scene))) return 'No current OIT textures'
+    if (!frustumBinsOf(scene)?.length) return 'No current frusta'
     return null
   }
 
@@ -179,9 +179,9 @@ export default class TransparentReflection143 {
     target.resolve = context.createViewportQuadCommand(resolveShader, { owner: this, framebuffer: target.outputFramebuffer,
       renderState: C.RenderState.fromCache(target.stateOptions), uniformMap: {
         u_color: () => this.inputColor, u_delta: () => this.target.delta, u_oit: () => this.mode === 'oit',
-        u_mrt: () => !!(this.scene._view.oit && this.scene._view.oit._translucentMRTSupport),
-        u_accumulation: () => this.mode === 'oit' ? this.scene._view.oit._accumulationTexture : this.target.delta,
-        u_revealage: () => this.mode === 'oit' ? this.scene._view.oit._revealageTexture : this.target.delta } })
+        u_mrt: () => oitMrtSupported(this.scene),
+        u_accumulation: () => this.mode === 'oit' ? oitAccumulationTextureOf(this.scene) : this.target.delta,
+        u_revealage: () => this.mode === 'oit' ? oitRevealageTextureOf(this.scene) : this.target.delta } })
   }
 
   _execute(context, color) {
@@ -193,7 +193,7 @@ export default class TransparentReflection143 {
     const viewport = C.BoundingRectangle.clone(uniforms.viewport), previousPass = uniforms.pass
     const read = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), draw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING), framebuffer = context._currentFramebuffer
     try {
-      this.mode = scene._environmentState.useOIT ? 'oit' : 'sorted'
+      this.mode = usesOit(scene) ? 'oit' : 'sorted'
       this.materials = this.getMaterials().getTextures()
       this.levels = this.getMaterials().getDepthPyramidLevels()
       this.inputColor = color
@@ -201,7 +201,7 @@ export default class TransparentReflection143 {
       C.Matrix4.inverse(this.projection, this.inverseProjection)
       // Validate every visible layer before drawing any delta: skipped front layers
       // would otherwise expose reflections accumulated behind them in sorted mode.
-      const bins = [...scene._view.frustumCommandsList].reverse().map(bin => ({ bin,
+      const bins = [...frustumBinsOf(scene)].reverse().map(bin => ({ bin,
         commands: (bin.commands[C.Pass.TRANSLUCENT] || []).slice(0, bin.indices[C.Pass.TRANSLUCENT] || 0).map(command => this._prepare(command)).filter(Boolean) }))
       const width = scene.drawingBufferWidth, height = scene.drawingBufferHeight
       if (!width || !height) { this.reason = 'Empty drawing buffer'; return color }

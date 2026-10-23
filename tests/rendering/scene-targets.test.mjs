@@ -14,7 +14,8 @@ function sceneFixture() {
     const output = fb(prefix + 'globe'), pick = fb(prefix + 'globePick')
     const globeDepth = { picking: false, get colorFramebufferManager() { return { framebuffer: this.picking ? pick : output } },
       get framebuffer() { return this.colorFramebufferManager.framebuffer } }
-    return { globeDepth, sceneFramebuffer: { _colorFramebuffer: { framebuffer: fb(prefix + 'scene') }, idFramebuffer: fb(prefix + 'id') },
+    return { globeDepth, sceneFramebuffer: { _colorFramebuffer: { framebuffer: fb(prefix + 'scene') },
+      get framebuffer() { return this._colorFramebuffer.framebuffer }, idFramebuffer: fb(prefix + 'id') },
       oit: { _translucentFBO: { framebuffer: fb(prefix + 'oitT') }, _alphaFBO: { framebuffer: fb(prefix + 'oitA') } } }
   }
   const scene = { frameState: { frameNumber: 1, passes: { render: true, pick: false, depth: false, pickVoxel: false } } }

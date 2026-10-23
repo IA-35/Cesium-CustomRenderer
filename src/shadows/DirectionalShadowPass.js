@@ -1,3 +1,4 @@
+import { frustumBinsOf } from '../scene/cesiumPrivate143.js'
 import LightFrustum from './LightFrustum.js'
 import ShadowTarget from './ShadowTarget.js'
 import ShadowReceiver143 from './ShadowReceiver143.js'
@@ -241,7 +242,7 @@ export default class DirectionalShadowPass {
       // Receiver spheres and the terrain height envelope are consumed only by the
       // multi-cascade coverage; the single cascade derives its region from the
       // camera ray alone, so skip that per-frame collection for the common case.
-      if(count>1) for(const bin of s._view.frustumCommandsList)for(const pass of [C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE,C.Pass.TRANSLUCENT]){
+      if(count>1) for(const bin of frustumBinsOf(s))for(const pass of [C.Pass.GLOBE,C.Pass.CESIUM_3D_TILE,C.Pass.OPAQUE,C.Pass.TRANSLUCENT]){
         for(let i=0;i<(bin.indices[pass]||0);i++){
           const command=bin.commands[pass][i];main.add(command)
           if(pass===C.Pass.GLOBE){const region=command.owner?.data?.tileBoundingRegion;terrainMin=Math.min(terrainMin,region?.minimumHeight??0);terrainMax=Math.max(terrainMax,region?.maximumHeight??0)}

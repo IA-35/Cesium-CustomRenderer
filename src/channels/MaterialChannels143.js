@@ -1,3 +1,4 @@
+import { frustumBinsOf, clearsGlobeDepth, usesDepthPlane, depthPlaneCommandOf, globeTranslucent, usesWebVR, usesInvertClassification } from '../scene/cesiumPrivate143.js'
 import MaterialTarget143, { materialTargetSupport } from './MaterialTarget143.js'
 import { materialSources } from './materialShader143.js'
 import { primitiveReflectionSources, globeWaterSources, primitiveReflectionDiagnostics } from '../reflections/PrimitiveReflection143.js'
@@ -59,8 +60,7 @@ export function replayMaterialFrusta(C, scene, target, draw) {
   const context = scene.context, uniforms = context.uniformState, camera = scene.camera
   const viewport = C.BoundingRectangle.clone(uniforms.viewport), previousPass = uniforms.pass
   const frustum = camera.frustum.clone()
-  const bins = scene._view.frustumCommandsList
-  const environment = scene._environmentState || {}
+  const bins = frustumBinsOf(scene)
   const perform = (bin, pass, transparent = false) => {
     uniforms.updatePass(pass)
     for (let i = 0; i < (bin.indices[pass] || 0); i++) draw(bin.commands[pass][i], transparent)
@@ -76,9 +76,9 @@ export function replayMaterialFrusta(C, scene, target, draw) {
       uniforms.updateFrustum(frustum)
       target.clearDepth.execute(context, target.passState)
       perform(bin, C.Pass.GLOBE)
-      if (environment.clearGlobeDepth) {
+      if (clearsGlobeDepth(scene)) {
         target.clearDepth.execute(context, target.passState)
-        if (environment.useDepthPlane && scene._depthPlane && scene._depthPlane._command) draw(scene._depthPlane._command)
+        if (usesDepthPlane(scene) && depthPlaneCommandOf(scene)) draw(depthPlaneCommandOf(scene))
       }
       perform(bin, C.Pass.CESIUM_3D_TILE)
       perform(bin, C.Pass.OPAQUE)
@@ -139,9 +139,9 @@ export default class MaterialChannels143 {
     if (!(scene.camera.frustum instanceof C.PerspectiveFrustum) && !(scene.camera.frustum instanceof C.PerspectiveOffCenterFrustum)) return 'Requires perspective camera'
     const passes = scene.frameState.passes
     if (!passes.render || passes.pick || passes.depth) return 'Requires color render frame'
-    if (scene._globeTranslucencyState && scene._globeTranslucencyState.translucent) return 'Translucent globe not supported'
-    if (scene._environmentState && scene._environmentState.useWebVR) return 'WebVR material replay not supported'
-    if (scene._environmentState && scene._environmentState.useInvertClassification) return 'Invert classification not supported'
+    if (globeTranslucent(scene)) return 'Translucent globe not supported'
+    if (usesWebVR(scene)) return 'WebVR material replay not supported'
+    if (usesInvertClassification(scene)) return 'Invert classification not supported'
     return null
   }
 
@@ -272,7 +272,7 @@ export default class MaterialChannels143 {
     const reason = this._scopeReason()
     if (reason) { this.reason = reason; return }
     const C = this.C, scene = this.scene
-    const bins = scene._view && scene._view.frustumCommandsList
+    const bins = frustumBinsOf(scene)
     if (!bins || !bins.length) { this.reason = 'No current frusta'; return }
     for (const bin of bins) {
       if ([C.Pass.TERRAIN_CLASSIFICATION, C.Pass.CESIUM_3D_TILE_CLASSIFICATION, C.Pass.CESIUM_3D_TILE_CLASSIFICATION_IGNORE_SHOW,
