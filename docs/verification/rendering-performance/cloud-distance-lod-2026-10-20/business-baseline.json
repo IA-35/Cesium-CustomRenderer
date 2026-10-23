@@ -1,0 +1,78 @@
+{
+  "label": "baseline",
+  "results": [
+    {
+      "name": "near",
+      "height": 3000,
+      "pitch": -20,
+      "gpu": {
+        "n": 120,
+        "p50": 3.616768,
+        "p95": 3.7376,
+        "mean": 3.598583466666667
+      },
+      "pending": 0,
+      "discarded": 0,
+      "cloudBase": 1600,
+      "cloudTop": 2800,
+      "canvas": [
+        1264,
+        805
+      ],
+      "stage": [
+        632,
+        403
+      ]
+    },
+    {
+      "name": "high",
+      "height": 12000,
+      "pitch": -30,
+      "gpu": {
+        "n": 120,
+        "p50": 5.938176,
+        "p95": 6.204416,
+        "mean": 5.850112
+      },
+      "pending": 0,
+      "discarded": 0,
+      "cloudBase": 1600,
+      "cloudTop": 2800,
+      "canvas": [
+        1264,
+        805
+      ],
+      "stage": [
+        632,
+        403
+      ]
+    },
+    {
+      "name": "far",
+      "height": 25000,
+      "pitch": -20,
+      "gpu": {
+        "n": 120,
+        "p50": 6.086656,
+        "p95": 6.293504,
+        "mean": 6.048793599999998
+      },
+      "pending": 0,
+      "discarded": 0,
+      "cloudBase": 1600,
+      "cloudTop": 2800,
+      "canvas": [
+        1264,
+        805
+      ],
+      "stage": [
+        632,
+        403
+      ]
+    }
+  ],
+  "quality": "balanced",
+  "coverage": 0.38,
+  "supported": true,
+  "errors": []
+}

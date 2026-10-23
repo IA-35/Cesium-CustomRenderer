@@ -1,0 +1,19 @@
+{
+  "traffic": {
+    "state": "ready",
+    "readyModels": 60,
+    "playing": true
+  },
+  "frames": 120,
+  "oldMeshes": 11792,
+  "velocityMeshes": 12736,
+  "rectangles": 0,
+  "rectanglesDuringCapture": 0,
+  "initialAge": 3846,
+  "finalAge": 3966,
+  "initialResets": 78,
+  "finalResets": 78,
+  "errors": 0,
+  "failed": false,
+  "appearanceTracking": true
+}

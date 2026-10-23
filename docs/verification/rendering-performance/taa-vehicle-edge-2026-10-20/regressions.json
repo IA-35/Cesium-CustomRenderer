@@ -1,0 +1,165 @@
+{
+  "noRhi": false,
+  "gpu": {
+    "vendor": "Google Inc. (NVIDIA)",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "picks": [
+    {
+      "pick": "model",
+      "ageBefore": 383,
+      "ageAfter": 386
+    },
+    {
+      "pick": "empty",
+      "ageBefore": 386,
+      "ageAfter": 389
+    },
+    {
+      "pick": "position",
+      "ageBefore": 389,
+      "ageAfter": 392
+    },
+    {
+      "pick": "drill",
+      "ageBefore": 392,
+      "ageAfter": 395
+    }
+  ],
+  "reveals": [
+    {
+      "sky": false,
+      "error": 0,
+      "age": 1
+    },
+    {
+      "sky": true,
+      "error": 0,
+      "age": 32
+    }
+  ],
+  "coverage": [
+    {
+      "sky": false,
+      "signal": 0.5936906486749649,
+      "retained": 0.9048643758374505,
+      "maxStd": 0.0004508235486294246
+    },
+    {
+      "sky": true,
+      "signal": 0.8116669408045709,
+      "retained": 0.7650340290803911,
+      "maxStd": 0.0005459783756738546
+    }
+  ],
+  "remoteColorError": 0.0012677200138568878,
+  "remoteMotionFrames": 16,
+  "boundaryError": 0,
+  "revealedPixels": 2037,
+  "motionProtection": true,
+  "final": {
+    "enabled": true,
+    "supported": true,
+    "valid": true,
+    "reason": null,
+    "error": null,
+    "failed": false,
+    "stats": {
+      "frames": 1995,
+      "bypasses": 0,
+      "resets": 3
+    },
+    "historyValid": true,
+    "historySize": "640x420",
+    "activeFrame": 1,
+    "algorithm": {
+      "name": "Three.js r186 TRAA",
+      "commit": "9b4a2ac29c63ccb43fd51c5661f2f873ac2c39b8",
+      "adaptation": "CCR stable-grid reconstruction / float32 history / acquisition / relative depth",
+      "depthThreshold": 0.0005,
+      "edgeDepthDiff": 0.001,
+      "maxVelocityLength": 128,
+      "useSubpixelCorrection": true
+    },
+    "legacyIgnored": [
+      "taaHistoryBlend",
+      "taaMotionBlend",
+      "taaVelocityThreshold",
+      "taaDepthTolerance",
+      "taaVarianceGammaStill",
+      "taaVarianceGammaMoving"
+    ],
+    "motion": {
+      "active": true,
+      "failed": false,
+      "reason": null,
+      "supported": 3,
+      "unsupported": 0,
+      "draws": 0,
+      "errors": 0,
+      "newSurfaces": 0,
+      "appearanceChanges": 0,
+      "previousFootprints": 0,
+      "bytes": 4300800,
+      "encoding": "RGBA32F currentNDC-previousNDC, currentEyeDepth, previousEyeDepth; w<0=new surface",
+      "scope": "standalone opaque rigid GLTF primitive matrices; deforming/instanced/transparent content has no object velocity"
+    },
+    "staticFrames": 0,
+    "stableCoverage": false,
+    "jitter": {
+      "enabled": true,
+      "samples": 8,
+      "index": 746,
+      "holding": false,
+      "pixel": {
+        "x": -0.25,
+        "y": 0.16666666666666663
+      },
+      "applied": {
+        "xOffset": 0.000045105489780439515,
+        "yOffset": -0.000030070326520293003
+      },
+      "frames": 1992,
+      "reason": null,
+      "bridge": {
+        "attached": true,
+        "reason": null,
+        "stats": {
+          "published": 3984,
+          "renormalized": 3984,
+          "copied": 2000,
+          "skipped": 0
+        },
+        "drawn": {
+          "near": 130.22182540773724,
+          "xOffset": 0.0587371921511887,
+          "yOffset": -0.03915812810079246,
+          "pixelX": -0.2499999999999824,
+          "pixelY": 0.16666666666667507
+        },
+        "touched": 3
+      }
+    },
+    "overlay": {
+      "active": true,
+      "skipped": 0,
+      "drawn": 0,
+      "bytes": 0
+    },
+    "samplers": {
+      "historyColor": {
+        "minificationFilter": 9729,
+        "magnificationFilter": 9729
+      },
+      "historyDepth": {
+        "minificationFilter": 9728,
+        "magnificationFilter": 9728
+      }
+    },
+    "stageBytes": 10752000,
+    "rhiHistoryBytes": 4300800,
+    "bytes": 19353600,
+    "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage"
+  }
+}

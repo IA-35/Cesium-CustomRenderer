@@ -1,0 +1,267 @@
+{
+  "cache": "HTTP cache retained; not a cold-cache comparison",
+  "core": {
+    "type": "core-ready",
+    "time": 19460,
+    "loading": false,
+    "detail": "资源准备 74/74；请求中 0，解析中 0",
+    "models": 70,
+    "readyModels": 70,
+    "tilesets": [
+      {
+        "name": "周边白模",
+        "ready": true
+      },
+      {
+        "name": "南湖校区地形",
+        "ready": true
+      }
+    ],
+    "trees": 0,
+    "water": false,
+    "traffic": false
+  },
+  "events": [
+    {
+      "type": "observer-start",
+      "time": 2429.7000000029802,
+      "loading": true,
+      "detail": "正在初始化三维场景…",
+      "models": 0,
+      "readyModels": 0,
+      "tilesets": [],
+      "trees": 0,
+      "water": false,
+      "traffic": false
+    },
+    {
+      "type": "tree-collections-0",
+      "time": 2457.5,
+      "loading": true,
+      "detail": "正在初始化三维场景…",
+      "models": 0,
+      "readyModels": 0,
+      "tilesets": [],
+      "trees": 0,
+      "water": false,
+      "traffic": false
+    },
+    {
+      "type": "traffic-idle",
+      "time": 2457.5999999940395,
+      "loading": true,
+      "detail": "正在初始化三维场景…",
+      "models": 0,
+      "readyModels": 0,
+      "tilesets": [],
+      "trees": 0,
+      "water": false,
+      "traffic": false
+    },
+    {
+      "type": "core-ready",
+      "time": 19460,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 0,
+      "water": false,
+      "traffic": false
+    },
+    {
+      "type": "water-true",
+      "time": 19538.29999999702,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 0,
+      "water": true,
+      "traffic": false
+    },
+    {
+      "type": "tree-collections-1",
+      "time": 19765.89999999106,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 1,
+      "water": true,
+      "traffic": false
+    },
+    {
+      "type": "tree-collections-2",
+      "time": 20300.09999999404,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 2,
+      "water": true,
+      "traffic": false
+    },
+    {
+      "type": "traffic-loading",
+      "time": 20851.5,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 2,
+      "water": true,
+      "traffic": false
+    },
+    {
+      "type": "traffic-ready",
+      "time": 62127.79999999702,
+      "loading": false,
+      "detail": "资源准备 74/74；请求中 0，解析中 0",
+      "models": 70,
+      "readyModels": 70,
+      "tilesets": [
+        {
+          "name": "周边白模",
+          "ready": true
+        },
+        {
+          "name": "南湖校区地形",
+          "ready": true
+        }
+      ],
+      "trees": 2,
+      "water": true,
+      "traffic": true
+    }
+  ],
+  "roadBatches": 601,
+  "maxSamplesPerBatch": 4,
+  "background": {
+    "frameCount": 2288,
+    "frameP95": 35.599999994039536,
+    "frameP99": 40.400000005960464,
+    "maxFrame": 127.59999999403954,
+    "longTasks": [
+      {
+        "time": 21006.20000000298,
+        "ms": 123
+      },
+      {
+        "time": 22406.39999999106,
+        "ms": 60
+      },
+      {
+        "time": 37855,
+        "ms": 60
+      }
+    ]
+  },
+  "scriptRequests": [
+    {
+      "url": "http://127.0.0.1:81/static/js/chunk-vendors.js",
+      "start": 218.59999999403954,
+      "end": 348
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/app.js",
+      "start": 218.59999999403954,
+      "end": 538.3999999910593
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/0.js",
+      "start": 1010.2000000029802,
+      "end": 1013.8999999910593
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/2.js",
+      "start": 1010.3999999910593,
+      "end": 1013.5999999940395
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/1.js",
+      "start": 1010.5,
+      "end": 1014
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/3.js",
+      "start": 1010.7999999970198,
+      "end": 1014.2000000029802
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/5.js",
+      "start": 1010.7999999970198,
+      "end": 1403.3999999910593
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/32.js",
+      "start": 19517.09999999404,
+      "end": 19549.89999999106
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/17.js",
+      "start": 19734.29999999702,
+      "end": 19736.39999999106
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/18.js",
+      "start": 20238,
+      "end": 20265.20000000298
+    },
+    {
+      "url": "http://127.0.0.1:81/static/js/16.js",
+      "start": 20834.09999999404,
+      "end": 20862.79999999702
+    }
+  ]
+}

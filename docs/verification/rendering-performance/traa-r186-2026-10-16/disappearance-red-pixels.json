@@ -1,0 +1,71 @@
+{
+  "criterion": "Whole image RGB R-G>30 and R-B>40; only the moving red GLB uses this hue; show=false at frame80. This measures red residual, not general ghosting.",
+  "results": {
+    "baseline-8-8": [
+      {
+        "frame": 63,
+        "redPixels": 1875
+      },
+      {
+        "frame": 79,
+        "redPixels": 1920
+      },
+      {
+        "frame": 80,
+        "redPixels": 27
+      },
+      {
+        "frame": 95,
+        "redPixels": 1
+      },
+      {
+        "frame": 127,
+        "redPixels": 0
+      }
+    ],
+    "umd-quality-8": [
+      {
+        "frame": 63,
+        "redPixels": 1966
+      },
+      {
+        "frame": 79,
+        "redPixels": 1982
+      },
+      {
+        "frame": 80,
+        "redPixels": 668
+      },
+      {
+        "frame": 95,
+        "redPixels": 0
+      },
+      {
+        "frame": 127,
+        "redPixels": 0
+      }
+    ],
+    "umd-quality-32": [
+      {
+        "frame": 63,
+        "redPixels": 1966
+      },
+      {
+        "frame": 79,
+        "redPixels": 1983
+      },
+      {
+        "frame": 80,
+        "redPixels": 666
+      },
+      {
+        "frame": 95,
+        "redPixels": 0
+      },
+      {
+        "frame": 127,
+        "redPixels": 0
+      }
+    ]
+  }
+}

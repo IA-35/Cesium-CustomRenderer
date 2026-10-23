@@ -1,0 +1,1922 @@
+{
+  "records": [
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.3587999999982,
+          "b": 988.4084999999995
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4084999999995
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.3589000000002,
+          "b": 988.4085999999988
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.4084999999995,
+          "b": 988.457699999999
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.4084999999995,
+          "b": 988.457699999999
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.457699999999
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.457699999999
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.4085999999988,
+          "b": 988.4577999999983
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.457699999999,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.457699999999,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.457699999999,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.457699999999,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.4577999999983,
+          "b": 988.5078999999996
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.558
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.5078999999996,
+          "b": 988.5580999999993
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.558,
+          "b": 988.609199999999
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.5580999999993,
+          "b": 988.6092999999983
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.609199999999,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.6092999999983,
+          "b": 988.6577999999981
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.6577999999981,
+          "b": 988.7077999999983
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.7077999999983,
+          "b": 988.7587999999987
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8083999999999
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.7587999999987,
+          "b": 988.8085000000001
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.8083999999999,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8597999999984
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8599000000004
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8599000000004
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8599000000004
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.8085000000001,
+          "b": 988.8599000000004
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079000000002
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.8597999999984,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.8599000000004,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.8599000000004,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.8599000000004,
+          "b": 988.9079999999994
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.8599000000004,
+          "b": 988.9079999999994
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.9079000000002,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.9584999999997
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.958599999999
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.958599999999
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.958599999999
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.958599999999
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.9079999999994,
+          "b": 988.958599999999
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 988.9584999999997,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 988.958599999999,
+          "b": 989.0131999999985
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 988.958599999999,
+          "b": 989.0132999999987
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 988.958599999999,
+          "b": 989.0132999999987
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 988.958599999999,
+          "b": 989.0132999999987
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 988.958599999999,
+          "b": 989.0132999999987
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    },
+    {
+      "nil": false,
+      "matches": false,
+      "diff": [
+        {
+          "path": "/3/0/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/1/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/2/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/3/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/4/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/5/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/6/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/7/9/0/1",
+          "a": 989.0131999999985,
+          "b": 989.0581999999986
+        },
+        {
+          "path": "/3/8/9/0/1",
+          "a": 989.0132999999987,
+          "b": 989.0582999999988
+        },
+        {
+          "path": "/3/9/9/0/1",
+          "a": 989.0132999999987,
+          "b": 989.0582999999988
+        },
+        {
+          "path": "/3/10/9/0/1",
+          "a": 989.0132999999987,
+          "b": 989.0582999999988
+        },
+        {
+          "path": "/3/11/9/0/1",
+          "a": 989.0132999999987,
+          "b": 989.0582999999988
+        }
+      ],
+      "commands": 571,
+      "uniformNames": [
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ],
+        [
+          "u_time",
+          "u_windDirection",
+          "u_windStrength",
+          "u_windFrequency",
+          "u_windScale",
+          "u_baseColor",
+          "u_instanceTranslationMinimum",
+          "u_instanceTranslationScale",
+          "u_instanceScaleMinimum",
+          "u_instanceScaleScale",
+          "u_alphaFromColor",
+          "u_useAssetColorTexture",
+          "u_cutoutType",
+          "u_alphaCutoff",
+          "u_assetColorTexture"
+        ]
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "model": "计算中心",
+      "width": 128,
+      "height": 128,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 87381
+    },
+    {
+      "model": "计算中心",
+      "width": 2048,
+      "height": 1024,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 11184810
+    },
+    {
+      "model": "计算中心",
+      "width": 512,
+      "height": 512,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 1398101
+    },
+    {
+      "model": "计算中心",
+      "width": 512,
+      "height": 512,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 1398101
+    },
+    {
+      "model": "计算中心",
+      "width": 4096,
+      "height": 8192,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 178956970
+    },
+    {
+      "model": "计算中心",
+      "width": 4096,
+      "height": 4096,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 89478485
+    },
+    {
+      "model": "计算中心",
+      "width": 256,
+      "height": 256,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 349525
+    },
+    {
+      "model": "计算中心",
+      "width": 256,
+      "height": 256,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 349525
+    },
+    {
+      "model": "计算中心",
+      "width": 1024,
+      "height": 1024,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 5592405
+    },
+    {
+      "model": "计算中心",
+      "width": 2048,
+      "height": 2048,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 22369621
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 2048,
+      "height": 2048,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 22369621
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 128,
+      "height": 128,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 87381
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 1024,
+      "height": 1024,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 5592405
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 4096,
+      "height": 2048,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 44739242
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 256,
+      "height": 256,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 349525
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 128,
+      "height": 128,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 87381
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 512,
+      "height": 512,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 1398101
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 512,
+      "height": 128,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 349525
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 2048,
+      "height": 2048,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 22369621
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 2048,
+      "height": 1024,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 11184810
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 4096,
+      "height": 4096,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 89478485
+    },
+    {
+      "model": "学生第八宿舍",
+      "width": 4096,
+      "height": 4096,
+      "format": 6408,
+      "compressed": false,
+      "bytes": 89478485
+    }
+  ],
+  "restored": false
+}

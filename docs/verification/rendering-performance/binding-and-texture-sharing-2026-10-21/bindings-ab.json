@@ -1,0 +1,160 @@
+{
+  "context": "37c0660a-546b-43fe-b6c1-e6e6a54c099b",
+  "size": [
+    1264,
+    805
+  ],
+  "sameViewer": true,
+  "runs": [
+    {
+      "enabled": false,
+      "counters": {
+        "programBinds": 248100,
+        "drawCalls": 247800,
+        "materialBinds": null,
+        "textureBinds": 947400,
+        "uniformUploads": 1258880
+      },
+      "scope": {
+        "measured": false,
+        "programBinds": null,
+        "textureBinds": null
+      },
+      "feature": {
+        "requested": false,
+        "active": false,
+        "reason": "Binding deduplication is disabled"
+      },
+      "count": 300,
+      "cpuMean": 15.72600000033776,
+      "cpuP95": 21.799999997019768,
+      "intervalP95": 22.200000002980232
+    },
+    {
+      "enabled": true,
+      "counters": {
+        "programBinds": 113100,
+        "drawCalls": 247800,
+        "materialBinds": null,
+        "textureBinds": 303000,
+        "uniformUploads": 1258815
+      },
+      "scope": {
+        "frameNumber": 4066,
+        "scope": "scene.updateAndExecuteCommands",
+        "completed": true,
+        "programRequests": 811,
+        "programBinds": 361,
+        "textureRequests": 3078,
+        "textureBinds": 930,
+        "activeTextureRequests": 3078,
+        "activeTextureBinds": 3075,
+        "measured": true,
+        "programBindReduction": 0.5548705302096177,
+        "textureBindReduction": 0.6978557504873295
+      },
+      "feature": {
+        "requested": true,
+        "active": true,
+        "frameNumber": 4066,
+        "scope": "scene.updateAndExecuteCommands",
+        "completed": true,
+        "programRequests": 811,
+        "programBinds": 361,
+        "textureRequests": 3078,
+        "textureBinds": 930,
+        "activeTextureRequests": 3078,
+        "activeTextureBinds": 3075,
+        "measured": true,
+        "programBindReduction": 0.5548705302096177,
+        "textureBindReduction": 0.6978557504873295,
+        "reason": null,
+        "batchCount": null,
+        "plannedProgramBinds": null,
+        "optimizationSuccess": "binding-calls-reduced"
+      },
+      "count": 300,
+      "cpuMean": 14.86566666647792,
+      "cpuP95": 21.299999997019768,
+      "intervalP95": 21.600000008940697
+    },
+    {
+      "enabled": false,
+      "counters": {
+        "programBinds": 248100,
+        "drawCalls": 247800,
+        "materialBinds": null,
+        "textureBinds": 947400,
+        "uniformUploads": 1258839
+      },
+      "scope": {
+        "measured": false,
+        "programBinds": null,
+        "textureBinds": null
+      },
+      "feature": {
+        "requested": false,
+        "active": false,
+        "reason": "Binding deduplication is disabled"
+      },
+      "count": 300,
+      "cpuMean": 15.020000000298023,
+      "cpuP95": 21.799999997019768,
+      "intervalP95": 25.299999997019768
+    },
+    {
+      "enabled": true,
+      "counters": {
+        "programBinds": 113100,
+        "drawCalls": 247800,
+        "materialBinds": null,
+        "textureBinds": 303000,
+        "uniformUploads": 1258939
+      },
+      "scope": {
+        "frameNumber": 4846,
+        "scope": "scene.updateAndExecuteCommands",
+        "completed": true,
+        "programRequests": 811,
+        "programBinds": 361,
+        "textureRequests": 3078,
+        "textureBinds": 930,
+        "activeTextureRequests": 3078,
+        "activeTextureBinds": 3075,
+        "measured": true,
+        "programBindReduction": 0.5548705302096177,
+        "textureBindReduction": 0.6978557504873295
+      },
+      "feature": {
+        "requested": true,
+        "active": true,
+        "frameNumber": 4846,
+        "scope": "scene.updateAndExecuteCommands",
+        "completed": true,
+        "programRequests": 811,
+        "programBinds": 361,
+        "textureRequests": 3078,
+        "textureBinds": 930,
+        "activeTextureRequests": 3078,
+        "activeTextureBinds": 3075,
+        "measured": true,
+        "programBindReduction": 0.5548705302096177,
+        "textureBindReduction": 0.6978557504873295,
+        "reason": null,
+        "batchCount": null,
+        "plannedProgramBinds": null,
+        "optimizationSuccess": "binding-calls-reduced"
+      },
+      "count": 300,
+      "cpuMean": 15.44533333281676,
+      "cpuP95": 22.099999994039536,
+      "intervalP95": 24.899999991059303
+    }
+  ],
+  "pixels": {
+    "mean": 0.000007825250230089684,
+    "max": 0.04440039396286011,
+    "over001": 731
+  },
+  "motionFailed": false
+}

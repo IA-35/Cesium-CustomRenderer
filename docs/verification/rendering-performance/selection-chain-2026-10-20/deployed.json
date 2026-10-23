@@ -1,0 +1,40 @@
+{
+  "models": 70,
+  "taa": "taa",
+  "stable": [
+    {
+      "name": "czm_edge_detection_585ff41d-3ed1-47ba-922c-05dfb7ce8291",
+      "width": 39,
+      "refs": 1,
+      "sameTexture": true,
+      "sameCommand": true
+    },
+    {
+      "name": "czm_silhouette_color_edges",
+      "width": 39,
+      "refs": 1,
+      "sameTexture": true,
+      "sameCommand": true
+    }
+  ],
+  "changed": [
+    {
+      "name": "czm_edge_detection_585ff41d-3ed1-47ba-922c-05dfb7ce8291",
+      "width": 5,
+      "refs": 1
+    },
+    {
+      "name": "czm_silhouette_color_edges",
+      "width": 5,
+      "refs": 1
+    }
+  ],
+  "released": [
+    true,
+    true
+  ],
+  "useSelectedAfterClear": false,
+  "enabledAfterClear": false,
+  "stagesReleased": true,
+  "errors": []
+}

@@ -1,0 +1,2173 @@
+{
+  "vehicle": "campus-car-1",
+  "radius": 2.475423310239683,
+  "canvas": [
+    1264,
+    805
+  ],
+  "context": "e71c13a7-a879-4f2f-abb2-73059056ad28",
+  "cases": [
+    {
+      "name": "before",
+      "frames": [
+        {
+          "index": 0,
+          "n": 1096,
+          "meanError": 0.000017819693312048912,
+          "meanFlicker": 0,
+          "maxFlicker": 0,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 1,
+          "n": 1096,
+          "meanError": 0.00002859057909571124,
+          "meanFlicker": 0.000026439862108252346,
+          "maxFlicker": 0.0005395412445068359,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 2,
+          "n": 1096,
+          "meanError": 0.00002500314578196428,
+          "meanFlicker": 0.00002113405112041174,
+          "maxFlicker": 0.0005007386207580566,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 3,
+          "n": 1104,
+          "meanError": 0.006366015496272324,
+          "meanFlicker": 0.006485989264815618,
+          "maxFlicker": 0.16747204214334488,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 4,
+          "n": 1104,
+          "meanError": 0.003408265486528314,
+          "meanFlicker": 0.005332719561630401,
+          "maxFlicker": 0.13022100925445557,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 5,
+          "n": 1104,
+          "meanError": 0.0031989177552294796,
+          "meanFlicker": 0.002159404866161176,
+          "maxFlicker": 0.053967952728271484,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 6,
+          "n": 1110,
+          "meanError": 0.0067965025258426735,
+          "meanFlicker": 0.009492544056961268,
+          "maxFlicker": 0.22007031738758087,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 7,
+          "n": 1110,
+          "meanError": 0.003029898480252103,
+          "meanFlicker": 0.005176204798726348,
+          "maxFlicker": 0.17333492636680603,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 8,
+          "n": 1110,
+          "meanError": 0.0024342551181378127,
+          "meanFlicker": 0.0017653078788908215,
+          "maxFlicker": 0.04722893238067627,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 9,
+          "n": 1112,
+          "meanError": 0.007368772159993863,
+          "meanFlicker": 0.007304470406764063,
+          "maxFlicker": 0.20793941989541054,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 10,
+          "n": 1112,
+          "meanError": 0.0026349513825002333,
+          "meanFlicker": 0.005729296523575142,
+          "maxFlicker": 0.17153994739055634,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 11,
+          "n": 1112,
+          "meanError": 0.0025158327059458486,
+          "meanFlicker": 0.00205698904913026,
+          "maxFlicker": 0.06450793147087097,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 12,
+          "n": 1111,
+          "meanError": 0.006188501870472565,
+          "meanFlicker": 0.007780203118807439,
+          "maxFlicker": 0.1918371617794037,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 13,
+          "n": 1111,
+          "meanError": 0.004353502715001441,
+          "meanFlicker": 0.002884829346456043,
+          "maxFlicker": 0.058565907180309296,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 14,
+          "n": 1111,
+          "meanError": 0.0016580546579913016,
+          "meanFlicker": 0.0034142812566444426,
+          "maxFlicker": 0.08925651013851166,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 15,
+          "n": 1109,
+          "meanError": 0.006163322546488267,
+          "meanFlicker": 0.0064545307429214865,
+          "maxFlicker": 0.1370917707681656,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 16,
+          "n": 1109,
+          "meanError": 0.0037622748688535177,
+          "meanFlicker": 0.0033789067776878747,
+          "maxFlicker": 0.07618947327136993,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 17,
+          "n": 1109,
+          "meanError": 0.0016955995765943802,
+          "meanFlicker": 0.003656892783644234,
+          "maxFlicker": 0.0834822952747345,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 18,
+          "n": 1103,
+          "meanError": 0.0045753258955095,
+          "meanFlicker": 0.005537967666091953,
+          "maxFlicker": 0.1549862176179886,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 19,
+          "n": 1103,
+          "meanError": 0.0014364024673201015,
+          "meanFlicker": 0.004319095438648546,
+          "maxFlicker": 0.09252911061048508,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 20,
+          "n": 1103,
+          "meanError": 0.0023312932327862555,
+          "meanFlicker": 0.0019961389352450127,
+          "maxFlicker": 0.0486600399017334,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 21,
+          "n": 1103,
+          "meanError": 0.004034571355531298,
+          "meanFlicker": 0.003058108458502004,
+          "maxFlicker": 0.17883746325969696,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 22,
+          "n": 1103,
+          "meanError": 0.0023330828936556094,
+          "meanFlicker": 0.00465126591460173,
+          "maxFlicker": 0.10042193531990051,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 23,
+          "n": 1103,
+          "meanError": 0.0011728853468571266,
+          "meanFlicker": 0.0024739234790151915,
+          "maxFlicker": 0.06694296002388,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 24,
+          "n": 1102,
+          "meanError": 0.002355680675896564,
+          "meanFlicker": 0.0027609847124894053,
+          "maxFlicker": 0.13444337248802185,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 25,
+          "n": 1102,
+          "meanError": 0.0034083279598497544,
+          "meanFlicker": 0.004263356440411559,
+          "maxFlicker": 0.09877008199691772,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 26,
+          "n": 1102,
+          "meanError": 0.0015442343986510365,
+          "meanFlicker": 0.002428769173705697,
+          "maxFlicker": 0.06300616264343262,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 27,
+          "n": 1106,
+          "meanError": 0.004404487207053637,
+          "meanFlicker": 0.004081653365618767,
+          "maxFlicker": 0.16943030059337616,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 28,
+          "n": 1106,
+          "meanError": 0.0017015439867434407,
+          "meanFlicker": 0.004450701486157628,
+          "maxFlicker": 0.12421302497386932,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 29,
+          "n": 1106,
+          "meanError": 0.0018796081255589212,
+          "meanFlicker": 0.0012572162513491475,
+          "maxFlicker": 0.04118122160434723,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 30,
+          "n": 1106,
+          "meanError": 0.005881485064424722,
+          "meanFlicker": 0.0073382298503822194,
+          "maxFlicker": 0.18293553590774536,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 31,
+          "n": 1106,
+          "meanError": 0.0015526287498501606,
+          "meanFlicker": 0.005111718588217311,
+          "maxFlicker": 0.13950635492801666,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 32,
+          "n": 1106,
+          "meanError": 0.0010550711977600404,
+          "meanFlicker": 0.0010555451112726928,
+          "maxFlicker": 0.04596942663192749,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 33,
+          "n": 1099,
+          "meanError": 0.007032859587433449,
+          "meanFlicker": 0.007171310190706384,
+          "maxFlicker": 0.1726786345243454,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 34,
+          "n": 1099,
+          "meanError": 0.002357945108008287,
+          "meanFlicker": 0.005347213065514411,
+          "maxFlicker": 0.13985265791416168,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 35,
+          "n": 1099,
+          "meanError": 0.0024828413133598437,
+          "meanFlicker": 0.0014482349779344993,
+          "maxFlicker": 0.05856674909591675,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 36,
+          "n": 1100,
+          "meanError": 0.005748555175960064,
+          "meanFlicker": 0.0076048147947402845,
+          "maxFlicker": 0.1945631541311741,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 37,
+          "n": 1100,
+          "meanError": 0.0038578635801307178,
+          "meanFlicker": 0.002848470426926559,
+          "maxFlicker": 0.05740368366241455,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 38,
+          "n": 1100,
+          "meanError": 0.0014044779395176606,
+          "meanFlicker": 0.003237287269227884,
+          "maxFlicker": 0.07553574442863464,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 39,
+          "n": 1101,
+          "meanError": 0.005824460219980964,
+          "meanFlicker": 0.005627451215547566,
+          "maxFlicker": 0.15583790093660355,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 40,
+          "n": 1101,
+          "meanError": 0.003280266977298487,
+          "meanFlicker": 0.0036937171097618142,
+          "maxFlicker": 0.07618947327136993,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 41,
+          "n": 1101,
+          "meanError": 0.0014514305022334533,
+          "meanFlicker": 0.003468767355799296,
+          "maxFlicker": 0.0834822952747345,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 42,
+          "n": 1101,
+          "meanError": 0.005705794562280287,
+          "meanFlicker": 0.006435517569155139,
+          "maxFlicker": 0.1600235104560852,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 43,
+          "n": 1101,
+          "meanError": 0.001822580819396297,
+          "meanFlicker": 0.004907109215517244,
+          "maxFlicker": 0.09922872483730316,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 44,
+          "n": 1101,
+          "meanError": 0.0022773101315118854,
+          "meanFlicker": 0.002378504316438392,
+          "maxFlicker": 0.05821897089481354,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 45,
+          "n": 1102,
+          "meanError": 0.005023761350702082,
+          "meanFlicker": 0.0041438582687128465,
+          "maxFlicker": 0.14723734557628632,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 46,
+          "n": 1102,
+          "meanError": 0.002858333518650863,
+          "meanFlicker": 0.005428839187575555,
+          "maxFlicker": 0.10775667428970337,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 47,
+          "n": 1102,
+          "meanError": 0.0018789013670233439,
+          "meanFlicker": 0.0028076533797770035,
+          "maxFlicker": 0.05943715572357178,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 48,
+          "n": 1101,
+          "meanError": 0.0036346340944464375,
+          "meanFlicker": 0.004407388934244712,
+          "maxFlicker": 0.134097158908844,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 49,
+          "n": 1101,
+          "meanError": 0.004324319518655945,
+          "meanFlicker": 0.005163307814308181,
+          "maxFlicker": 0.14063914120197296,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 50,
+          "n": 1101,
+          "meanError": 0.0024229798636836533,
+          "meanFlicker": 0.0027791576546284417,
+          "maxFlicker": 0.06300616264343262,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 51,
+          "n": 1103,
+          "meanError": 0.005877253444948093,
+          "meanFlicker": 0.005352159067722845,
+          "maxFlicker": 0.1980348341166973,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 52,
+          "n": 1103,
+          "meanError": 0.002519839376562418,
+          "meanFlicker": 0.005417012726906636,
+          "maxFlicker": 0.12418469786643982,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 53,
+          "n": 1103,
+          "meanError": 0.002329429273822042,
+          "meanFlicker": 0.002059742228270712,
+          "maxFlicker": 0.045463502407073975,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 54,
+          "n": 1095,
+          "meanError": 0.006622982987938406,
+          "meanFlicker": 0.007874886442647978,
+          "maxFlicker": 0.21705226600170135,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 55,
+          "n": 1095,
+          "meanError": 0.0026473279379002033,
+          "meanFlicker": 0.005756514044010748,
+          "maxFlicker": 0.13947583734989166,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 56,
+          "n": 1095,
+          "meanError": 0.00153776817278911,
+          "meanFlicker": 0.001967490360685135,
+          "maxFlicker": 0.04830612242221832,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 57,
+          "n": 1095,
+          "meanError": 0.007352319053591115,
+          "meanFlicker": 0.008460556867554312,
+          "maxFlicker": 0.19250550121068954,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 58,
+          "n": 1095,
+          "meanError": 0.0035690571968209797,
+          "meanFlicker": 0.004668511866196378,
+          "maxFlicker": 0.1431002840399742,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 59,
+          "n": 1095,
+          "meanError": 0.0033051894178197263,
+          "meanFlicker": 0.0018403583491161534,
+          "maxFlicker": 0.06559794023633003,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 60,
+          "n": 1093,
+          "meanError": 0.004917750285030066,
+          "meanFlicker": 0.007217067579135726,
+          "maxFlicker": 0.207169309258461,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 61,
+          "n": 1093,
+          "meanError": 0.003575767502904429,
+          "meanFlicker": 0.0034434837080395122,
+          "maxFlicker": 0.10666206479072571,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 62,
+          "n": 1093,
+          "meanError": 0.002204457602113458,
+          "meanFlicker": 0.0026430829589179318,
+          "maxFlicker": 0.09706234931945801,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 63,
+          "n": 1084,
+          "meanError": 0.004587568312615321,
+          "meanFlicker": 0.004556966816178626,
+          "maxFlicker": 0.15583790093660355,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "frames": [
+        {
+          "index": 0,
+          "n": 1096,
+          "meanError": 0.000017819357662033426,
+          "meanFlicker": 0,
+          "maxFlicker": 0,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 1,
+          "n": 1096,
+          "meanError": 0.000028591320074985933,
+          "meanFlicker": 0.000026440095788642874,
+          "maxFlicker": 0.0005395412445068359,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 2,
+          "n": 1096,
+          "meanError": 0.00002500118796516509,
+          "meanFlicker": 0.000021133942352811787,
+          "maxFlicker": 0.0005007386207580566,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 3,
+          "n": 1104,
+          "meanError": 0.00003266660496592522,
+          "meanFlicker": 0.000023891978523098543,
+          "maxFlicker": 0.0005231648683547974,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 4,
+          "n": 1104,
+          "meanError": 0.000022923858984764934,
+          "meanFlicker": 0.00002431769288428452,
+          "maxFlicker": 0.00047093629837036133,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 5,
+          "n": 1104,
+          "meanError": 0.000022319437382553797,
+          "meanFlicker": 0.000022021269061319206,
+          "maxFlicker": 0.0006117820739746094,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 6,
+          "n": 1110,
+          "meanError": 0.000025533064193016775,
+          "meanFlicker": 0.000025387957495281368,
+          "maxFlicker": 0.0005110204219818115,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 7,
+          "n": 1110,
+          "meanError": 1.7697897714537543e-7,
+          "meanFlicker": 0.000025392847286688313,
+          "maxFlicker": 0.00048288702964782715,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 8,
+          "n": 1110,
+          "meanError": 0.000017051841761614825,
+          "meanFlicker": 0.000017082743212446437,
+          "maxFlicker": 0.0003788471221923828,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 9,
+          "n": 1112,
+          "meanError": 0.00003112381970737692,
+          "meanFlicker": 0.000029229221199360783,
+          "maxFlicker": 0.0005397200584411621,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 10,
+          "n": 1112,
+          "meanError": 0.000024875398162457582,
+          "meanFlicker": 0.000021281503911445037,
+          "maxFlicker": 0.00047463178634643555,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 11,
+          "n": 1112,
+          "meanError": 0.00003264443747860065,
+          "meanFlicker": 0.000023020683492955972,
+          "maxFlicker": 0.00045546889305114746,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 12,
+          "n": 1111,
+          "meanError": 0.000018869266819299394,
+          "meanFlicker": 0.000023345059404770532,
+          "maxFlicker": 0.00047093629837036133,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 13,
+          "n": 1111,
+          "meanError": 0.00001722871653675282,
+          "meanFlicker": 0.00001967550296433652,
+          "maxFlicker": 0.000476151704788208,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 14,
+          "n": 1111,
+          "meanError": 0.000024181354747335725,
+          "meanFlicker": 0.000023923400189294996,
+          "maxFlicker": 0.0005110204219818115,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 15,
+          "n": 1109,
+          "meanError": 2.1006068847972709e-7,
+          "meanFlicker": 0.00002351400405621456,
+          "maxFlicker": 0.0004156827926635742,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 16,
+          "n": 1109,
+          "meanError": 0.00001296157821865099,
+          "meanFlicker": 0.000012984880598092316,
+          "maxFlicker": 0.0003788471221923828,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 17,
+          "n": 1109,
+          "meanError": 0.000029318672046401245,
+          "meanFlicker": 0.00002840587514896883,
+          "maxFlicker": 0.0005443394184112549,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 18,
+          "n": 1103,
+          "meanError": 0.000021783249994785484,
+          "meanFlicker": 0.00001871151071321408,
+          "maxFlicker": 0.00047463178634643555,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 19,
+          "n": 1103,
+          "meanError": 0.00002972343860570669,
+          "meanFlicker": 0.000020145089048909147,
+          "maxFlicker": 0.0004456639289855957,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 20,
+          "n": 1103,
+          "meanError": 0.000016818754374980927,
+          "meanFlicker": 0.000021822714261163502,
+          "maxFlicker": 0.00043275952339172363,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 21,
+          "n": 1103,
+          "meanError": 0.000015778205309363786,
+          "meanFlicker": 0.00001825032223277514,
+          "maxFlicker": 0.000476151704788208,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 22,
+          "n": 1103,
+          "meanError": 0.000021876350166791154,
+          "meanFlicker": 0.00002392035413361201,
+          "maxFlicker": 0.0011197328567504883,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 23,
+          "n": 1103,
+          "meanError": 0.0000018189244938242576,
+          "meanFlicker": 0.00002264999552331831,
+          "maxFlicker": 0.0014915615320205688,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 24,
+          "n": 1102,
+          "meanError": 0.000016744502105102783,
+          "meanFlicker": 0.00001312119373101361,
+          "maxFlicker": 0.0003788471221923828,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 25,
+          "n": 1102,
+          "meanError": 0.00003023927662852888,
+          "meanFlicker": 0.00003254490172635838,
+          "maxFlicker": 0.0016788095235824585,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 26,
+          "n": 1102,
+          "meanError": 0.000023671773223446416,
+          "meanFlicker": 0.000022433349987772545,
+          "maxFlicker": 0.0015864372253417969,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 27,
+          "n": 1106,
+          "meanError": 0.00003865208631721586,
+          "meanFlicker": 0.00002587472739233019,
+          "maxFlicker": 0.001921340823173523,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 28,
+          "n": 1106,
+          "meanError": 0.000026885566603102694,
+          "meanFlicker": 0.000028037903139916724,
+          "maxFlicker": 0.001954585313796997,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 29,
+          "n": 1106,
+          "meanError": 0.000018914049966210266,
+          "meanFlicker": 0.000026042299483234153,
+          "maxFlicker": 0.002610519528388977,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 30,
+          "n": 1106,
+          "meanError": 0.00003528786456013674,
+          "meanFlicker": 0.00003223574498398969,
+          "maxFlicker": 0.001387670636177063,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 31,
+          "n": 1106,
+          "meanError": 0.000009241905467581361,
+          "meanFlicker": 0.00003461354070260555,
+          "maxFlicker": 0.0012817680835723877,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 32,
+          "n": 1106,
+          "meanError": 0.00002077086129736081,
+          "meanFlicker": 0.00002309507698790721,
+          "maxFlicker": 0.0015742629766464233,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 33,
+          "n": 1099,
+          "meanError": 0.00004387069476583635,
+          "meanFlicker": 0.00004169601560518191,
+          "maxFlicker": 0.001663103699684143,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 34,
+          "n": 1099,
+          "meanError": 0.00004215560026392273,
+          "meanFlicker": 0.000035281527831513194,
+          "maxFlicker": 0.001667313277721405,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 35,
+          "n": 1099,
+          "meanError": 0.00004750229096255376,
+          "meanFlicker": 0.00003151966002960439,
+          "maxFlicker": 0.0013045668601989746,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 36,
+          "n": 1100,
+          "meanError": 0.00003653572110289877,
+          "meanFlicker": 0.000033905995064115376,
+          "maxFlicker": 0.0017696022987365723,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 37,
+          "n": 1100,
+          "meanError": 0.000028431584042581644,
+          "meanFlicker": 0.00003369801762429151,
+          "maxFlicker": 0.0019599944353103638,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 38,
+          "n": 1100,
+          "meanError": 0.00003545251928947189,
+          "meanFlicker": 0.00003532591106539423,
+          "maxFlicker": 0.0021557658910751343,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 39,
+          "n": 1101,
+          "meanError": 0.000017063752270145485,
+          "meanFlicker": 0.00003458099933911343,
+          "maxFlicker": 0.000983312726020813,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 40,
+          "n": 1101,
+          "meanError": 0.000029095443478234782,
+          "meanFlicker": 0.000028046013805998336,
+          "maxFlicker": 0.0021648406982421875,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 41,
+          "n": 1101,
+          "meanError": 0.00004081018133719979,
+          "meanFlicker": 0.000040159457541670614,
+          "maxFlicker": 0.0021811798214912415,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 42,
+          "n": 1101,
+          "meanError": 0.00004258058579481265,
+          "meanFlicker": 0.00003232392525180764,
+          "maxFlicker": 0.0019973143935203552,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 43,
+          "n": 1101,
+          "meanError": 0.000048704465663400594,
+          "meanFlicker": 0.00003274241470808771,
+          "maxFlicker": 0.0010878890752792358,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 44,
+          "n": 1101,
+          "meanError": 0.0000355530667248149,
+          "meanFlicker": 0.00003378403683503469,
+          "maxFlicker": 0.0013383515179157257,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 45,
+          "n": 1102,
+          "meanError": 0.0000342844043961454,
+          "meanFlicker": 0.0000325214172772259,
+          "maxFlicker": 0.0014355480670928955,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 46,
+          "n": 1102,
+          "meanError": 0.0000407377354286868,
+          "meanFlicker": 0.00004041694719919059,
+          "maxFlicker": 0.0019160881638526917,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 47,
+          "n": 1102,
+          "meanError": 0.000012989171160327545,
+          "meanFlicker": 0.00003420090651014539,
+          "maxFlicker": 0.0011951029300689697,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 48,
+          "n": 1101,
+          "meanError": 0.0000345982453844203,
+          "meanFlicker": 0.000026457876769628953,
+          "maxFlicker": 0.0016159191727638245,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 49,
+          "n": 1101,
+          "meanError": 0.000046261126931746584,
+          "meanFlicker": 0.00005093171810232218,
+          "maxFlicker": 0.007394269108772278,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 50,
+          "n": 1101,
+          "meanError": 0.000039554537729877,
+          "meanFlicker": 0.00003651519061542445,
+          "maxFlicker": 0.0033876150846481323,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 51,
+          "n": 1103,
+          "meanError": 0.0000635732179769363,
+          "meanFlicker": 0.000032710328758855456,
+          "maxFlicker": 0.001996666193008423,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 52,
+          "n": 1103,
+          "meanError": 0.00005085526181153568,
+          "meanFlicker": 0.000045290090150435404,
+          "maxFlicker": 0.005041539669036865,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 53,
+          "n": 1103,
+          "meanError": 0.000041642857011296156,
+          "meanFlicker": 0.00003415178456905206,
+          "maxFlicker": 0.0016591399908065796,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 54,
+          "n": 1095,
+          "meanError": 0.00005594208139126704,
+          "meanFlicker": 0.00004337033376507803,
+          "maxFlicker": 0.005301311612129211,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 55,
+          "n": 1095,
+          "meanError": 0.0000306154945737695,
+          "meanFlicker": 0.00005389337159999429,
+          "maxFlicker": 0.004252646118402481,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 56,
+          "n": 1095,
+          "meanError": 0.000040464436626869796,
+          "meanFlicker": 0.00003568172948137266,
+          "maxFlicker": 0.0038555487990379333,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 57,
+          "n": 1095,
+          "meanError": 0.0000695702522040502,
+          "meanFlicker": 0.00005286566121646406,
+          "maxFlicker": 0.005517318844795227,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 58,
+          "n": 1095,
+          "meanError": 0.00006686670186857111,
+          "meanFlicker": 0.00004732451703586535,
+          "maxFlicker": 0.0025425106287002563,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 59,
+          "n": 1095,
+          "meanError": 0.00007661917336183051,
+          "meanFlicker": 0.00004254047456941648,
+          "maxFlicker": 0.0022675171494483948,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 60,
+          "n": 1093,
+          "meanError": 0.00008002639818878645,
+          "meanFlicker": 0.00004846201808817807,
+          "maxFlicker": 0.0037236474454402924,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        },
+        {
+          "index": 61,
+          "n": 1093,
+          "meanError": 0.00006033242266873973,
+          "meanFlicker": 0.00004705791561868577,
+          "maxFlicker": 0.0026536285877227783,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 62,
+          "n": 1093,
+          "meanError": 0.00005553345292234028,
+          "meanFlicker": 0.00004554610897097583,
+          "maxFlicker": 0.0021865852177143097,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 63,
+          "n": 1084,
+          "meanError": 0.00004440868046560851,
+          "meanFlicker": 0.00004928729232446647,
+          "maxFlicker": 0.003164369612932205,
+          "motion": {
+            "supported": 39,
+            "unsupported": 32,
+            "draws": 8,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 4
+          }
+        }
+      ]
+    }
+  ],
+  "taa": {
+    "enabled": true,
+    "supported": true,
+    "valid": true,
+    "reason": null,
+    "error": null,
+    "failed": false,
+    "stats": {
+      "frames": 58223,
+      "bypasses": 17,
+      "resets": 78
+    },
+    "historyValid": true,
+    "historySize": "1264x805",
+    "activeFrame": 1,
+    "algorithm": {
+      "name": "Three.js r186 TRAA",
+      "commit": "9b4a2ac29c63ccb43fd51c5661f2f873ac2c39b8",
+      "adaptation": "CCR stable-grid reconstruction / float32 history / acquisition / relative depth",
+      "depthThreshold": 0.0005,
+      "edgeDepthDiff": 0.001,
+      "maxVelocityLength": 128,
+      "useSubpixelCorrection": true
+    },
+    "legacyIgnored": [
+      "taaHistoryBlend",
+      "taaMotionBlend",
+      "taaVelocityThreshold",
+      "taaDepthTolerance",
+      "taaVarianceGammaStill",
+      "taaVarianceGammaMoving"
+    ],
+    "motion": {
+      "active": true,
+      "failed": false,
+      "reason": null,
+      "supported": 39,
+      "unsupported": 32,
+      "draws": 8,
+      "errors": 0,
+      "newSurfaces": 0,
+      "appearanceChanges": 0,
+      "previousFootprints": 4,
+      "bytes": 16280320,
+      "encoding": "RGBA32F currentNDC-previousNDC, currentEyeDepth, previousEyeDepth; w<0=new surface",
+      "scope": "standalone opaque rigid GLTF primitive matrices; deforming/instanced/transparent content has no object velocity"
+    },
+    "staticFrames": 254,
+    "stableCoverage": true,
+    "jitter": {
+      "enabled": true,
+      "samples": 8,
+      "index": 255,
+      "holding": false,
+      "pixel": {
+        "x": 0.375,
+        "y": 0.05555555555555558
+      },
+      "applied": {
+        "xOffset": -0.00004310972278512823,
+        "yOffset": -0.000006386625597796776
+      },
+      "frames": 58217,
+      "reason": null,
+      "bridge": {
+        "attached": true,
+        "reason": null,
+        "stats": {
+          "published": 116604,
+          "renormalized": 116604,
+          "copied": 58347,
+          "skipped": 0
+        },
+        "drawn": {
+          "near": 0.1,
+          "xOffset": -0.00004310972278512823,
+          "yOffset": -0.000006386625597796776,
+          "pixelX": 0.374999999999954,
+          "pixelY": 0.05555555555558227
+        },
+        "touched": 36
+      }
+    },
+    "overlay": {
+      "active": true,
+      "skipped": 0,
+      "drawn": 0,
+      "bytes": 0
+    },
+    "samplers": {
+      "historyColor": {
+        "minificationFilter": 9729,
+        "magnificationFilter": 9729
+      },
+      "historyDepth": {
+        "minificationFilter": 9728,
+        "magnificationFilter": 9728
+      }
+    },
+    "stageBytes": 40700800,
+    "rhiHistoryBytes": 16280320,
+    "bytes": 73261440,
+    "scope": "temporal resolve of the HDR chain after every HDR effect and before tonemapping; replaces the spatial post-process stage"
+  }
+}

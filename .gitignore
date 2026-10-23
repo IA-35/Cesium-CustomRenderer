@@ -27,3 +27,15 @@ assets/*
 .probe-*.cjs
 .verify-*.cjs
 .learnings/
+
+# 本轮工作产生的本地目录：PPT 构建产物（模板+内嵌字体约 300 MB）、审查前快照、
+# 临时资产实验目录、agent 工具状态。都不属于源码。
+.pptbuild/
+.review-backup/
+tmp-terr-opt/
+.claude/
+
+# TAA R186 逐变体 A/B 测量输出：92 个变体目录里约 690 份 json、合计约 175 MB，
+# 单文件最大 12 MB，可由 check-*.cjs 重新生成。顶层四份报告与汇总 json 入库，
+# 逐变体明细与下方各子目录的 README 之外的结果不入库（README 记录结论，需要保留）。
+docs/verification/rendering-performance/traa-r186-2026-10-16/*/*.json

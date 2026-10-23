@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:81/#/campus",
+  "shadowStatic": true,
+  "shadows": true,
+  "aa": "smaa",
+  "models": 70,
+  "canvas": [
+    1264,
+    805
+  ],
+  "webgl2": true,
+  "parallelCompile": true,
+  "hooksRemoved": true
+}

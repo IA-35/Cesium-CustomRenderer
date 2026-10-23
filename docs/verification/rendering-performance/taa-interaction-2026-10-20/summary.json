@@ -1,0 +1,14 @@
+{
+  "before": {
+    "entryRelativeError": 0.9973691939285778,
+    "exitRelativeError": 1.0053798191952008,
+    "popupX": 0.8120000000000118,
+    "popupY": 0.77800000000002
+  },
+  "after": {
+    "entryRelativeError": 0.05354486734742266,
+    "exitRelativeError": 0.09858315185595529,
+    "popupX": 0,
+    "popupY": 0
+  }
+}

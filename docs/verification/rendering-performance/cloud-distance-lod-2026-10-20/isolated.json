@@ -1,0 +1,207 @@
+[
+  {
+    "label": "isolated-before",
+    "cases": [
+      {
+        "name": "near",
+        "height": 3000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 3.818496,
+          "p95": 3.912704
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "high",
+        "height": 12000,
+        "pitch": -30,
+        "gpu": {
+          "n": 120,
+          "p50": 4.763648,
+          "p95": 4.923392
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "far",
+        "height": 25000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 5.491712,
+          "p95": 5.691392
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "label": "isolated-after",
+    "cases": [
+      {
+        "name": "near",
+        "height": 3000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 3.67616,
+          "p95": 3.774464
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "high",
+        "height": 12000,
+        "pitch": -30,
+        "gpu": {
+          "n": 120,
+          "p50": 2.182144,
+          "p95": 2.390016
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "far",
+        "height": 25000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 0.799744,
+          "p95": 0.897024
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "performance-far",
+        "height": 25000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 0.321536,
+          "p95": 0.330752
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "high-quality-far",
+        "height": 25000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 1.01376,
+          "p95": 1.046528
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "label": "isolated-before-repeat",
+    "cases": [
+      {
+        "name": "near",
+        "height": 3000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 3.867648,
+          "p95": 3.97312
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "high",
+        "height": 12000,
+        "pitch": -30,
+        "gpu": {
+          "n": 120,
+          "p50": 4.8128,
+          "p95": 4.947968
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      },
+      {
+        "name": "far",
+        "height": 25000,
+        "pitch": -20,
+        "gpu": {
+          "n": 120,
+          "p50": 5.59616,
+          "p95": 5.8112
+        },
+        "pending": 0,
+        "discarded": 0,
+        "glLost": false,
+        "canvas": [
+          1264,
+          805
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

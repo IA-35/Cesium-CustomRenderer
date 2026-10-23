@@ -1,0 +1,526 @@
+{
+  "branch": "codex/antialiasing-recovery-r186",
+  "baselineCommit": "bee30dae8e7e3790ac62e348f60b74c92f044fbe",
+  "upstream": "three.js r186 / 9b4a2ac29c63ccb43fd51c5661f2f873ac2c39b8",
+  "status": "implementation-and-automated-checks-complete-awaiting-user-visual-acceptance",
+  "planComplete": false,
+  "implementationComplete": true,
+  "automatedAcceptanceComplete": true,
+  "userVisualAcceptance": "pending",
+  "currentBuild": "a5668f64bf8ce1f94aca7f7f91bb4403137888857edfa927d645ebef3a7d2695",
+  "baselineSdk": "e0fffa070861e9eb5173d4761ad9199e05a6b202f782ff3e230ff8ad2db9679f",
+  "tests": {
+    "fullRun": {
+      "total": 1020,
+      "passed": 1017,
+      "skipped": 3,
+      "failed": 0
+    },
+    "afterFinalShaderDepthPatch": {
+      "focused": 23,
+      "passed": 23,
+      "gpu": "actual final UMD fixture/campus/UI/performance passed"
+    }
+  },
+  "defaultMode": "smaa",
+  "taaJitterSamples": 8,
+  "scopeDecision": "User authorized small sampling/history-acceptance adaptations; no withdrawn candidate restored",
+  "static": {
+    "baseline": {
+      "windows": {
+        "pixels": 26509,
+        "meanStd": 0.2627402198253012,
+        "p95Std": 0.9186316874729957,
+        "maxStd": 2.2316120370898016
+      },
+      "railings": {
+        "pixels": 9200,
+        "meanStd": 0.5223492541954035,
+        "p95Std": 3.1959371003396853,
+        "maxStd": 8.903560696760547
+      },
+      "moving-background": {
+        "pixels": 9516,
+        "meanStd": 0.2923191001343217,
+        "p95Std": 0.9732638957485871,
+        "maxStd": 2.208914931737919
+      }
+    },
+    "adapted": {
+      "windows": {
+        "pixels": 25996,
+        "meanStd": 0.127397785533915,
+        "p95Std": 0.6671971852630924,
+        "maxStd": 1.7068187759180835
+      },
+      "railings": {
+        "pixels": 9189,
+        "meanStd": 0.27282435797863963,
+        "p95Std": 0.8780361716401404,
+        "maxStd": 5.047864072062653
+      },
+      "moving-background": {
+        "pixels": 9348,
+        "meanStd": 0.13685932646019824,
+        "p95Std": 0.689079386585641,
+        "maxStd": 1.7068187759180835
+      }
+    }
+  },
+  "redPixels": {
+    "baseline-lines-8": {
+      "79": 1920,
+      "80": 27,
+      "95": 1,
+      "127": 0
+    },
+    "accepted-umd-8": {
+      "79": 1938,
+      "80": 0,
+      "95": 0,
+      "127": 0
+    }
+  },
+  "lineProfiles": {
+    "baseline-lines-8": {
+      "static": {
+        "contrast": 35.57800691636576,
+        "equivalentWidthPx": 1.73741668781994,
+        "contrastStdAfter32": 0.2523037699424322
+      },
+      "slow-pan": {
+        "contrast": 34.1351556462929,
+        "equivalentWidthPx": 2.038565275176661,
+        "contrastStdAfter32": 3.1519209523036853
+      },
+      "slow-rotate": {
+        "contrast": 36.13589716514279,
+        "equivalentWidthPx": 1.747784194532189,
+        "contrastStdAfter32": 2.39398228652231
+      },
+      "stopped-pan": {
+        "contrast": 35.96874974586046,
+        "equivalentWidthPx": 1.8256971922799035,
+        "contrastStdAfter32": 0.76973775578622
+      },
+      "stopped-rotate": {
+        "contrast": 35.81858811755563,
+        "equivalentWidthPx": 1.8600444875205462,
+        "contrastStdAfter32": 0.5423336154128868
+      }
+    },
+    "accepted-umd-8": {
+      "static": {
+        "contrast": 67.51051803094569,
+        "equivalentWidthPx": 1.4222591254657302,
+        "contrastStdAfter32": 0.3781303452390297
+      },
+      "slow-pan": {
+        "contrast": 39.33613362829221,
+        "equivalentWidthPx": 1.9391897009065857,
+        "contrastStdAfter32": 2.7885836951900647
+      },
+      "slow-rotate": {
+        "contrast": 47.187469770832564,
+        "equivalentWidthPx": 1.6124821402105973,
+        "contrastStdAfter32": 3.0071294932599986
+      },
+      "stopped-pan": {
+        "contrast": 66.50481157301266,
+        "equivalentWidthPx": 1.4823030103979373,
+        "contrastStdAfter32": 0.1398946564453114
+      },
+      "stopped-rotate": {
+        "contrast": 56.384794164315856,
+        "equivalentWidthPx": 1.6187353543701932,
+        "contrastStdAfter32": 0.099799882448431
+      }
+    }
+  },
+  "performance1080p": {
+    "baseline": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "samples": 8,
+      "aa": {
+        "validSamples": 300,
+        "p50": 0.674816,
+        "p95": 0.68608
+      },
+      "frame": {
+        "validSamples": 300,
+        "p50": 7.124992,
+        "p95": 16.877568
+      },
+      "cpu": {
+        "frames": 900,
+        "p50": 9.800000000745058,
+        "p95": 16.199999999254942
+      },
+      "motion": {
+        "sampledFrames": 300,
+        "activeFrames": 0,
+        "activeP50": 0,
+        "activeP95": 0,
+        "excludesBeginAndClear": true
+      },
+      "textureBytes": {
+        "stage": 41472000,
+        "rhi": 49766400,
+        "motion": 0,
+        "total": 91238400
+      },
+      "disjoint": 0,
+      "unavailableQueries": 0
+    },
+    "adapted": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "samples": 8,
+      "aa": {
+        "validSamples": 300,
+        "p50": 2.174976,
+        "p95": 2.194432
+      },
+      "frame": {
+        "validSamples": 300,
+        "p50": 7.390208,
+        "p95": 9.304064
+      },
+      "cpu": {
+        "frames": 900,
+        "p50": 10.5,
+        "p95": 17.5
+      },
+      "motion": {
+        "sampledFrames": 300,
+        "activeFrames": 123,
+        "activeP50": 0.008192,
+        "activeP95": 0.114688,
+        "excludesBeginAndClear": true
+      },
+      "textureBytes": {
+        "stage": 74649600,
+        "rhi": 82944000,
+        "motion": 33177600,
+        "total": 190771200
+      },
+      "disjoint": 0,
+      "unavailableQueries": 0
+    }
+  },
+  "campus": [
+    {
+      "view": "traffic",
+      "edgeRoi": {
+        "x": 80,
+        "y": 65,
+        "w": 480,
+        "h": 290,
+        "pixels": 18981,
+        "meanStd": 0.2435253446667154,
+        "p95Std": 0.40725383409315646
+      }
+    },
+    {
+      "view": "traffic-close",
+      "edgeRoi": {
+        "x": 80,
+        "y": 65,
+        "w": 480,
+        "h": 290,
+        "pixels": 16048,
+        "meanStd": 0.4142401964954308,
+        "p95Std": 0.386749295311004
+      }
+    },
+    {
+      "view": "building",
+      "edgeRoi": {
+        "x": 80,
+        "y": 65,
+        "w": 480,
+        "h": 290,
+        "pixels": 35734,
+        "meanStd": 0.2625315621692367,
+        "p95Std": 0.4984773394933365
+      }
+    }
+  ],
+  "motionResolveMismatch": 0,
+  "ui": {
+    "counts": {
+      "label": [
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681,
+        681
+      ],
+      "billboard": [
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400
+      ]
+    },
+    "diffs": {
+      "label": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "billboard": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "pick": true,
+    "overlay": {
+      "active": true,
+      "skipped": 4,
+      "drawn": 4,
+      "bytes": 4300800
+    },
+    "taa": {
+      "valid": true,
+      "jitterSamples": 32
+    }
+  },
+  "release": {
+    "destroyed": true,
+    "taaDestroyed": true,
+    "motionTextureDestroyed": true,
+    "motionPrograms": 0,
+    "motionAliases": 0
+  },
+  "limits": [
+    "Camera stopping restores stronger line detail over about 32 frames; whole-transition temporal standard deviation is not uniformly below baseline.",
+    "32 phases do not consistently beat the selected 8-phase default.",
+    "Object velocity covers standalone opaque rigid GLTF, not full skin/morph/instances/transparency/custom displacement.",
+    "Texture bytes are allocated logical AA resources, not driver-measured whole-process VRAM peak.",
+    "Dynamic traffic/cloud workloads differ; full-frame differences cannot establish a causal AA performance gain."
+  ],
+  "optional32Static": {
+    "windows": {
+      "pixels": 26350,
+      "meanStd": 0.1375402529662634,
+      "p95Std": 0.7153345128319349,
+      "maxStd": 2.101122315190528
+    },
+    "railings": {
+      "pixels": 9185,
+      "meanStd": 0.4182377613698461,
+      "p95Std": 3.8405004978903143,
+      "maxStd": 9.219050463877771
+    },
+    "moving-background": {
+      "pixels": 9515,
+      "meanStd": 0.14790852034315768,
+      "p95Std": 0.7476884366751779,
+      "maxStd": 1.9627010030805028
+    }
+  },
+  "noRhiDisplayFallback": {
+    "valid": true,
+    "rhiHistoryBytes": 0,
+    "release": {
+      "destroyed": true,
+      "taaDestroyed": true,
+      "motionTextureDestroyed": true,
+      "motionPrograms": 0,
+      "motionAliases": 0
+    }
+  },
+  "preOptimizationBuild": "6c7c356d114deb2e0a0f1a7a56eb203b9f6e5da0a44eb58e3c2108b6a4e50a17",
+  "performanceOptimization": {
+    "report": "PERFORMANCE_OPTIMIZATION.md",
+    "measurements": [
+      {
+        "label": "opt-building-before",
+        "sdk": "6c7c356d114deb2e0a0f1a7a56eb203b9f6e5da0a44eb58e3c2108b6a4e50a17",
+        "loadedModels": 70,
+        "traffic": {
+          "disabled": true
+        },
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "aa": {
+          "count": 300,
+          "p50": 2.06336,
+          "p95": 2.182144
+        },
+        "frame": {
+          "count": 300,
+          "p50": 7.931904,
+          "p95": 10.669056
+        },
+        "cpu": {
+          "count": 900,
+          "p50": 9.899999998509884,
+          "p95": 13.600000001490116
+        },
+        "memoryMiB": 150.29296875,
+        "rhiTextures": 4,
+        "unavailable": 0,
+        "disjoint": 0,
+        "errors": [],
+        "finalErrors": []
+      },
+      {
+        "label": "opt-building-after",
+        "sdk": "a5668f64bf8ce1f94aca7f7f91bb4403137888857edfa927d645ebef3a7d2695",
+        "loadedModels": 70,
+        "traffic": {
+          "disabled": true
+        },
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "aa": {
+          "count": 300,
+          "p50": 1.266688,
+          "p95": 1.270784
+        },
+        "frame": {
+          "count": 300,
+          "p50": 8.213504,
+          "p95": 9.509888
+        },
+        "cpu": {
+          "count": 900,
+          "p50": 10.100000001490116,
+          "p95": 13.5
+        },
+        "memoryMiB": 102.83203125,
+        "rhiTextures": 1,
+        "unavailable": 0,
+        "disjoint": 0,
+        "errors": [],
+        "finalErrors": []
+      }
+    ],
+    "scope": "70 loaded buildings, traffic disabled per user request"
+  }
+}

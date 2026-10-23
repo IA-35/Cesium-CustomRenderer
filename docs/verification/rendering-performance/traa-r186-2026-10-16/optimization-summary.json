@@ -1,0 +1,68 @@
+[
+  {
+    "label": "opt-building-before",
+    "sdk": "6c7c356d114deb2e0a0f1a7a56eb203b9f6e5da0a44eb58e3c2108b6a4e50a17",
+    "loadedModels": 70,
+    "traffic": {
+      "disabled": true
+    },
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "aa": {
+      "count": 300,
+      "p50": 2.06336,
+      "p95": 2.182144
+    },
+    "frame": {
+      "count": 300,
+      "p50": 7.931904,
+      "p95": 10.669056
+    },
+    "cpu": {
+      "count": 900,
+      "p50": 9.899999998509884,
+      "p95": 13.600000001490116
+    },
+    "memoryMiB": 150.29296875,
+    "rhiTextures": 4,
+    "unavailable": 0,
+    "disjoint": 0,
+    "errors": [],
+    "finalErrors": []
+  },
+  {
+    "label": "opt-building-after",
+    "sdk": "a5668f64bf8ce1f94aca7f7f91bb4403137888857edfa927d645ebef3a7d2695",
+    "loadedModels": 70,
+    "traffic": {
+      "disabled": true
+    },
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "aa": {
+      "count": 300,
+      "p50": 1.266688,
+      "p95": 1.270784
+    },
+    "frame": {
+      "count": 300,
+      "p50": 8.213504,
+      "p95": 9.509888
+    },
+    "cpu": {
+      "count": 900,
+      "p50": 10.100000001490116,
+      "p95": 13.5
+    },
+    "memoryMiB": 102.83203125,
+    "rhiTextures": 1,
+    "unavailable": 0,
+    "disjoint": 0,
+    "errors": [],
+    "finalErrors": []
+  }
+]

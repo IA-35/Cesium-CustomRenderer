@@ -1,0 +1,18 @@
+{
+  "before": {
+    "references": 28,
+    "unique": 13,
+    "physicalBytes": 43341137,
+    "unsharedBytes": 86682274,
+    "shared": 13
+  },
+  "retained": true,
+  "remainingDraws": 56,
+  "released": true,
+  "restored": {
+    "instances": 1496,
+    "unique": 13,
+    "physicalBytes": 43341137
+  },
+  "sameViewer": true
+}

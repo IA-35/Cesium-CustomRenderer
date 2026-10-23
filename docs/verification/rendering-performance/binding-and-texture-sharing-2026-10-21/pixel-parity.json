@@ -1,0 +1,44 @@
+{
+  "sameMode": {
+    "mean": 0.000008694429836829485,
+    "max": 0.04963389039039612,
+    "over001": 353
+  },
+  "offOn": {
+    "mean": 0.000010004654393472218,
+    "max": 0.04912957549095154,
+    "over001": 433
+  },
+  "onRepeat": {
+    "mean": 2.784753944005749e-8,
+    "max": 0.0015398263931274414,
+    "over001": 0
+  },
+  "picks": [
+    {
+      "enabled": false,
+      "name": "学生第五宿舍",
+      "scope": false
+    },
+    {
+      "enabled": false,
+      "name": "学生第五宿舍",
+      "scope": false
+    },
+    {
+      "enabled": true,
+      "name": "学生第五宿舍",
+      "scope": true
+    },
+    {
+      "enabled": true,
+      "name": "学生第五宿舍",
+      "scope": true
+    }
+  ],
+  "translucentReady": true,
+  "oit": true,
+  "selected": 1,
+  "motionFailed": false,
+  "wrappersRestored": true
+}

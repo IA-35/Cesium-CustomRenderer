@@ -1,0 +1,2484 @@
+[
+  {
+    "mode": "none",
+    "before": {
+      "frame": 750,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 703,
+      "static": 702,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 703,
+      "stats": {
+        "frames": 704,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 751,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 703,
+          "static": 702,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 704,
+          "stats": {
+            "frames": 704,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 751,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 704,
+          "static": 703,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 704,
+          "stats": {
+            "frames": 705,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 752,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 704,
+          "static": 703,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 705,
+          "stats": {
+            "frames": 705,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 752,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 705,
+          "static": 704,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 705,
+          "stats": {
+            "frames": 706,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 753,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 705,
+          "static": 704,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 706,
+          "stats": {
+            "frames": 706,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 753,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 706,
+          "static": 705,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 706,
+          "stats": {
+            "frames": 707,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 754,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 706,
+          "static": 705,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 707,
+          "stats": {
+            "frames": 707,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 754,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 707,
+          "static": 706,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 707,
+          "stats": {
+            "frames": 708,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 755,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 707,
+          "static": 706,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 708,
+          "stats": {
+            "frames": 708,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 755,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 708,
+          "static": 707,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 708,
+          "stats": {
+            "frames": 709,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "none-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "none-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "none-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "none-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "none-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "none-4.png"
+      }
+    ],
+    "after": {
+      "frame": 750,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 703,
+      "static": 702,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 703,
+      "stats": {
+        "frames": 704,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  },
+  {
+    "mode": "mouse-only",
+    "before": {
+      "frame": 819,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 772,
+      "static": 771,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 772,
+      "stats": {
+        "frames": 773,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 820,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 772,
+          "static": 771,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 773,
+          "stats": {
+            "frames": 773,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 820,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 773,
+          "static": 772,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 773,
+          "stats": {
+            "frames": 774,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 821,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 773,
+          "static": 772,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 774,
+          "stats": {
+            "frames": 774,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 821,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 774,
+          "static": 773,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 774,
+          "stats": {
+            "frames": 775,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 822,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 774,
+          "static": 773,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 775,
+          "stats": {
+            "frames": 775,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 822,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 775,
+          "static": 774,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 775,
+          "stats": {
+            "frames": 776,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 823,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 775,
+          "static": 774,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 776,
+          "stats": {
+            "frames": 776,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 823,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 776,
+          "static": 775,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 776,
+          "stats": {
+            "frames": 777,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 824,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 776,
+          "static": 775,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 777,
+          "stats": {
+            "frames": 777,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 824,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 777,
+          "static": 776,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 777,
+          "stats": {
+            "frames": 778,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "mouse-only-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "mouse-only-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "mouse-only-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "mouse-only-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "mouse-only-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "mouse-only-4.png"
+      }
+    ],
+    "after": {
+      "frame": 819,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 772,
+      "static": 771,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 772,
+      "stats": {
+        "frames": 773,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  },
+  {
+    "mode": "pick-model",
+    "before": {
+      "frame": 888,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 841,
+      "static": 840,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 841,
+      "stats": {
+        "frames": 842,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 889,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 841,
+          "static": 840,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 842,
+          "stats": {
+            "frames": 842,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 889,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 842,
+          "static": 841,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 842,
+          "stats": {
+            "frames": 843,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 890,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 842,
+          "static": 841,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 843,
+          "stats": {
+            "frames": 843,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 890,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 843,
+          "static": 842,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 843,
+          "stats": {
+            "frames": 844,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 891,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 843,
+          "static": 842,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 844,
+          "stats": {
+            "frames": 844,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 891,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 844,
+          "static": 843,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 844,
+          "stats": {
+            "frames": 845,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 892,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 844,
+          "static": 843,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 845,
+          "stats": {
+            "frames": 845,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 892,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 845,
+          "static": 844,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 845,
+          "stats": {
+            "frames": 846,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 893,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 845,
+          "static": 844,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 846,
+          "stats": {
+            "frames": 846,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 893,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 846,
+          "static": 845,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 846,
+          "stats": {
+            "frames": 847,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "pick-model-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "pick-model-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "pick-model-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "pick-model-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "pick-model-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "pick-model-4.png"
+      }
+    ],
+    "picked": true,
+    "after": {
+      "frame": 888,
+      "passes": {
+        "render": false,
+        "pick": true,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 841,
+      "static": 840,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 841,
+      "stats": {
+        "frames": 842,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  },
+  {
+    "mode": "pick-empty",
+    "before": {
+      "frame": 957,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 910,
+      "static": 909,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 910,
+      "stats": {
+        "frames": 911,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 958,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 910,
+          "static": 909,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 911,
+          "stats": {
+            "frames": 911,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 958,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 911,
+          "static": 910,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 911,
+          "stats": {
+            "frames": 912,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 959,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 911,
+          "static": 910,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 912,
+          "stats": {
+            "frames": 912,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 959,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 912,
+          "static": 911,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 912,
+          "stats": {
+            "frames": 913,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 960,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 912,
+          "static": 911,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 913,
+          "stats": {
+            "frames": 913,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 960,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 913,
+          "static": 912,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 913,
+          "stats": {
+            "frames": 914,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 961,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 913,
+          "static": 912,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 914,
+          "stats": {
+            "frames": 914,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 961,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 914,
+          "static": 913,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 914,
+          "stats": {
+            "frames": 915,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 962,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 914,
+          "static": 913,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 915,
+          "stats": {
+            "frames": 915,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 962,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 915,
+          "static": 914,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 915,
+          "stats": {
+            "frames": 916,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "pick-empty-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "pick-empty-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "pick-empty-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "pick-empty-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "pick-empty-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "pick-empty-4.png"
+      }
+    ],
+    "picked": false,
+    "after": {
+      "frame": 957,
+      "passes": {
+        "render": false,
+        "pick": true,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 0,
+      "history": true,
+      "age": 910,
+      "static": 909,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 910,
+      "stats": {
+        "frames": 911,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  },
+  {
+    "mode": "pick-position",
+    "before": {
+      "frame": 1026,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 979,
+      "static": 978,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 979,
+      "stats": {
+        "frames": 980,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 1027,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 979,
+          "static": 978,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 980,
+          "stats": {
+            "frames": 980,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1027,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 980,
+          "static": 979,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 980,
+          "stats": {
+            "frames": 981,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1028,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 980,
+          "static": 979,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 981,
+          "stats": {
+            "frames": 981,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1028,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 981,
+          "static": 980,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 981,
+          "stats": {
+            "frames": 982,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1029,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 981,
+          "static": 980,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 982,
+          "stats": {
+            "frames": 982,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1029,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 982,
+          "static": 981,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 982,
+          "stats": {
+            "frames": 983,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1030,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 982,
+          "static": 981,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 983,
+          "stats": {
+            "frames": 983,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1030,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 983,
+          "static": 982,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 983,
+          "stats": {
+            "frames": 984,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1031,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 983,
+          "static": 982,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 984,
+          "stats": {
+            "frames": 984,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1031,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 984,
+          "static": 983,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 984,
+          "stats": {
+            "frames": 985,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "pick-position-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "pick-position-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "pick-position-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "pick-position-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "pick-position-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "pick-position-4.png"
+      }
+    ],
+    "picked": true,
+    "after": {
+      "frame": 1026,
+      "passes": {
+        "render": false,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 979,
+      "static": 978,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 979,
+      "stats": {
+        "frames": 980,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  },
+  {
+    "mode": "drill-empty",
+    "before": {
+      "frame": 1095,
+      "passes": {
+        "render": true,
+        "pick": false,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 1,
+      "history": true,
+      "age": 1048,
+      "static": 1047,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 1048,
+      "stats": {
+        "frames": 1049,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    },
+    "frames": [
+      {
+        "entry": {
+          "frame": 1096,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1048,
+          "static": 1047,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1049,
+          "stats": {
+            "frames": 1049,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1096,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1049,
+          "static": 1048,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1049,
+          "stats": {
+            "frames": 1050,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1097,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1049,
+          "static": 1048,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1050,
+          "stats": {
+            "frames": 1050,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1097,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1050,
+          "static": 1049,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1050,
+          "stats": {
+            "frames": 1051,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1098,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1050,
+          "static": 1049,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1051,
+          "stats": {
+            "frames": 1051,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1098,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1051,
+          "static": 1050,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1051,
+          "stats": {
+            "frames": 1052,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1099,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1051,
+          "static": 1050,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1052,
+          "stats": {
+            "frames": 1052,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1099,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1052,
+          "static": 1051,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1052,
+          "stats": {
+            "frames": 1053,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      },
+      {
+        "entry": {
+          "frame": 1100,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1052,
+          "static": 1051,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1053,
+          "stats": {
+            "frames": 1053,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        },
+        "after": {
+          "frame": 1100,
+          "passes": {
+            "render": true,
+            "pick": false,
+            "pickVoxel": false,
+            "depth": false,
+            "postProcess": false,
+            "offscreen": false
+          },
+          "frustums": 1,
+          "history": true,
+          "age": 1053,
+          "static": 1052,
+          "healthy": true,
+          "overlay": true,
+          "jitter": 1053,
+          "stats": {
+            "frames": 1054,
+            "bypasses": 0,
+            "resets": 1
+          },
+          "motion": {
+            "active": true,
+            "supported": 51,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0
+          }
+        }
+      }
+    ],
+    "images": [
+      {
+        "frame": "before",
+        "file": "drill-empty-before.png"
+      },
+      {
+        "frame": 0,
+        "file": "drill-empty-0.png"
+      },
+      {
+        "frame": 1,
+        "file": "drill-empty-1.png"
+      },
+      {
+        "frame": 2,
+        "file": "drill-empty-2.png"
+      },
+      {
+        "frame": 3,
+        "file": "drill-empty-3.png"
+      },
+      {
+        "frame": 4,
+        "file": "drill-empty-4.png"
+      }
+    ],
+    "picked": 0,
+    "after": {
+      "frame": 1095,
+      "passes": {
+        "render": false,
+        "pick": true,
+        "pickVoxel": false,
+        "depth": false,
+        "postProcess": false,
+        "offscreen": false
+      },
+      "frustums": 0,
+      "history": true,
+      "age": 1048,
+      "static": 1047,
+      "healthy": true,
+      "overlay": true,
+      "jitter": 1048,
+      "stats": {
+        "frames": 1049,
+        "bypasses": 0,
+        "resets": 1
+      },
+      "motion": {
+        "active": true,
+        "supported": 51,
+        "unsupported": 0,
+        "draws": 0,
+        "errors": 0,
+        "newSurfaces": 0
+      }
+    }
+  }
+]

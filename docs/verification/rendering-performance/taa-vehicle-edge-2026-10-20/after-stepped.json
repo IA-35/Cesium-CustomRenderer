@@ -1,0 +1,3860 @@
+{
+  "gpu": {
+    "vendor": "Google Inc. (NVIDIA)",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "cases": [
+    {
+      "kind": "supported",
+      "frames": [
+        {
+          "index": 0,
+          "error": {
+            "n": 545,
+            "mean": 0.00020415053591815702,
+            "p95": 0.0009411424398422241,
+            "max": 0.0014275237917900085
+          },
+          "flicker": {
+            "n": 0,
+            "mean": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 1,
+          "error": {
+            "n": 545,
+            "mean": 0.00020694402516435045,
+            "p95": 0.0011382922530174255,
+            "max": 0.0015471726655960083
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00012365256290917002,
+            "p95": 0.0005489587783813477,
+            "max": 0.0008283108472824097
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 2,
+          "error": {
+            "n": 545,
+            "mean": 0.00021147665764213703,
+            "p95": 0.0011917352676391602,
+            "max": 0.0018076300621032715
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00010589143141694025,
+            "p95": 0.0005363225936889648,
+            "max": 0.0008171647787094116
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 3,
+          "error": {
+            "n": 545,
+            "mean": 0.0003313662467199728,
+            "p95": 0.0011260807514190674,
+            "max": 0.04368707537651062
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.00011551134698724342,
+            "p95": 0.0004961639642715454,
+            "max": 0.0009226351976394653
+          },
+          "age": {
+            "n": 545,
+            "mean": 30.976146788990825,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 4,
+          "error": {
+            "n": 545,
+            "mean": 0.00039089677530691167,
+            "p95": 0.0011485368013381958,
+            "max": 0.049635618925094604
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00040357227719158207,
+            "p95": 0.0004795342683792114,
+            "max": 0.09136950969696045
+          },
+          "age": {
+            "n": 545,
+            "mean": 31.009174311926607,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 5,
+          "error": {
+            "n": 545,
+            "mean": 0.0003431760731640212,
+            "p95": 0.0011449158191680908,
+            "max": 0.042031675577163696
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0004200859080760851,
+            "p95": 0.000563010573387146,
+            "max": 0.08971410989761353
+          },
+          "age": {
+            "n": 545,
+            "mean": 31.042201834862386,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 6,
+          "error": {
+            "n": 545,
+            "mean": 0.00037153344772277623,
+            "p95": 0.001369871199131012,
+            "max": 0.02606263756752014
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.00020104272568479496,
+            "p95": 0.0005914568901062012,
+            "max": 0.017589092254638672
+          },
+          "age": {
+            "n": 545,
+            "mean": 29.66605504587156,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 7,
+          "error": {
+            "n": 545,
+            "mean": 0.0003386302757153817,
+            "p95": 0.001219823956489563,
+            "max": 0.03161826729774475
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0002691553820163832,
+            "p95": 0.0004933774471282959,
+            "max": 0.03260445594787598
+          },
+          "age": {
+            "n": 545,
+            "mean": 29.748623853211008,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 8,
+          "error": {
+            "n": 545,
+            "mean": 0.0003515647433766531,
+            "p95": 0.0011220425367355347,
+            "max": 0.028682589530944824
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00031740066655185247,
+            "p95": 0.0005471110343933105,
+            "max": 0.03654363751411438
+          },
+          "age": {
+            "n": 545,
+            "mean": 29.83119266055046,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 9,
+          "error": {
+            "n": 545,
+            "mean": 0.0003247622981530811,
+            "p95": 0.0012775510549545288,
+            "max": 0.013926982879638672
+          },
+          "flicker": {
+            "n": 473,
+            "mean": 0.00022723828983861347,
+            "p95": 0.0005869269371032715,
+            "max": 0.01579335331916809
+          },
+          "age": {
+            "n": 545,
+            "mean": 28.422018348623855,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 10,
+          "error": {
+            "n": 545,
+            "mean": 0.00032223698879600666,
+            "p95": 0.0013571977615356445,
+            "max": 0.018830925226211548
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00018970915073648504,
+            "p95": 0.0005975067615509033,
+            "max": 0.011370986700057983
+          },
+          "age": {
+            "n": 545,
+            "mean": 28.55229357798165,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 11,
+          "error": {
+            "n": 545,
+            "mean": 0.0002783472589943387,
+            "p95": 0.0012362152338027954,
+            "max": 0.012385457754135132
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00023879875010306682,
+            "p95": 0.0005539655685424805,
+            "max": 0.01922607421875
+          },
+          "age": {
+            "n": 545,
+            "mean": 28.68807339449541,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 12,
+          "error": {
+            "n": 543,
+            "mean": 0.0003846621837185672,
+            "p95": 0.0007138103246688843,
+            "max": 0.03832241892814636
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.00022855513351484975,
+            "p95": 0.00044414401054382324,
+            "max": 0.014649569988250732
+          },
+          "age": {
+            "n": 543,
+            "mean": 27.331491712707184,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 13,
+          "error": {
+            "n": 543,
+            "mean": 0.0003544601026929325,
+            "p95": 0.0009719282388687134,
+            "max": 0.03919444978237152
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.00023848000865834412,
+            "p95": 0.0006479024887084961,
+            "max": 0.021169990301132202
+          },
+          "age": {
+            "n": 543,
+            "mean": 27.519337016574585,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 14,
+          "error": {
+            "n": 543,
+            "mean": 0.0002739101058321544,
+            "p95": 0.0008147880434989929,
+            "max": 0.013078764081001282
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0002826286229419884,
+            "p95": 0.0005915164947509766,
+            "max": 0.0522732138633728
+          },
+          "age": {
+            "n": 543,
+            "mean": 27.70718232044199,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 15,
+          "error": {
+            "n": 545,
+            "mean": 0.0004070618762335646,
+            "p95": 0.00039145350456237793,
+            "max": 0.06535586714744568
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.0002531457875074862,
+            "p95": 0.0004414469003677368,
+            "max": 0.01930759847164154
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.332110091743118,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 16,
+          "error": {
+            "n": 545,
+            "mean": 0.0003810417351372745,
+            "p95": 0.0006612837314605713,
+            "max": 0.05296063423156738
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00029420200564445704,
+            "p95": 0.0005875527858734131,
+            "max": 0.015504151582717896
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.572477064220184,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 17,
+          "error": {
+            "n": 545,
+            "mean": 0.0002997151208580087,
+            "p95": 0.0007280558347702026,
+            "max": 0.014873161911964417
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0003681940086390994,
+            "p95": 0.0005873739719390869,
+            "max": 0.05443498492240906
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.812844036697246,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 18,
+          "error": {
+            "n": 544,
+            "mean": 0.000606540686396115,
+            "p95": 0.0008345693349838257,
+            "max": 0.056934624910354614
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.00024960367226550025,
+            "p95": 0.0005983412265777588,
+            "max": 0.026477202773094177
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.308823529411764,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 19,
+          "error": {
+            "n": 544,
+            "mean": 0.00038982279982198686,
+            "p95": 0.0008006393909454346,
+            "max": 0.03637072443962097
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0004338533754515297,
+            "p95": 0.0006775856018066406,
+            "max": 0.0270671546459198
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.553308823529413,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 20,
+          "error": {
+            "n": 544,
+            "mean": 0.0004625041928032742,
+            "p95": 0.0008141100406646729,
+            "max": 0.036851704120635986
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.00043976916383732767,
+            "p95": 0.0005442202091217041,
+            "max": 0.041980862617492676
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.797794117647058,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 21,
+          "error": {
+            "n": 548,
+            "mean": 0.0006944096246122444,
+            "p95": 0.0007936730980873108,
+            "max": 0.0872526466846466
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.0004697827527583656,
+            "p95": 0.000665128231048584,
+            "max": 0.05502407252788544
+          },
+          "age": {
+            "n": 548,
+            "mean": 26.326642335766422,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 22,
+          "error": {
+            "n": 548,
+            "mean": 0.0003303372484706614,
+            "p95": 0.0007882192730903625,
+            "max": 0.025834262371063232
+          },
+          "flicker": {
+            "n": 548,
+            "mean": 0.000570346662489167,
+            "p95": 0.0006930828094482422,
+            "max": 0.061418384313583374
+          },
+          "age": {
+            "n": 548,
+            "mean": 26.56934306569343,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 23,
+          "error": {
+            "n": 548,
+            "mean": 0.0004161465981037077,
+            "p95": 0.0004685819149017334,
+            "max": 0.02299046516418457
+          },
+          "flicker": {
+            "n": 548,
+            "mean": 0.0004062813156060059,
+            "p95": 0.0005995631217956543,
+            "max": 0.021808743476867676
+          },
+          "age": {
+            "n": 548,
+            "mean": 26.812043795620436,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 24,
+          "error": {
+            "n": 544,
+            "mean": 0.0006543522262397935,
+            "p95": 0.0007792860269546509,
+            "max": 0.1425682008266449
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.00041013525135941424,
+            "p95": 0.0005884915590286255,
+            "max": 0.03429113328456879
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.220588235294116,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 25,
+          "error": {
+            "n": 544,
+            "mean": 0.00037019230041872054,
+            "p95": 0.0007520765066146851,
+            "max": 0.04711100459098816
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0005401038866051856,
+            "p95": 0.000605165958404541,
+            "max": 0.09545719623565674
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.465073529411764,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 26,
+          "error": {
+            "n": 544,
+            "mean": 0.0004721676711650456,
+            "p95": 0.0007926523685455322,
+            "max": 0.033305823802948
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0003230921540628461,
+            "p95": 0.0006140172481536865,
+            "max": 0.020807772874832153
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.709558823529413,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 27,
+          "error": {
+            "n": 542,
+            "mean": 0.0010267978540975668,
+            "p95": 0.0008065104484558105,
+            "max": 0.20769596099853516
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.00032875567991682826,
+            "p95": 0.0006670653820037842,
+            "max": 0.02114465832710266
+          },
+          "age": {
+            "n": 542,
+            "mean": 26.125461254612546,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 28,
+          "error": {
+            "n": 542,
+            "mean": 0.00041904945160190117,
+            "p95": 0.0007035732269287109,
+            "max": 0.045204728841781616
+          },
+          "flicker": {
+            "n": 542,
+            "mean": 0.0008419835561975782,
+            "p95": 0.0005246102809906006,
+            "max": 0.16249123215675354
+          },
+          "age": {
+            "n": 542,
+            "mean": 26.374538745387454,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 29,
+          "error": {
+            "n": 542,
+            "mean": 0.0003551272984690332,
+            "p95": 0.0007111132144927979,
+            "max": 0.02316531538963318
+          },
+          "flicker": {
+            "n": 542,
+            "mean": 0.0003459591184814918,
+            "p95": 0.0006557703018188477,
+            "max": 0.022039413452148438
+          },
+          "age": {
+            "n": 542,
+            "mean": 26.623616236162363,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 30,
+          "error": {
+            "n": 543,
+            "mean": 0.0006300945719961304,
+            "p95": 0.0008168891072273254,
+            "max": 0.07214206457138062
+          },
+          "flicker": {
+            "n": 468,
+            "mean": 0.00038700920139622485,
+            "p95": 0.0006816983222961426,
+            "max": 0.048976749181747437
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.156537753222835,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 31,
+          "error": {
+            "n": 543,
+            "mean": 0.0003598152589512574,
+            "p95": 0.0004740990698337555,
+            "max": 0.03466179966926575
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0004340630182464698,
+            "p95": 0.0005519986152648926,
+            "max": 0.05256533622741699
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.406998158379373,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 32,
+          "error": {
+            "n": 543,
+            "mean": 0.0003598030677157871,
+            "p95": 0.000784456729888916,
+            "max": 0.03647002577781677
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.00026980008154723305,
+            "p95": 0.0006134510040283203,
+            "max": 0.016705185174942017
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.65745856353591,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 33,
+          "error": {
+            "n": 544,
+            "mean": 0.0011565797921160564,
+            "p95": 0.0020415857434272766,
+            "max": 0.1803952157497406
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.00035627304938188784,
+            "p95": 0.0006161332130432129,
+            "max": 0.03197896480560303
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.240808823529413,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 34,
+          "error": {
+            "n": 544,
+            "mean": 0.0007792592171908301,
+            "p95": 0.003498256206512451,
+            "max": 0.045469045639038086
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0009774477905867731,
+            "p95": 0.0007361173629760742,
+            "max": 0.18354099988937378
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.49264705882353,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 35,
+          "error": {
+            "n": 544,
+            "mean": 0.0007167699034599697,
+            "p95": 0.002598702907562256,
+            "max": 0.03890010714530945
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0005880683687899043,
+            "p95": 0.0010622143745422363,
+            "max": 0.026365548372268677
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.74448529411765,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 36,
+          "error": {
+            "n": 547,
+            "mean": 0.0027170367879449124,
+            "p95": 0.009913921356201172,
+            "max": 0.1943257451057434
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.0007687255235041602,
+            "p95": 0.0007649362087249756,
+            "max": 0.04629334807395935
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.378427787934186,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 37,
+          "error": {
+            "n": 547,
+            "mean": 0.001389870709540421,
+            "p95": 0.007294148206710815,
+            "max": 0.05256849527359009
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.0027304789838015053,
+            "p95": 0.009260617196559906,
+            "max": 0.14920735359191895
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.627056672760514,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 38,
+          "error": {
+            "n": 547,
+            "mean": 0.0016296117190251185,
+            "p95": 0.012071728706359863,
+            "max": 0.04143565893173218
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.0014273467349395891,
+            "p95": 0.009831070899963379,
+            "max": 0.05050426721572876
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.875685557586838,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 39,
+          "error": {
+            "n": 543,
+            "mean": 0.0017455427686153854,
+            "p95": 0.011272110044956207,
+            "max": 0.09109383821487427
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.0011995227536831185,
+            "p95": 0.011221528053283691,
+            "max": 0.03147534281015396
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.38121546961326,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 40,
+          "error": {
+            "n": 543,
+            "mean": 0.0014005126105707214,
+            "p95": 0.007057249546051025,
+            "max": 0.04728725552558899
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.001854862654187183,
+            "p95": 0.012030452489852905,
+            "max": 0.08832713961601257
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.627992633517497,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 41,
+          "error": {
+            "n": 543,
+            "mean": 0.0015648217394975449,
+            "p95": 0.011882230639457703,
+            "max": 0.03634151816368103
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0018398313342317472,
+            "p95": 0.015415459871292114,
+            "max": 0.029001325368881226
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.87476979742173,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 42,
+          "error": {
+            "n": 546,
+            "mean": 0.0016401330275194986,
+            "p95": 0.010278858244419098,
+            "max": 0.05451524257659912
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.0013394514909468892,
+            "p95": 0.00824207067489624,
+            "max": 0.03996574878692627
+          },
+          "age": {
+            "n": 546,
+            "mean": 26.324175824175825,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 43,
+          "error": {
+            "n": 546,
+            "mean": 0.0008607152781207046,
+            "p95": 0.005665868520736694,
+            "max": 0.02475181221961975
+          },
+          "flicker": {
+            "n": 546,
+            "mean": 0.0014172431641009265,
+            "p95": 0.010100483894348145,
+            "max": 0.07140031456947327
+          },
+          "age": {
+            "n": 546,
+            "mean": 26.575091575091577,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 44,
+          "error": {
+            "n": 546,
+            "mean": 0.00101652531287609,
+            "p95": 0.006784006953239441,
+            "max": 0.020298555493354797
+          },
+          "flicker": {
+            "n": 546,
+            "mean": 0.0011373687085214552,
+            "p95": 0.009376227855682373,
+            "max": 0.0300179123878479
+          },
+          "age": {
+            "n": 546,
+            "mean": 26.826007326007325,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 45,
+          "error": {
+            "n": 544,
+            "mean": 0.0012601776363547234,
+            "p95": 0.007108747959136963,
+            "max": 0.12986668944358826
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.0011611510632134703,
+            "p95": 0.008306622505187988,
+            "max": 0.023380383849143982
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.25551470588235,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 46,
+          "error": {
+            "n": 544,
+            "mean": 0.0011632365982650833,
+            "p95": 0.009619109332561493,
+            "max": 0.02134007215499878
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0013241363305817632,
+            "p95": 0.007228046655654907,
+            "max": 0.14081096649169922
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.501838235294116,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 47,
+          "error": {
+            "n": 544,
+            "mean": 0.0008005283718161724,
+            "p95": 0.0051916539669036865,
+            "max": 0.020655274391174316
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.000933139119297266,
+            "p95": 0.006045341491699219,
+            "max": 0.030691862106323242
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.748161764705884,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 48,
+          "error": {
+            "n": 545,
+            "mean": 0.0009479700015225541,
+            "p95": 0.0040472447872161865,
+            "max": 0.0725134015083313
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.0006242631066401125,
+            "p95": 0.004823774099349976,
+            "max": 0.014068752527236938
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.111926605504586,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 49,
+          "error": {
+            "n": 545,
+            "mean": 0.0007363342295546051,
+            "p95": 0.004377305507659912,
+            "max": 0.034493863582611084
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0009217824137538945,
+            "p95": 0.005663186311721802,
+            "max": 0.045578837394714355
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.36146788990826,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 50,
+          "error": {
+            "n": 545,
+            "mean": 0.0007890988927368724,
+            "p95": 0.004895061254501343,
+            "max": 0.027992799878120422
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.000682340493989647,
+            "p95": 0.002465471625328064,
+            "max": 0.048923805356025696
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.611009174311928,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 51,
+          "error": {
+            "n": 544,
+            "mean": 0.0008747929104549043,
+            "p95": 0.0015273690223693848,
+            "max": 0.12278507649898529
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.0003754702533126637,
+            "p95": 0.0006813704967498779,
+            "max": 0.03197598457336426
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.167279411764707,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 52,
+          "error": {
+            "n": 544,
+            "mean": 0.0004816930878030903,
+            "p95": 0.0017294734716415405,
+            "max": 0.03918623924255371
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0007181251832448385,
+            "p95": 0.0006297528743743896,
+            "max": 0.10495048761367798
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.415441176470587,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 53,
+          "error": {
+            "n": 544,
+            "mean": 0.000501706888077452,
+            "p95": 0.0018470436334609985,
+            "max": 0.03194513916969299
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.000452095505726688,
+            "p95": 0.0006625950336456299,
+            "max": 0.04615168273448944
+          },
+          "age": {
+            "n": 544,
+            "mean": 26.66360294117647,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 54,
+          "error": {
+            "n": 543,
+            "mean": 0.000709572968177813,
+            "p95": 0.002219177782535553,
+            "max": 0.0862942487001419
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.00034699780826872965,
+            "p95": 0.0006740689277648926,
+            "max": 0.017511755228042603
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.211786372007367,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 55,
+          "error": {
+            "n": 543,
+            "mean": 0.0005480102083301017,
+            "p95": 0.002044282853603363,
+            "max": 0.03920653462409973
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.000435917609084816,
+            "p95": 0.0005813241004943848,
+            "max": 0.047087714076042175
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.4585635359116,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 56,
+          "error": {
+            "n": 543,
+            "mean": 0.0005930994069598218,
+            "p95": 0.0018260031938552856,
+            "max": 0.02976226806640625
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0004162234468574243,
+            "p95": 0.0006418824195861816,
+            "max": 0.033488526940345764
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.70534069981584,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 57,
+          "error": {
+            "n": 543,
+            "mean": 0.0005114655564393347,
+            "p95": 0.0021077245473861694,
+            "max": 0.02938416600227356
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.0003614650924068524,
+            "p95": 0.0006051957607269287,
+            "max": 0.02021661400794983
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.152854511970535,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 58,
+          "error": {
+            "n": 543,
+            "mean": 0.0004509431867419466,
+            "p95": 0.0020893439650535583,
+            "max": 0.013214737176895142
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.00037117435512841294,
+            "p95": 0.0006220638751983643,
+            "max": 0.04185947775840759
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.403314917127073,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 59,
+          "error": {
+            "n": 543,
+            "mean": 0.000532265224289938,
+            "p95": 0.0021167919039726257,
+            "max": 0.026935696601867676
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0003664501793476758,
+            "p95": 0.0006773918867111206,
+            "max": 0.04003560543060303
+          },
+          "age": {
+            "n": 543,
+            "mean": 26.65377532228361,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 60,
+          "error": {
+            "n": 547,
+            "mean": 0.000582337937908591,
+            "p95": 0.0020036697387695312,
+            "max": 0.046344220638275146
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.0003175055746566465,
+            "p95": 0.0005470514297485352,
+            "max": 0.02281591296195984
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.219378427787934,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        },
+        {
+          "index": 61,
+          "error": {
+            "n": 547,
+            "mean": 0.00039645782254731635,
+            "p95": 0.002063274383544922,
+            "max": 0.01171843707561493
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.00038446673963361946,
+            "p95": 0.0006555616855621338,
+            "max": 0.042526841163635254
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.46983546617916,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 62,
+          "error": {
+            "n": 547,
+            "mean": 0.0005816985228161925,
+            "p95": 0.002325884997844696,
+            "max": 0.026757270097732544
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.00035807396365258117,
+            "p95": 0.0006931126117706299,
+            "max": 0.02567097544670105
+          },
+          "age": {
+            "n": 547,
+            "mean": 26.720292504570384,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 63,
+          "error": {
+            "n": 545,
+            "mean": 0.0006459520360745421,
+            "p95": 0.0021977871656417847,
+            "max": 0.06359007954597473
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.0003087906861456774,
+            "p95": 0.0005807578563690186,
+            "max": 0.02308472990989685
+          },
+          "age": {
+            "n": 545,
+            "mean": 26.192660550458715,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 52,
+            "unsupported": 0,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 1
+          }
+        }
+      ]
+    },
+    {
+      "kind": "unsupported",
+      "frames": [
+        {
+          "index": 0,
+          "error": {
+            "n": 545,
+            "mean": 0.00009911384330976994,
+            "p95": 0.00046437978744506836,
+            "max": 0.0008056759834289551
+          },
+          "flicker": {
+            "n": 0,
+            "mean": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 1,
+          "error": {
+            "n": 545,
+            "mean": 0.00009459806691615953,
+            "p95": 0.000396728515625,
+            "max": 0.0007379204034805298
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.00012322241833450599,
+            "p95": 0.0005480945110321045,
+            "max": 0.000827297568321228
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 2,
+          "error": {
+            "n": 545,
+            "mean": 0.0001061887232535476,
+            "p95": 0.00048026442527770996,
+            "max": 0.0009825527667999268
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0001054781976096127,
+            "p95": 0.0005347579717636108,
+            "max": 0.0008179992437362671
+          },
+          "age": {
+            "n": 545,
+            "mean": 32,
+            "p95": 32,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 3,
+          "error": {
+            "n": 545,
+            "mean": 0.03471234449006002,
+            "p95": 0.14813822507858276,
+            "max": 0.35443177819252014
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.03842482234398693,
+            "p95": 0.17147278785705566,
+            "max": 0.354745090007782
+          },
+          "age": {
+            "n": 545,
+            "mean": 1.2275229357798165,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 4,
+          "error": {
+            "n": 545,
+            "mean": 0.019234514291133355,
+            "p95": 0.08021479845046997,
+            "max": 0.1420346200466156
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.03012244682246392,
+            "p95": 0.12691664695739746,
+            "max": 0.24252960085868835
+          },
+          "age": {
+            "n": 545,
+            "mean": 2.220183486238532,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 5,
+          "error": {
+            "n": 545,
+            "mean": 0.010486853109040392,
+            "p95": 0.04255901277065277,
+            "max": 0.13619306683540344
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.017518848980512095,
+            "p95": 0.07757629454135895,
+            "max": 0.11395412683486938
+          },
+          "age": {
+            "n": 545,
+            "mean": 3.2128440366972475,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 6,
+          "error": {
+            "n": 545,
+            "mean": 0.03722490951282169,
+            "p95": 0.16865035891532898,
+            "max": 0.3818684220314026
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.046540275279511795,
+            "p95": 0.1998506486415863,
+            "max": 0.4429829642176628
+          },
+          "age": {
+            "n": 545,
+            "mean": 1.3412844036697247,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 7,
+          "error": {
+            "n": 545,
+            "mean": 0.0167088361098132,
+            "p95": 0.08046743273735046,
+            "max": 0.1449017971754074
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.03159634298687681,
+            "p95": 0.16327400505542755,
+            "max": 0.24824261665344238
+          },
+          "age": {
+            "n": 545,
+            "mean": 2.330275229357798,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 8,
+          "error": {
+            "n": 545,
+            "mean": 0.010315883200649821,
+            "p95": 0.05051654577255249,
+            "max": 0.1321587860584259
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.014856145469420547,
+            "p95": 0.07488862425088882,
+            "max": 0.11169544607400894
+          },
+          "age": {
+            "n": 545,
+            "mean": 3.3192660550458717,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 9,
+          "error": {
+            "n": 545,
+            "mean": 0.038493028843621595,
+            "p95": 0.17956900596618652,
+            "max": 0.3097372055053711
+          },
+          "flicker": {
+            "n": 473,
+            "mean": 0.05085154208522014,
+            "p95": 0.20315131545066833,
+            "max": 0.35561951994895935
+          },
+          "age": {
+            "n": 545,
+            "mean": 1.455045871559633,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 10,
+          "error": {
+            "n": 545,
+            "mean": 0.017791321832652484,
+            "p95": 0.09077953547239304,
+            "max": 0.17507195472717285
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.02616454101757172,
+            "p95": 0.18350225687026978,
+            "max": 0.23355618119239807
+          },
+          "age": {
+            "n": 545,
+            "mean": 2.4403669724770642,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 11,
+          "error": {
+            "n": 545,
+            "mean": 0.01032452391921927,
+            "p95": 0.046398743987083435,
+            "max": 0.09299546480178833
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.014792265244033358,
+            "p95": 0.06716018170118332,
+            "max": 0.1415002942085266
+          },
+          "age": {
+            "n": 545,
+            "mean": 3.4256880733944954,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 12,
+          "error": {
+            "n": 543,
+            "mean": 0.0286433610989683,
+            "p95": 0.13383597135543823,
+            "max": 0.23791426420211792
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.03052453029181041,
+            "p95": 0.14605772495269775,
+            "max": 0.2819681465625763
+          },
+          "age": {
+            "n": 543,
+            "mean": 1.5138121546961325,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 13,
+          "error": {
+            "n": 543,
+            "mean": 0.0135909386020339,
+            "p95": 0.05927518010139465,
+            "max": 0.13296303153038025
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.0263184762077876,
+            "p95": 0.1491905152797699,
+            "max": 0.20813056826591492
+          },
+          "age": {
+            "n": 543,
+            "mean": 2.4972375690607733,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 14,
+          "error": {
+            "n": 543,
+            "mean": 0.008527110390790479,
+            "p95": 0.04324689507484436,
+            "max": 0.0761595368385315
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.013083691864821573,
+            "p95": 0.06506434082984924,
+            "max": 0.11694074422121048
+          },
+          "age": {
+            "n": 543,
+            "mean": 3.4806629834254146,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 15,
+          "error": {
+            "n": 545,
+            "mean": 0.030335289650007126,
+            "p95": 0.14712417125701904,
+            "max": 0.2336079478263855
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.030841988080473087,
+            "p95": 0.16480416059494019,
+            "max": 0.2712583541870117
+          },
+          "age": {
+            "n": 545,
+            "mean": 1,
+            "p95": 1,
+            "max": 1
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 16,
+          "error": {
+            "n": 545,
+            "mean": 0.018658457272643342,
+            "p95": 0.09681087732315063,
+            "max": 0.15232513844966888
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.024122645083917392,
+            "p95": 0.11846081912517548,
+            "max": 0.1863250732421875
+          },
+          "age": {
+            "n": 545,
+            "mean": 2,
+            "p95": 2,
+            "max": 2
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 17,
+          "error": {
+            "n": 545,
+            "mean": 0.008059059725988896,
+            "p95": 0.03875085711479187,
+            "max": 0.08405613899230957
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.0168928450674092,
+            "p95": 0.07950769364833832,
+            "max": 0.12559044361114502
+          },
+          "age": {
+            "n": 545,
+            "mean": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 18,
+          "error": {
+            "n": 544,
+            "mean": 0.03439665896653691,
+            "p95": 0.1797819584608078,
+            "max": 0.2669399678707123
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.03422165415279425,
+            "p95": 0.20043186843395233,
+            "max": 0.2680341899394989
+          },
+          "age": {
+            "n": 544,
+            "mean": 1,
+            "p95": 1,
+            "max": 1
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 19,
+          "error": {
+            "n": 544,
+            "mean": 0.014358940191895646,
+            "p95": 0.07089704275131226,
+            "max": 0.13017237186431885
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.033845868687528896,
+            "p95": 0.15283969044685364,
+            "max": 0.20944777131080627
+          },
+          "age": {
+            "n": 544,
+            "mean": 2,
+            "p95": 2,
+            "max": 2
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 20,
+          "error": {
+            "n": 544,
+            "mean": 0.01117714271223282,
+            "p95": 0.057964786887168884,
+            "max": 0.11350658535957336
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.0143249978804413,
+            "p95": 0.0636560320854187,
+            "max": 0.10554885864257812
+          },
+          "age": {
+            "n": 544,
+            "mean": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 21,
+          "error": {
+            "n": 548,
+            "mean": 0.03682374286662488,
+            "p95": 0.19765229523181915,
+            "max": 0.3428572714328766
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.04824575393508047,
+            "p95": 0.23794163763523102,
+            "max": 0.3988911062479019
+          },
+          "age": {
+            "n": 548,
+            "mean": 1.032846715328467,
+            "p95": 1,
+            "max": 4
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 22,
+          "error": {
+            "n": 548,
+            "mean": 0.019357941514492907,
+            "p95": 0.0995522141456604,
+            "max": 0.15835243463516235
+          },
+          "flicker": {
+            "n": 548,
+            "mean": 0.029520763893251437,
+            "p95": 0.1422419548034668,
+            "max": 0.24428081512451172
+          },
+          "age": {
+            "n": 548,
+            "mean": 2.0328467153284673,
+            "p95": 2,
+            "max": 5
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 23,
+          "error": {
+            "n": 548,
+            "mean": 0.010697323244309774,
+            "p95": 0.05365265905857086,
+            "max": 0.10137265920639038
+          },
+          "flicker": {
+            "n": 548,
+            "mean": 0.016720959984690604,
+            "p95": 0.08134553581476212,
+            "max": 0.12405082583427429
+          },
+          "age": {
+            "n": 548,
+            "mean": 3.0328467153284673,
+            "p95": 3,
+            "max": 6
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 24,
+          "error": {
+            "n": 544,
+            "mean": 0.03503250066355309,
+            "p95": 0.16232261061668396,
+            "max": 0.31695637106895447
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.042273694317851024,
+            "p95": 0.1918974071741104,
+            "max": 0.353802353143692
+          },
+          "age": {
+            "n": 544,
+            "mean": 1.0441176470588236,
+            "p95": 1,
+            "max": 7
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 25,
+          "error": {
+            "n": 544,
+            "mean": 0.016216709949624014,
+            "p95": 0.06756424903869629,
+            "max": 0.13817283511161804
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.03667019450050943,
+            "p95": 0.1357240378856659,
+            "max": 0.2031344175338745
+          },
+          "age": {
+            "n": 544,
+            "mean": 2.0441176470588234,
+            "p95": 2,
+            "max": 8
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 26,
+          "error": {
+            "n": 544,
+            "mean": 0.012094438692335696,
+            "p95": 0.05410836637020111,
+            "max": 0.11756786704063416
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.013965306392706493,
+            "p95": 0.0798240602016449,
+            "max": 0.09937010705471039
+          },
+          "age": {
+            "n": 544,
+            "mean": 3.0441176470588234,
+            "p95": 3,
+            "max": 9
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 27,
+          "error": {
+            "n": 542,
+            "mean": 0.03408820685205424,
+            "p95": 0.16025181114673615,
+            "max": 0.35443177819252014
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.043204041221674455,
+            "p95": 0.1982966512441635,
+            "max": 0.38448090851306915
+          },
+          "age": {
+            "n": 542,
+            "mean": 1.033210332103321,
+            "p95": 1,
+            "max": 10
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 28,
+          "error": {
+            "n": 542,
+            "mean": 0.01808889896172439,
+            "p95": 0.08286464214324951,
+            "max": 0.1419965624809265
+          },
+          "flicker": {
+            "n": 542,
+            "mean": 0.028616951675432635,
+            "p95": 0.12834739685058594,
+            "max": 0.24252960085868835
+          },
+          "age": {
+            "n": 542,
+            "mean": 2.0332103321033212,
+            "p95": 2,
+            "max": 11
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 29,
+          "error": {
+            "n": 542,
+            "mean": 0.00964178982091126,
+            "p95": 0.047923743724823,
+            "max": 0.1344178318977356
+          },
+          "flicker": {
+            "n": 542,
+            "mean": 0.016632094429427847,
+            "p95": 0.07757629454135895,
+            "max": 0.11336654424667358
+          },
+          "age": {
+            "n": 542,
+            "mean": 3.0332103321033212,
+            "p95": 3,
+            "max": 12
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 30,
+          "error": {
+            "n": 543,
+            "mean": 0.030132215120186462,
+            "p95": 0.16543710231781006,
+            "max": 0.31724993884563446
+          },
+          "flicker": {
+            "n": 468,
+            "mean": 0.036321089690567084,
+            "p95": 0.18729054927825928,
+            "max": 0.3479306995868683
+          },
+          "age": {
+            "n": 543,
+            "mean": 1.171270718232044,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 31,
+          "error": {
+            "n": 543,
+            "mean": 0.014019109075460206,
+            "p95": 0.07434733957052231,
+            "max": 0.1449017971754074
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.024891258726791782,
+            "p95": 0.16190844774246216,
+            "max": 0.2359226942062378
+          },
+          "age": {
+            "n": 543,
+            "mean": 2.165745856353591,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 32,
+          "error": {
+            "n": 543,
+            "mean": 0.007597859585263233,
+            "p95": 0.04074360430240631,
+            "max": 0.1321587860584259
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.01249783394196196,
+            "p95": 0.07422271370887756,
+            "max": 0.10879918932914734
+          },
+          "age": {
+            "n": 543,
+            "mean": 3.160220994475138,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 33,
+          "error": {
+            "n": 544,
+            "mean": 0.03374740181435995,
+            "p95": 0.18019619584083557,
+            "max": 0.3097372055053711
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.039203340966736944,
+            "p95": 0.19281598925590515,
+            "max": 0.35561951994895935
+          },
+          "age": {
+            "n": 544,
+            "mean": 1.2849264705882353,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 34,
+          "error": {
+            "n": 544,
+            "mean": 0.016196984400534454,
+            "p95": 0.08656230568885803,
+            "max": 0.1702597439289093
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.02253088938510593,
+            "p95": 0.183381587266922,
+            "max": 0.23355618119239807
+          },
+          "age": {
+            "n": 544,
+            "mean": 2.275735294117647,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 35,
+          "error": {
+            "n": 544,
+            "mean": 0.009093899088089956,
+            "p95": 0.04832667112350464,
+            "max": 0.12316358089447021
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.014003858723513344,
+            "p95": 0.06827862560749054,
+            "max": 0.1415002942085266
+          },
+          "age": {
+            "n": 544,
+            "mean": 3.266544117647059,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 36,
+          "error": {
+            "n": 547,
+            "mean": 0.03386454026757908,
+            "p95": 0.15015874803066254,
+            "max": 0.24200287461280823
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.03460913320403483,
+            "p95": 0.1653306484222412,
+            "max": 0.30724531412124634
+          },
+          "age": {
+            "n": 547,
+            "mean": 1.396709323583181,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 37,
+          "error": {
+            "n": 547,
+            "mean": 0.015308202484408071,
+            "p95": 0.07929849624633789,
+            "max": 0.1375918984413147
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.03057029703036087,
+            "p95": 0.14970624446868896,
+            "max": 0.21251845359802246
+          },
+          "age": {
+            "n": 547,
+            "mean": 2.3839122486288846,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 38,
+          "error": {
+            "n": 547,
+            "mean": 0.009727265215878949,
+            "p95": 0.04249515384435654,
+            "max": 0.0799795389175415
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.015523908697273003,
+            "p95": 0.08498936891555786,
+            "max": 0.11850512027740479
+          },
+          "age": {
+            "n": 547,
+            "mean": 3.3711151736745886,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 39,
+          "error": {
+            "n": 543,
+            "mean": 0.035597153309849305,
+            "p95": 0.1530357003211975,
+            "max": 0.2368626594543457
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.04062169428021032,
+            "p95": 0.17950525879859924,
+            "max": 0.27100232243537903
+          },
+          "age": {
+            "n": 543,
+            "mean": 1.022099447513812,
+            "p95": 1,
+            "max": 4
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 40,
+          "error": {
+            "n": 543,
+            "mean": 0.023156539525006577,
+            "p95": 0.1017126739025116,
+            "max": 0.17090973258018494
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.02673279306067507,
+            "p95": 0.12208497524261475,
+            "max": 0.18632382154464722
+          },
+          "age": {
+            "n": 543,
+            "mean": 2.022099447513812,
+            "p95": 2,
+            "max": 5
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 41,
+          "error": {
+            "n": 543,
+            "mean": 0.010218863082195514,
+            "p95": 0.04983948916196823,
+            "max": 0.08405613899230957
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.020437537649608668,
+            "p95": 0.08740995824337006,
+            "max": 0.1277514398097992
+          },
+          "age": {
+            "n": 543,
+            "mean": 3.022099447513812,
+            "p95": 3,
+            "max": 6
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 42,
+          "error": {
+            "n": 546,
+            "mean": 0.03440585407691124,
+            "p95": 0.17300932109355927,
+            "max": 0.2807586044073105
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.041641241251916136,
+            "p95": 0.21953272819519043,
+            "max": 0.29718056321144104
+          },
+          "age": {
+            "n": 546,
+            "mean": 1.021978021978022,
+            "p95": 1,
+            "max": 7
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 43,
+          "error": {
+            "n": 546,
+            "mean": 0.014910381505668382,
+            "p95": 0.07413920760154724,
+            "max": 0.13018280267715454
+          },
+          "flicker": {
+            "n": 546,
+            "mean": 0.03438421191422494,
+            "p95": 0.15308764576911926,
+            "max": 0.20229151844978333
+          },
+          "age": {
+            "n": 546,
+            "mean": 2.021978021978022,
+            "p95": 2,
+            "max": 8
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 44,
+          "error": {
+            "n": 546,
+            "mean": 0.011190339431657896,
+            "p95": 0.05756179988384247,
+            "max": 0.10961832106113434
+          },
+          "flicker": {
+            "n": 546,
+            "mean": 0.014905448566317122,
+            "p95": 0.06746247410774231,
+            "max": 0.10554885864257812
+          },
+          "age": {
+            "n": 546,
+            "mean": 3.021978021978022,
+            "p95": 3,
+            "max": 9
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 45,
+          "error": {
+            "n": 544,
+            "mean": 0.037309767185326886,
+            "p95": 0.18622076511383057,
+            "max": 0.3428572714328766
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.0484908460490485,
+            "p95": 0.2382708638906479,
+            "max": 0.3988911062479019
+          },
+          "age": {
+            "n": 544,
+            "mean": 1.1709558823529411,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 46,
+          "error": {
+            "n": 544,
+            "mean": 0.019350104924181804,
+            "p95": 0.10010942816734314,
+            "max": 0.13245493173599243
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.03045044034062063,
+            "p95": 0.1464146375656128,
+            "max": 0.2511097490787506
+          },
+          "age": {
+            "n": 544,
+            "mean": 2.1654411764705883,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 47,
+          "error": {
+            "n": 544,
+            "mean": 0.010454916628077626,
+            "p95": 0.053321391344070435,
+            "max": 0.08598780632019043
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.016577159328495756,
+            "p95": 0.08122232556343079,
+            "max": 0.11610215902328491
+          },
+          "age": {
+            "n": 544,
+            "mean": 3.1599264705882355,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 48,
+          "error": {
+            "n": 545,
+            "mean": 0.031201428503071497,
+            "p95": 0.16755643486976624,
+            "max": 0.31695637106895447
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.0366046275248972,
+            "p95": 0.18495723605155945,
+            "max": 0.354366771876812
+          },
+          "age": {
+            "n": 545,
+            "mean": 1,
+            "p95": 1,
+            "max": 1
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 49,
+          "error": {
+            "n": 545,
+            "mean": 0.0153634505260975,
+            "p95": 0.06756424903869629,
+            "max": 0.13808058202266693
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.032733570189651,
+            "p95": 0.13452211022377014,
+            "max": 0.20128276944160461
+          },
+          "age": {
+            "n": 545,
+            "mean": 2,
+            "p95": 2,
+            "max": 2
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 50,
+          "error": {
+            "n": 545,
+            "mean": 0.010713203962242932,
+            "p95": 0.05372513830661774,
+            "max": 0.11765941977500916
+          },
+          "flicker": {
+            "n": 545,
+            "mean": 0.012603413115400787,
+            "p95": 0.08208608627319336,
+            "max": 0.09860283136367798
+          },
+          "age": {
+            "n": 545,
+            "mean": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 51,
+          "error": {
+            "n": 544,
+            "mean": 0.0322765724541729,
+            "p95": 0.14819425344467163,
+            "max": 0.3584078252315521
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.035824727085112515,
+            "p95": 0.2175847887992859,
+            "max": 0.38705581426620483
+          },
+          "age": {
+            "n": 544,
+            "mean": 1,
+            "p95": 1,
+            "max": 1
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 52,
+          "error": {
+            "n": 544,
+            "mean": 0.017136319362394074,
+            "p95": 0.08174887299537659,
+            "max": 0.1419965624809265
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.027284484904478577,
+            "p95": 0.13687346875667572,
+            "max": 0.24252960085868835
+          },
+          "age": {
+            "n": 544,
+            "mean": 2,
+            "p95": 2,
+            "max": 2
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 53,
+          "error": {
+            "n": 544,
+            "mean": 0.0088845520033775,
+            "p95": 0.042358264327049255,
+            "max": 0.136267751455307
+          },
+          "flicker": {
+            "n": 544,
+            "mean": 0.015128924511373043,
+            "p95": 0.07757629454135895,
+            "max": 0.11080776154994965
+          },
+          "age": {
+            "n": 544,
+            "mean": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 54,
+          "error": {
+            "n": 543,
+            "mean": 0.037719792533755084,
+            "p95": 0.16854850947856903,
+            "max": 0.3571302741765976
+          },
+          "flicker": {
+            "n": 470,
+            "mean": 0.03794688499988393,
+            "p95": 0.18729054927825928,
+            "max": 0.3445659577846527
+          },
+          "age": {
+            "n": 543,
+            "mean": 1,
+            "p95": 1,
+            "max": 1
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 55,
+          "error": {
+            "n": 543,
+            "mean": 0.016800241479667292,
+            "p95": 0.08644109964370728,
+            "max": 0.1252688318490982
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.032344047083051164,
+            "p95": 0.16315530240535736,
+            "max": 0.24977785348892212
+          },
+          "age": {
+            "n": 543,
+            "mean": 2,
+            "p95": 2,
+            "max": 2
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 56,
+          "error": {
+            "n": 543,
+            "mean": 0.009959014479077762,
+            "p95": 0.05302891135215759,
+            "max": 0.09391957521438599
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.014811630901052149,
+            "p95": 0.07500964403152466,
+            "max": 0.12454277276992798
+          },
+          "age": {
+            "n": 543,
+            "mean": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 57,
+          "error": {
+            "n": 543,
+            "mean": 0.041281980896303444,
+            "p95": 0.18211081624031067,
+            "max": 0.30965177714824677
+          },
+          "flicker": {
+            "n": 469,
+            "mean": 0.05301628905191604,
+            "p95": 0.2055116593837738,
+            "max": 0.31527960300445557
+          },
+          "age": {
+            "n": 543,
+            "mean": 1.0055248618784531,
+            "p95": 1,
+            "max": 4
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 58,
+          "error": {
+            "n": 543,
+            "mean": 0.019678978122510085,
+            "p95": 0.09834110736846924,
+            "max": 0.18317767977714539
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.027169226879737655,
+            "p95": 0.18360966444015503,
+            "max": 0.23355385661125183
+          },
+          "age": {
+            "n": 543,
+            "mean": 2.005524861878453,
+            "p95": 2,
+            "max": 5
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 59,
+          "error": {
+            "n": 543,
+            "mean": 0.011712362945189573,
+            "p95": 0.04977419972419739,
+            "max": 0.12316358089447021
+          },
+          "flicker": {
+            "n": 543,
+            "mean": 0.016732939904895276,
+            "p95": 0.07679254561662674,
+            "max": 0.1414724886417389
+          },
+          "age": {
+            "n": 543,
+            "mean": 3.005524861878453,
+            "p95": 3,
+            "max": 6
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 60,
+          "error": {
+            "n": 547,
+            "mean": 0.03456023073937383,
+            "p95": 0.14882594347000122,
+            "max": 0.24200287461280823
+          },
+          "flicker": {
+            "n": 471,
+            "mean": 0.042925932304241604,
+            "p95": 0.1831178218126297,
+            "max": 0.30724531412124634
+          },
+          "age": {
+            "n": 547,
+            "mean": 1.170018281535649,
+            "p95": 1,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        },
+        {
+          "index": 61,
+          "error": {
+            "n": 547,
+            "mean": 0.016391689560531043,
+            "p95": 0.07678772509098053,
+            "max": 0.1398112177848816
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.031657357381782755,
+            "p95": 0.14969344437122345,
+            "max": 0.21251845359802246
+          },
+          "age": {
+            "n": 547,
+            "mean": 2.164533820840951,
+            "p95": 2,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 62,
+          "error": {
+            "n": 547,
+            "mean": 0.010948227313253518,
+            "p95": 0.05039975047111511,
+            "max": 0.07673138380050659
+          },
+          "flicker": {
+            "n": 547,
+            "mean": 0.016533707883174938,
+            "p95": 0.09627702832221985,
+            "max": 0.12469925731420517
+          },
+          "age": {
+            "n": 547,
+            "mean": 3.1590493601462524,
+            "p95": 3,
+            "max": 32
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 0,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 0
+          }
+        },
+        {
+          "index": 63,
+          "error": {
+            "n": 545,
+            "mean": 0.03426819122439131,
+            "p95": 0.15804612636566162,
+            "max": 0.2368626594543457
+          },
+          "flicker": {
+            "n": 472,
+            "mean": 0.04205259988557989,
+            "p95": 0.21374699473381042,
+            "max": 0.27081969380378723
+          },
+          "age": {
+            "n": 545,
+            "mean": 1.038532110091743,
+            "p95": 1,
+            "max": 4
+          },
+          "motion": {
+            "supported": 51,
+            "unsupported": 1,
+            "draws": 2,
+            "errors": 0,
+            "newSurfaces": 0,
+            "appearanceChanges": 0,
+            "previousFootprints": 2
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,24 @@
+{
+  "url": "http://127.0.0.1:81/#/campus",
+  "trees": [
+    {
+      "cast": false,
+      "records": 16,
+      "casting": 0,
+      "receiving": 0
+    },
+    {
+      "cast": false,
+      "records": 16,
+      "casting": 0,
+      "receiving": 0
+    }
+  ],
+  "actions": 23,
+  "actionsCallable": true,
+  "loading": true,
+  "primitiveCount": 9,
+  "casters": 0,
+  "canvas": 1,
+  "errors": []
+}

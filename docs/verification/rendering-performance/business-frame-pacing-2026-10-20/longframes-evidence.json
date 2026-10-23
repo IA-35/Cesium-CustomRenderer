@@ -1,0 +1,71 @@
+{
+  "clockAlignment": {
+    "mark": {
+      "args": {
+        "data": {
+          "callTime": 17899668670,
+          "navigationId": "9BD2BA0AC698B1DEF26A5E00A130F0EF",
+          "sampleTraceId": 5021301436488780,
+          "startTime": 12099673.2
+        }
+      },
+      "cat": "blink.user_timing",
+      "name": "ccr-schedule-start",
+      "ph": "I",
+      "pid": 1436,
+      "s": "t",
+      "tid": 1512,
+      "ts": 17899668668,
+      "tts": 9840090702
+    },
+    "offsetUs": 5799995468
+  },
+  "gcFrame": {
+    "start": 11990507.799999999,
+    "index": 509,
+    "interval": 24.099999997764826,
+    "heap": 1521796646,
+    "stage:shadow": 9.699999999254942,
+    "stage:submit": 91.69999999925494,
+    "stage:resolve": 1,
+    "cpu": 93.5,
+    "shadowUpdates": 1
+  },
+  "heapAfter": 1073641625,
+  "sampleUsInGcFrame": {
+    "z6e": 1552,
+    "zxt": 1983,
+    "receive": 1506,
+    "_i.updateDerivedCommands": 2095,
+    "dm.computeVisibility": 2117,
+    "set": 6968,
+    "eyt": 1209,
+    "draw": 1984,
+    "uniform1f": 1193,
+    "_dispatch": 7737,
+    "bindVertexArray": 1992,
+    "L0._setUniforms": 1326,
+    "(garbage collector)": 57618,
+    "model_iblFactor": 2065,
+    "hook": 1215,
+    "acquire": 773
+  },
+  "light": {
+    "frames": 2210,
+    "slowCpu": 15,
+    "slowCpuWithShadow": 15,
+    "coldBinds": 0
+  },
+  "scheduling": {
+    "frames": 1772,
+    "over50": 0,
+    "visibility": [
+      {
+        "start": 12099673.200000001,
+        "hidden": false,
+        "focus": true
+      }
+    ],
+    "longTasks": []
+  }
+}
