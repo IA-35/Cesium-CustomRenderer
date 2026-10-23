@@ -9,6 +9,21 @@ const shaders = { transmittance: hillaireTransmittanceShader, multipleScattering
 const passKeys = { transmittance: 'atmosphere.transmittanceLut', multipleScattering: 'atmosphere.multiscatterLut', skyView: 'atmosphere.skyViewLut' }
 const components = (v, fallback) => fallback.map((value, index) => v?.[index] ?? v?.[['x', 'y', 'z', 'w'][index]] ?? value)
 const finite = values => values.every(Number.isFinite)
+// Sky-View 只依赖相机高度和太阳仰角。相机每帧微动、时钟每帧推进太阳都会让精确 key 变化，
+// 因此相对上次提交的值超过阈值才重建：太阳余弦 1e-4（地平线附近约 0.006°），
+// 高度取 1 m 与 0.5% 相对高度中的较大者。用上次提交值做基准自带滞回，噪声不会来回翻转。
+const SKY_SUN_COSINE_STEP = 1e-4
+const SKY_HEIGHT_STEP_M = 1
+const SKY_HEIGHT_RELATIVE = 0.005
+
+export function skyViewChanged(committed, next) {
+  if (!committed) return true
+  const [radius0, cosine0] = committed.sky, [radius1, cosine1] = next.sky
+  if (Math.abs(cosine1 - cosine0) > SKY_SUN_COSINE_STEP) return true
+  const planetKm = next.medium.radii[0] * 0.001
+  const height0 = (radius0 - planetKm) * 1000, height1 = (radius1 - planetKm) * 1000
+  return Math.abs(height1 - height0) > Math.max(SKY_HEIGHT_STEP_M, SKY_HEIGHT_RELATIVE * Math.min(height0, height1))
+}
 
 // Public inputs use metres and the camera's planet-centred tangent-sphere
 // coordinates. Symmetry makes sky depend only on altitude and sun elevation;
@@ -147,15 +162,21 @@ export default class AtmosphereLut143 {
       return false
     }
     if (!this.supported) return false
+    let next, mediumDirty
+    try {
+      next = atmosphereLutParameters(params)
+      mediumDirty = !this.valid || this.keys.medium !== next.keys.medium
+    } catch (error) {
+      this.error = error.message; this.stats.failures++
+      return this.ready
+    }
+    // 稳态命中缓存时不碰任何 GL 查询。
+    if (!mediumDirty && !skyViewChanged(this.committed, next)) { this.stats.cacheHits++; return true }
     const C = this.C, gl = context._gl
     const viewport = C.BoundingRectangle.clone(context.uniformState.viewport)
     const cachedFramebuffer = context._currentFramebuffer
     const read = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), draw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING)
     try {
-      const next = atmosphereLutParameters(params)
-      const mediumDirty = !this.valid || this.keys.medium !== next.keys.medium
-      const skyDirty = mediumDirty || this.keys.sky !== next.keys.sky
-      if (!skyDirty) { this.stats.cacheHits++; return true }
       this._ensure(context)
       // Each attachment has its own front/back index: a sky-only update can
       // swap Sky without forcing expensive T/M recomputation. Never render into
@@ -170,14 +191,16 @@ export default class AtmosphereLut143 {
         const command = this.commands[name]
         command.framebuffer = passState.framebuffer = target.framebuffer
         command.renderState = this.states[name]; passState.viewport = this.states[name].viewport
-        if (target.framebuffer.status !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
+        // framebuffer.status 和 getError 都是同步 GL 查询，只在介质变化（含首次构建）时检查；
+        // 仅 Sky-View 的高频更新沿用已验证过的目标。分配时已逐个检查过完整性。
+        if (mediumDirty && target.framebuffer.status !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`Atmosphere ${name} framebuffer incomplete`)
         // Cesium 1.143's status getter binds/unbinds raw GL without repairing
         // Context's binding cache. Force the real draw to bind its target.
         context._currentFramebuffer = undefined
         let executed = false
         const result = this.runPass(passKeys[name], () => { command.execute(context, passState); executed = true; return true })
         if (!executed || result === false) throw new Error(`Atmosphere ${name} pass did not complete`)
-        const error = gl.getError?.()
+        const error = mediumDirty ? gl.getError?.() : undefined
         if (error !== undefined && error !== (gl.NO_ERROR ?? 0)) throw new Error(`Atmosphere ${name} WebGL error ${error}`)
         nextTextures[name] = target.texture
       }

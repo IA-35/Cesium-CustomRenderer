@@ -20,10 +20,29 @@ test('deduplication preserves state changes, per-unit textures and nested scopes
   }, stats)
   assert.equal(stats.programRequests, 4); assert.equal(stats.programBinds, 3)
   assert.equal(stats.textureRequests, 6); assert.equal(stats.textureBinds, 3)
-  assert.deepEqual(gl, before)
-  const prior = calls.length
+  const wrappers = { ...gl }
+  let prior = calls.length
+  gl.useProgram(a); gl.useProgram(a)
+  assert.equal(calls.length, prior + 2, 'outside a scope the resident wrappers pass every call through')
+  prior = calls.length
   withBindings143(gl, () => gl.useProgram(a))
   assert.equal(calls.length, prior + 1, 'a new scope starts with unknown GL state')
+  assert.deepEqual(gl, wrappers, 'wrappers are installed once, never added and deleted per scope')
+  assert.notEqual(gl.useProgram, before.useProgram)
+})
+test('a tool restoring the original method gets the resident wrapper reinstalled', () => {
+  const { gl, calls } = fixture(), a = {}
+  withBindings143(gl, () => {})
+  const ours = gl.useProgram
+  // 模拟绑定计数：包住我们，停止时恢复到包之前的函数（也就是我们）。
+  const counting = gl.useProgram = function(value) { return ours.call(this, value) }
+  withBindings143(gl, () => { gl.useProgram(a); gl.useProgram(a) })
+  assert.equal(gl.useProgram, counting, 'a wrapper above ours is left alone')
+  assert.equal(calls.filter(c => c[0] === 'useProgram').length, 1)
+  gl.useProgram = ours
+  const stats = {}
+  withBindings143(gl, () => { gl.useProgram(a); gl.useProgram(a) }, stats)
+  assert.equal(stats.programBinds, 1)
 })
 test('texture/program deletion invalidates cached bindings and errors restore wrappers', () => {
   const { gl, calls } = fixture(), before = { ...gl }, a = {}
@@ -34,7 +53,10 @@ test('texture/program deletion invalidates cached bindings and errors restore wr
   }), /draw failed/)
   assert.equal(calls.filter(c => c[0] === 'bindTexture').length, 2)
   assert.equal(calls.filter(c => c[0] === 'useProgram').length, 2)
-  assert.deepEqual(gl, before)
+  const prior = calls.length
+  gl.useProgram(a); gl.useProgram(a)
+  assert.equal(calls.length, prior + 2, 'an aborted scope leaves the wrappers in pass-through mode')
+  assert.ok(before)
 })
 test('scene integration skips pick frames and restores even when another wrapper owns the method', () => {
   const { gl } = fixture(), passes = { render: true }, draws = []

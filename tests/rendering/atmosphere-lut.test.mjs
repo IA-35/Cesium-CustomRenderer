@@ -168,3 +168,22 @@ test('context loss discards dead GPU versions and restoration rebuilds before re
   assert.equal(f.lut.ready, false); assert.equal(f.update(), false)
   f.lut.destroy(); assert.ok(f.resources.every(r => r.dead))
 })
+
+test('sub-threshold camera and sun drift keep the sky LUT and skip GL queries', () => {
+  const f = fixture(); f.update()
+  let queries = 0
+  const getParameter = f.context._gl.getParameter
+  f.context._gl.getParameter = x => { queries++; return getParameter(x) }
+  f.context._gl.getError = () => { queries++; return 0 }
+  for (let i = 1; i <= 30; i++) {
+    f.params.atmoOrigin.z = 6371100 + i * 0.01
+    f.params.sunLocal = new f.C.Cartesian3(0.8, 0, 0.6 + i * 1e-6)
+    f.update()
+  }
+  assert.equal(f.draws.length, 3, 'centimetre camera motion and per-frame sun motion do not rebuild Sky-View')
+  assert.equal(queries, 0, 'a cache hit performs no GL query')
+  f.params.sunLocal = new f.C.Cartesian3(0.8, 0, 0.61); f.update()
+  assert.equal(f.draws.length, 4)
+  assert.equal(queries, 2, 'a sky-only rebuild saves bindings but skips getError and status')
+  f.lut.destroy()
+})

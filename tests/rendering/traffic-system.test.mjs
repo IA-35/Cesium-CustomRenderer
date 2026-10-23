@@ -79,6 +79,19 @@ test('continuous vehicle movement defers the shadow redraw instead of forcing it
   assert.notEqual(fixture.invalidationArgs.at(-1)[0]?.immediate, false, 'a visibility change must still redraw immediately')
   traffic.destroy()
 })
+test('vehicles registered as dynamic shadow casters never drop the static shadow layer', async () => {
+  const fixture = setup(), dynamic = []
+  fixture.options.pipeline.setShadowCasterDynamic = (model, value) => dynamic.push([model, value])
+  const traffic = new TrafficSystem(fixture.options)
+  await traffic.readyPromise
+  assert.deepEqual(dynamic, [[fixture.models[0], true]])
+  fixture.invalidationArgs.length = 0
+  fixture.tick(1000)
+  assert.equal(fixture.invalidationArgs.length, 0, 'motion is covered by the scheduled dynamic-layer refresh')
+  traffic.setVisible(false)
+  assert.deepEqual(fixture.invalidationArgs.at(-1), [{ dynamicOnly: true }])
+  traffic.destroy()
+})
 test('one listener drives all cars and destroy preserves foreign primitives', async () => {
   const fixture = setup(), foreign = {}, traffic = new TrafficSystem({ ...fixture.options,
     vehicles: [...vehicles, { ...vehicles[0], id: 'car-2', offset: 50 }] })

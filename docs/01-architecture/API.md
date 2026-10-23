@@ -214,7 +214,8 @@ viewer.destroy()
 | `setEnabled` | `boolean` | — | `false` 恢复所有被接管的原生属性并释放自有资源；`true` 重新应用 |
 | `suspend` / `resume` | `owner = 'default'` | — | 多所有者挂起计数。挂起期间参数只保存，最后一个 owner 释放后一次性应用 |
 | `setCampusOrigin` | `Cartesian3` | — | 设置局部环境/业务参考；阴影始终由相机和可见接收物自动定位，无需迁移原点 |
-| `invalidateShadows` | — | — | 手动让自定义阴影缓存失效（静态阴影下地形/模型变动时用） |
+| `invalidateShadows` | `{ immediate?, dynamicOnly? }` | — | 手动让自定义阴影缓存失效（静态阴影下地形/模型变动时用）；`dynamicOnly: true` 只重合成动态层，保留静态层 |
+| `setShadowCasterDynamic` | `primitive, dynamic = true` | — | 登记会移动的 Model 投影体（如车辆）。`shadowStatic: true` 时它们单独成层，移动不再使静态层失效 |
 | `write` | `(object, key, value)` | — | 记录原值后写属性，`restore()` 时只回滚仍由本模块拥有的键。高级用法 |
 | `destroy` | — | — | 释放全部资源并从注册表移除；幂等 |
 | `getRenderDiagnostics` | — | 大对象 | 见 [§6](#6-诊断体系) |
@@ -368,6 +369,7 @@ viewer.destroy()
 - 线性/对数混合 split（lambda 0.6），按实际接收范围收紧覆盖；固定半径档位与 texel snapping 稳定，区间末端 10% 混合，阴影距离之外渐隐。每级独立选取画面外 caster，高程参与光空间深度范围。
 - `shadowMode: 'native'` 是显式原生对照选项，不是 custom 失败后的自动回退。原生多级对照可设 `shadowCascades: 4, shadowSize: 2048`；原生单级对照可设 `shadowCascades: 1, shadowSize: 4096`。
 - `shadowStatic: true` 按光源矩阵和实际 caster 内容签名复用；同一纹理或实例缓冲原地改写须 `invalidateShadows()`。自适应更新在相机静止或移动时均最多复用一个显示帧，下一帧重新检查、提交阴影；不会因为相机静止而永久冻结动态 caster。光照、视锥、根图元、caster 命令引用、阴影尺寸或配置变化立即退出复用；每帧新建的 COMPUTE 调度命令不参与 caster 身份比较。原地矩阵/动画/缓冲变化最多延后一帧，要求当帧生效时调用 `invalidateShadows()`。
+- 静态模式分两层：静态投影体缓存在独立深度图，签名先比较光源矩阵/尺寸/数量，一致时才逐 caster 比较数值记录（不再生成字符串）；`setShadowCasterDynamic` 登记的对象及蒙皮/形变投影体每次刷新叠加在静态深度的拷贝上。代价是每级多一张同尺寸深度图（4096² 约 64 MB）。相机或太阳移动时光源矩阵每次刷新都变，静态层照常重画；相机停下后第一次刷新补记签名，第二次起命中。
 
 ### 5.2 环境（雾 / 云 / 天空）
 

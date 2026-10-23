@@ -75,33 +75,57 @@ test('static cache detects transform, alpha, shader, resource and selection chan
   const matrix = Array.from({ length: 16 }, (_, i) => i % 5 === 0 ? 1 : 0)
   const command = { vertexArray: {}, shaderProgram: { id: 1, vertexShaderSource: { defines: [] }, _manualUniforms: [{ name: 'alpha' }] },
     renderState: { id: 1 }, count: 36, modelMatrix: matrix.slice(), uniformMap: { alpha: () => alpha } }
-  const signature = () => cache.signature(matrix, 2048, [command])
-  cache.commit(signature())
-  assert.equal(cache.matches(signature()), true)
+  // 头部刚变的那次只记录头部；头部一致后补记明细，之后才命中。
+  const settle = (m = matrix, size = 2048, list = [command]) => { cache.matches(m, size, list); cache.commit(); cache.matches(m, size, list); cache.commit() }
+  const matches = () => cache.matches(matrix, 2048, [command])
+  settle()
+  assert.equal(matches(), true)
   alpha = 0.2
-  assert.equal(cache.matches(signature()), false)
-  cache.commit(signature())
+  assert.equal(matches(), false)
+  cache.commit()
+  assert.equal(matches(), true)
   command.modelMatrix[12] = 2
-  assert.equal(cache.matches(signature()), false)
-  cache.commit(signature())
+  assert.equal(matches(), false)
+  cache.commit()
   command.vertexArray = {}
-  assert.equal(cache.matches(signature()), false)
-  cache.commit(signature())
+  assert.equal(matches(), false)
+  cache.commit()
   command.shaderProgram.id = 2
-  assert.equal(cache.matches(signature()), false)
-  cache.commit(signature())
-  assert.equal(cache.matches(cache.signature(matrix, 2048, [])), false)
-  assert.equal(cache.matches(cache.signature(matrix, 4096, [command])), false)
+  assert.equal(matches(), false)
+  cache.commit()
+  assert.equal(cache.matches(matrix, 2048, []), false)
+  assert.equal(cache.matches(matrix, 4096, [command]), false)
+  settle()
   cache.invalidate()
-  assert.equal(cache.matches(signature()), false)
+  assert.equal(matches(), false)
+})
+
+test('a changed light matrix skips the per-caster signature entirely', () => {
+  const cache = new ShadowCache(), matrix = Array.from({ length: 16 }, (_, i) => i)
+  let reads = 0
+  const command = { vertexArray: {}, shaderProgram: { id: 1, vertexShaderSource: { defines: [] }, _manualUniforms: [{ name: 'u' }] },
+    renderState: { id: 1 }, count: 3, uniformMap: { u: () => { reads++; return 1 } } }
+  cache.matches(matrix, 1024, [command]); cache.commit(); cache.matches(matrix, 1024, [command]); cache.commit()
+  reads = 0
+  const moved = matrix.slice(); moved[12] = 5
+  assert.equal(cache.matches(moved, 1024, [command]), false)
+  assert.equal(reads, 0, 'uniforms are not read when the cheap header already differs')
+  cache.commit()
+  assert.equal(cache.matches(moved, 1024, [command]), false, 'the first stable refresh records the detail and redraws')
+  cache.commit()
+  assert.equal(cache.matches(moved, 1024, [command]), true)
 })
 
 test('uninitialized and deforming shaders cannot reuse static cached depth', () => {
   const cache = new ShadowCache()
   const command = { shaderProgram: { vertexShaderSource: { defines: ['HAS_SKINNING'] }, _manualUniforms: [] } }
-  assert.equal(cache.signature([], 2048, [command]), null)
+  assert.equal(ShadowCache.cacheable(command), false)
+  assert.equal(cache.matches([], 2048, [command]), false)
   command.shaderProgram._manualUniforms = undefined
-  assert.equal(cache.signature([], 2048, [command]), null)
+  command.shaderProgram.vertexShaderSource.defines = []
+  assert.equal(ShadowCache.cacheable(command), false)
+  cache.commit()
+  assert.equal(cache.matches([], 2048, [command]), false)
 })
 
 test('reordering identical depth casters is cacheable but changing their render pass is not', () => {
@@ -109,10 +133,37 @@ test('reordering identical depth casters is cacheable but changing their render 
   const command = () => ({ vertexArray: {}, shaderProgram: { id: 1, vertexShaderSource: { defines: [] }, _manualUniforms: [] },
     renderState: { id: 1 }, pass: 5, count: 3, uniformMap: {} })
   const a = command(), b = command()
-  cache.commit(cache.signature([], 1024, [a,b]))
-  assert.equal(cache.matches(cache.signature([], 1024, [b,a])), true)
+  cache.matches([], 1024, [a,b]); cache.commit(); cache.matches([], 1024, [a,b]); cache.commit()
+  assert.equal(cache.matches([], 1024, [b,a]), true)
   b.pass = 7
-  assert.equal(cache.matches(cache.signature([], 1024, [b,a])), false)
+  assert.equal(cache.matches([], 1024, [b,a]), false)
+})
+
+test('static mode keeps buildings in a cached layer and redraws only dynamic casters', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const pass = Object.create(DirectionalShadowPass.prototype)
+  const draws = [], copies = []
+  const target = name => ({ name, framebuffer: { name }, passState: {}, size: 1024, copyTo(ctx, to) { copies.push([name, to.name]) } })
+  const program = { id: 1, vertexShaderSource: { defines: [] }, _manualUniforms: [] }
+  const building = { owner: {}, vertexArray: {}, shaderProgram: program, renderState: { id: 1 }, count: 3, uniformMap: {} }
+  const car = { owner: {}, vertexArray: {}, shaderProgram: program, renderState: { id: 1 }, count: 3, uniformMap: {} }
+  Object.assign(pass, { C: engine, dynamicOwners: new WeakSet([car.owner]), stats: { cacheHits: 0 },
+    drawDepth(level, to, commands, ctx, us, camera, clear = true) { draws.push([to.name, commands.length, clear]) } })
+  const level = { light: { viewProjection: Array.from({ length: 16 }, (_, i) => i) }, target: target('live'), cache: new ShadowCache(),
+    staticTarget: target('static'), staticReady: false, staticVersion: 0, composedVersion: -1, composedDynamic: false, updates: 0, cacheHits: 0 }
+  const frame = commands => { draws.length = 0; copies.length = 0; pass.renderLayered(level, commands, 1024, {}, {}, {}) }
+  frame([building, car])
+  assert.deepEqual(draws, [['static', 1, true], ['live', 1, false]])
+  frame([building, car])
+  assert.deepEqual(draws, [['static', 1, true], ['live', 1, false]], 'detail is recorded on the first stable refresh')
+  frame([car, building])
+  assert.deepEqual(draws, [['live', 1, false]], 'a moving car does not redraw the static layer')
+  assert.deepEqual(copies, [['static', 'live']])
+  frame([building])
+  assert.deepEqual(draws, [], 'the car leaving still recomposes the live map')
+  assert.deepEqual(copies, [['static', 'live']])
+  frame([building])
+  assert.deepEqual([draws, copies], [[], []], 'nothing changed: no draw and no copy')
 })
 
 test('light frustum remains finite at the pole and independent of view-camera changes', () => {
@@ -223,7 +274,7 @@ test('a deferred invalidation drops the cache signature without pinning a full r
   deferred.invalidate({ immediate: false })
   assert.equal(deferred.forceShadowUpdate, false)
   assert.equal(deferred.ready, true)
-  assert.equal(deferred.levels[0].cache.matches(null), false, 'the signature is dropped so the contents are rebuilt at the next scheduled update')
+  assert.equal(deferred.levels[0].cache.valid, false, 'the signature is dropped so the contents are rebuilt at the next scheduled update')
   deferred.rememberShadowFrame({ frameNumber: 10 }, camera, list(), engine.Cartesian3.UNIT_Z, options)
   assert.equal(deferred.shouldReuseShadowFrame({ frameNumber: 11 }, camera, list(), engine.Cartesian3.UNIT_Z, options), true,
     'deferring must not make every frame miss the reuse gate')

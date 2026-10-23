@@ -34,6 +34,9 @@ export default class DirectionalShadowPass {
     this.lastShadowOptionsKey=''
     this.uniforms=shadowUniforms(C,this.scene,()=>this.getReceiverData(viewer.camera))
     this.isTransparentForwardActive=isTransparentForwardActive
+    // 登记为动态的投影体（按 DrawCommand.owner 匹配，即 Model）在静态缓存模式下单独成层。
+    // VisualPipeline 会换成它自己持有的集合，使阴影 pass 创建前的登记也生效。
+    this.dynamicOwners=new WeakSet()
     this.configureReceivers(getOptions().shadowCascades!==1)
     this.proxy={update:state=>this.update(state),isDestroyed:()=>this.dead,destroy(){}}
     this.scene.primitives.add(this.proxy)
@@ -58,8 +61,10 @@ export default class DirectionalShadowPass {
   // and turned a 4096px shadow pass into a per-frame full redraw (measured on the
   // campus scene: 22.7 FPS with traffic vs 59.9 FPS once the redraw rate returned to
   // the configured interval).
-  invalidate({immediate=true}={}){
-    for(const level of this.levels)level.cache.invalidate()
+  // dynamicOnly：只有登记过的动态投影体变化（车辆生成/显隐），保留静态层缓存，
+  // 下次刷新只重新合成动态层。
+  invalidate({immediate=true,dynamicOnly=false}={}){
+    if(!dynamicOnly)for(const level of this.levels)level.cache.invalidate()
     this.version++
     if(!immediate)return
     this.ready=false;this.forceShadowUpdate=true
@@ -95,6 +100,7 @@ export default class DirectionalShadowPass {
     }
     return index===this.lastCommandRefs.length
   }
+  isDynamicCaster(command){return this.dynamicOwners.has(command.owner)||!ShadowCache.cacheable(command)}
   isShadowCaster(command){return !!command.castShadows&&!!command.shaderProgram&&command.pass!==this.C.Pass.TRANSLUCENT&&command.pass!==this.C.Pass.COMPUTE}
   shadowSizesMatch(options){
     const count=options.shadowCascades===1?1:3
@@ -172,6 +178,34 @@ export default class DirectionalShadowPass {
   submitCasters(commands,ctx,passState,us){
     withShadowBindings(ctx._gl,()=>{for(const c of this.orderCasters(commands)){us.updatePass(c.pass);c.execute(ctx,passState)}})
   }
+  drawDepth(level,target,commands,ctx,us,camera,clear=true){
+    const casters=commands.map(c=>this.adapter.cast(c,target.framebuffer,level.light.camera,camera))
+    us.updateCamera(level.light.camera);us.viewport=target.passState.viewport
+    if(clear)target.clear.execute(ctx,target.passState)
+    this.submitCasters(casters,ctx,target.passState,us)
+  }
+  // 静态缓存模式分两层：静态投影体缓存在 level.staticTarget，签名一致就不重画；
+  // 动态投影体（登记过的、或带蒙皮/形变无法缓存的）每次刷新在静态深度的拷贝上叠加。
+  // 车流播放时相机静止，只需一次深度 blit 加画车辆，不再整图重绘全部建筑。
+  renderLayered(level,commands,size,ctx,us,camera){
+    const staticCommands=[],dynamicCommands=[]
+    for(const c of commands)(this.isDynamicCaster(c)?dynamicCommands:staticCommands).push(c)
+    const reuse=level.cache.matches(level.light.viewProjection,size,staticCommands)&&level.staticReady
+    if(reuse){level.cacheHits++;this.stats.cacheHits++}
+    else{
+      level.staticTarget??=new ShadowTarget(this.C,ctx,size)
+      this.drawDepth(level,level.staticTarget,staticCommands,ctx,us,camera)
+      level.cache.commit();level.staticReady=true;level.staticVersion++
+    }
+    // 静态层未变、上次合成后也没有动态层：主深度图内容仍然正确，连 blit 都省掉。
+    if(level.composedVersion===level.staticVersion&&!dynamicCommands.length&&!level.composedDynamic)return
+    level.staticTarget.copyTo(ctx,level.target)
+    if(dynamicCommands.length)this.drawDepth(level,level.target,dynamicCommands,ctx,us,camera,false)
+    level.composedVersion=level.staticVersion;level.composedDynamic=dynamicCommands.length>0;level.updates++
+  }
+  releaseStaticLayer(level){
+    level.staticTarget?.destroy();level.staticTarget=null;level.staticReady=false;level.composedVersion=-1
+  }
   roots(collection,out=[]){
     if(collection.show===false)return out
     for(let i=0;i<collection.length;i++){
@@ -223,7 +257,8 @@ export default class DirectionalShadowPass {
       const sizes=count===1?[options.shadowSize]:[options.shadowSize,Math.max(512,options.shadowSize/2),Math.max(512,options.shadowSize/2)]
       if(this.levels.length!==count||this.levels.some((l,i)=>l.target.size!==sizes[i])){
         this.releaseTargets()
-        for(const size of sizes)this.levels.push({light:new LightFrustum(C,s),target:new ShadowTarget(C,ctx,size),cache:new ShadowCache(),ready:false,updates:0,cacheHits:0})
+        for(const size of sizes)this.levels.push({light:new LightFrustum(C,s),target:new ShadowTarget(C,ctx,size),cache:new ShadowCache(),ready:false,updates:0,cacheHits:0,
+          staticTarget:null,staticReady:false,staticVersion:0,composedVersion:-1,composedDynamic:false})
       }
       const bounds=count===1?null:[...commandList.map(c=>this.sphere(c.boundingVolume)).filter(Boolean),...this.roots(s.primitives)]
       const results=[]
@@ -238,21 +273,18 @@ export default class DirectionalShadowPass {
           (!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE))
         if(count>1)level.light.update(region.center,direction,region.extent,sizes[i],true,this.depthBounds(region,direction,candidates.map(c=>this.sphere(c.boundingVolume)).filter(Boolean)),camera.positionWC)
         const casters=candidates.filter(c=>!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE)
-          .map(c=>this.adapter.cast(c,level.target.framebuffer,level.light.camera,camera))
-        const key=options.shadowStatic?level.cache.signature(level.light.viewProjection,sizes[i],casters):null
-        if(level.ready&&level.cache.matches(key)){level.cacheHits++;this.stats.cacheHits++}
+        if(options.shadowStatic)this.renderLayered(level,casters,sizes[i],ctx,us,camera)
         else{
-          us.updateCamera(level.light.camera);us.viewport=level.target.passState.viewport
-          level.target.clear.execute(ctx,level.target.passState)
-          this.submitCasters(casters,ctx,level.target.passState,us)
-          level.cache.commit(key);level.ready=true;level.updates++
+          if(level.staticTarget){this.releaseStaticLayer(level);level.cache.invalidate()}
+          this.drawDepth(level,level.target,casters,ctx,us,camera);level.updates++
         }
+        level.ready=true
         results.push({size:sizes[i],near:region.near??regions.near,far:region.far??regions.far,extent:region.extent,texelWorld:level.light.texelWorld,
           depthSpan:level.light.depthSpan,casters:casters.length,selectedOffscreen:main ? candidates.filter(c=>!main.has(c)).length : 0,updates:level.updates,cacheHits:level.cacheHits})
       }
       this.version++;this.ready=true;this.debugStage.enabled=options.shadowDebug===true
       Object.assign(this.stats,{updates:this.stats.updates+1,casters:results.reduce((n,r)=>n+r.casters,0),receivers:this.adapter.commands.size,
-        selectedOffscreen:results.reduce((n,r)=>n+r.selectedOffscreen,0),cascades:results,error:null,bytes:sizes.reduce((n,size)=>n+size*size*4,0),
+        selectedOffscreen:results.reduce((n,r)=>n+r.selectedOffscreen,0),cascades:results,error:null,bytes:this.levels.reduce((n,l)=>n+l.target.size*l.target.size*4*(l.staticTarget?2:1),0),
         coverage:{mode:'camera',count,near:regions.near,far:regions.far,extent:regions.cascades.at(-1).extent,center:C.Cartesian3.clone(regions.cascades.at(-1).center),texelWorld:results[0].texelWorld}})
       this.rememberShadowFrame(state,camera,commandList,toLight,options)
     }catch(error){this.stats.error=error.message;this.ready=false;this.setEnabled(false)}
@@ -275,7 +307,7 @@ export default class DirectionalShadowPass {
     }
     return this.receiverData
   }
-  releaseTargets(){for(const l of this.levels)l.target.destroy();this.levels=[];this.ready=false;this.forceShadowUpdate=true;this.receiverData=null;this.receiverVersion=undefined;this.stats.bytes=0;this.stats.cascades=[]}
+  releaseTargets(){for(const l of this.levels){l.target.destroy();l.staticTarget?.destroy()}this.levels=[];this.ready=false;this.forceShadowUpdate=true;this.receiverData=null;this.receiverVersion=undefined;this.stats.bytes=0;this.stats.cascades=[]}
   destroy(){
     if(this.dead)return
     this.setEnabled(false);this.removePreUpdate();this.adapter.destroy();this.releaseTargets()

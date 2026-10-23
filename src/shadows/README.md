@@ -26,7 +26,7 @@ pipeline.setOptions({ shadows: false }) // 关闭当前后端的阴影
 - `ShadowTarget.js`：深度纹理、FBO、viewport和清除命令。
 - `ShadowReceiver143.js`：隔离1.143绘制命令适配、材质更新、裁剪平面的相机空间转换、派生资源及回收。
 - `shaderAdapter143.js`：投影端保留Alpha裁剪/顶点变换，移除主视图LOG_DEPTH约定；接收端只修改直接光/清漆直接反射项，使用带纹素内插值的3×3 tent PCF（4×4共16个唯一深度采样），并按接收面梯度补偿每个纹素中心的比较深度。
-- `ShadowCache.js`：显式静态模式的签名、失效与缓存判定。
+- `ShadowCache.js`：显式静态模式的签名、失效与缓存判定。先比头部（revision、尺寸、数量、光源VP），一致才逐caster做数值比较；全程复用数组。
 
 ## 当前支持边界
 
@@ -63,7 +63,9 @@ pipeline.invalidateShadows({ immediate: false })
 
 自动检测光源矩阵/范围、分辨率、命令集合、Shader、VertexArray、绘制数量、模型矩阵和投影Shader的活动uniform值。资源对象身份可检测替换，但不能检测同一GPU纹理/缓冲内部的任意修改；此类修改必须显式失效。
 
-带蒙皮、形变或自定义顶点变换标记的Shader不使用静态缓存，即使调用方开启静态模式。不能用“时钟暂停”推断全部资源静态。日照/天气工具继续使用已有suspend/resume协议，恢复时使深度失效。
+静态模式下深度分两层：静态投影体画进 `staticTarget` 并按签名复用；`pipeline.setShadowCasterDynamic(model)` 登记的对象和下述不可缓存的投影体每次刷新在静态深度的 blit 拷贝上叠加。`TrafficSystem` 会自动登记车辆，移动时不再失效静态层，生成/显隐用 `invalidateShadows({ dynamicOnly: true })`。
+
+带蒙皮、形变或自定义顶点变换标记的Shader不使用静态缓存，即使调用方开启静态模式；它们归入动态层，不再拖累整张图失去缓存。不能用“时钟暂停”推断全部资源静态。日照/天气工具继续使用已有suspend/resume协议，恢复时使深度失效。
 
 ## 资源与版本约束
 

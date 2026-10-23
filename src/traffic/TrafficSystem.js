@@ -121,6 +121,7 @@ export default class TrafficSystem {
       model.destroy(); this._assertLoading(); throw new Error('Traffic vehicle retired while loading')
     }
     vehicle.model = model
+    if (this._dynamicShadows) this.pipeline.setShadowCasterDynamic(model, true)
     model.show = this.visible && vehicle.state === 'driving'
     this._place(vehicle)
     this.scene.primitives.add(model)
@@ -209,12 +210,18 @@ export default class TrafficSystem {
     // forceShadowUpdate and made the shadow pass redraw on every frame, which cost the
     // campus scene about 37 FPS (22.7 -> 59.9 measured) and made
     // shadowUpdateInterval unreachable whenever traffic was playing.
-    if (moved) this._invalidateShadows({ immediate: false })
+    // Registered as dynamic casters, moving vehicles are redrawn on every scheduled
+    // shadow refresh and never touch the static layer, so motion needs no invalidation.
+    if (moved && !this._dynamicShadows) this._invalidateShadows({ immediate: false })
     if (this.speedMultiplier > 0 && this.vehicles.some(vehicle => vehicle.speed > 0 && vehicle.state !== 'error')) this.scene.requestRender()
   }
 
-  _invalidateShadows(options) {
-    if (this.pipeline && !this.pipeline.destroyed) this.pipeline.invalidateShadows(options)
+  // 车辆登记为动态投影体后，生成/显隐只需重新合成动态层，静态层缓存保留。
+  // 没有该接口的旧管线退回逐帧延迟失效。
+  get _dynamicShadows() { return typeof this.pipeline?.setShadowCasterDynamic === 'function' }
+  _invalidateShadows(options = {}) {
+    if (!this.pipeline || this.pipeline.destroyed) return
+    this.pipeline.invalidateShadows(this._dynamicShadows ? { ...options, dynamicOnly: true } : options)
   }
 
   play() {

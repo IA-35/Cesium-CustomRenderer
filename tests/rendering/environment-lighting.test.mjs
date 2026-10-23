@@ -260,15 +260,42 @@ test('independent Models retain their IBL and regain their original manager sett
   // No rendering or network is required to exercise the shipped Model's public
   // environment properties; only its unloaded resource loader is stubbed.
   const model = scene.primitives.add(new C.Model({ loader: { destroy() {} } }))
+  const other = scene.primitives.add(new C.Model({ loader: { destroy() {} } }))
   const manager = model.environmentMapManager, ibl = model.imageBasedLighting
   lighting.setEnabled(true)
-  assert.equal(manager.atmosphereScatteringIntensity, 2.8)
+  // 独立 Model 共用一个由 EnvironmentLighting 驱动的管理器，自有管理器保持原样待归还。
+  const shared = model.environmentMapManager
+  assert.notEqual(shared, manager)
+  assert.equal(other.environmentMapManager, shared)
+  assert.equal(shared.atmosphereScatteringIntensity, 2.8)
+  assert.equal(manager.atmosphereScatteringIntensity, 2)
+  assert.equal(lighting.getDiagnostics().sharedEnvironmentModels, 2)
+  assert.equal(lighting.getDiagnostics().managerCount, 1)
   lighting.destroy()
   assert.equal(model.environmentMapManager, manager)
+  assert.equal(model.environmentMapManager.owner, model)
   assert.equal(model.imageBasedLighting, ibl)
   assert.equal(manager.atmosphereScatteringIntensity, 2)
   assert.equal(model.isDestroyed(), false)
-  model.destroy()
+  assert.equal(scene.primitives.length, 2, 'the shared update proxy is removed')
+  model.destroy(); other.destroy()
+})
+
+test('customised or removed Models do not keep the shared environment manager', () => {
+  const { scene, lighting } = fixture()
+  const plain = scene.primitives.add(new C.Model({ loader: { destroy() {} } }))
+  const custom = scene.primitives.add(new C.Model({ loader: { destroy() {} } }))
+  custom.environmentMapManager.groundAlbedo = 0.9
+  const own = plain.environmentMapManager
+  lighting.setEnabled(true)
+  assert.notEqual(plain.environmentMapManager, own)
+  assert.equal(custom.environmentMapManager.owner, custom, 'a customised manager is never replaced')
+  scene.primitives.remove(plain)
+  lighting.apply(settings)
+  assert.equal(plain.environmentMapManager, own)
+  assert.equal(lighting.getDiagnostics().sharedEnvironmentModels, 0)
+  assert.equal(scene.primitives.length, 1, 'the shared manager and its proxy are released with the last Model')
+  lighting.destroy(); plain.destroy(); custom.destroy()
 })
 
 test('unsupported dynamic mapping leaves manager configuration untouched', () => {

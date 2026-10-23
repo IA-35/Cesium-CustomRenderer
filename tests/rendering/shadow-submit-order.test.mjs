@@ -15,7 +15,7 @@ test('depth-only submissions group programs/states without dropping commands or 
 test('shadow scope suppresses consecutive identical binds and restores native behavior on throw',()=>{
  const calls=[],gl={useProgram:p=>calls.push(p),activeTexture(){},bindTexture(){}},original=gl.useProgram,a={},b={}
  assert.throws(()=>withShadowBindings(gl,()=>{gl.useProgram(a);gl.useProgram(a);gl.useProgram(b);gl.useProgram(null);gl.useProgram(b);throw new Error('draw failed')}),/draw failed/)
- assert.deepEqual(calls,[a,b,null,b]);assert.equal(gl.useProgram,original)
+ assert.deepEqual(calls,[a,b,null,b]);assert.notEqual(gl.useProgram,original,'resident pass-through wrapper')
  gl.useProgram(b);assert.equal(calls.length,5)
 })
 test('texture bindings are scoped by both unit and target and no state assumption survives the pass',()=>{

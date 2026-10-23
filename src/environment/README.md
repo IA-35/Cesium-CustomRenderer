@@ -23,7 +23,7 @@ HdrEnvironmentPass143 只包装当前 scene.postProcessStages.execute，不改pr
 
 ## 光照与介质
 
-- PBR天空光：保留 Model/Tileset 的IBL、材质、SH和specular输入，通过其现有 environmentMapManager 调整散射强度。默认3.2，显式传入的强度仍优先。显式关闭的manager不被强开；设置变化时仅失效一次。场景和Globe大气均跟随SUNLIGHT。环境图按60模拟秒更新，不逐帧重建。
+- PBR天空光：保留 Model/Tileset 的IBL、材质、SH和specular输入，通过其现有 environmentMapManager 调整散射强度。默认3.2，显式传入的强度仍优先。显式关闭的manager不被强开；设置变化时仅失效一次。场景和Globe大气均跟随SUNLIGHT。环境图按60模拟秒更新，不逐帧重建。独立 Model 改用一个共享管理器（`SharedEnvironmentMap143`，以所有 Model 包围球中心为采样点），重建开销从每模型一份降到一份；参数被单独改过的管理器保持原样，关闭环境光照时归还各自原管理器。
 - 旧校园资产的IBL/树叶修正已移到 `examples/compat`，由示例显式启用。核心不再根据文件名修改IBL因子或alpha cutoff。
 - 太阳：真正的天文太阳方向，日间基础强度2.2；按高度/天气衰减，低太阳角度变暖，太阳落到地平线以下直射强度为0。渲染器不改当前日期或推进时钟。
 - 高度雾/体积雾：以WGS84高度基准为参考的局部ENU指数密度，加可选三维周期噪声。沿视线逐段Beer–Lambert积分，HG相函数计算太阳散射；已有自定义方向光阴影的有效范围内以2×2PCF控制太阳项，天空漫散射不乘阴影。

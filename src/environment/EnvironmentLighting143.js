@@ -1,3 +1,5 @@
+import SharedEnvironmentMap143 from './SharedEnvironmentMap143.js'
+
 const alive = object => object && !(typeof object.isDestroyed === 'function' && object.isDestroyed())
 const equal = (a, b) => a === b || (a && b && (
   typeof a.x === 'number' && a.x === b.x && a.y === b.y && a.z === b.z ||
@@ -67,6 +69,7 @@ export default class EnvironmentLighting143 {
     this.destroyed = false
     this.changes = []
     this.managers = new Map()
+    this.sharedEnvironment = new SharedEnvironmentMap143(C, scene)
     this.nightIbls = new Map()
     this.reflectionRecords = new Map()
     this.sharedReflectionIbls = new Map()
@@ -139,6 +142,7 @@ export default class EnvironmentLighting143 {
     }
     this.changes.length = 0
     this.managers.clear()
+    this.sharedEnvironment.releaseAll()
   }
 
   setReflection(settings = {}) {
@@ -356,7 +360,7 @@ export default class EnvironmentLighting143 {
       const original = this.changes.find(item => item.object === scene.skyBox && item.key === 'show')
       write(this.changes, scene.skyBox, 'show', (original ? original.before : scene.skyBox.show) && o.daylight < 0.95)
     }
-    const seen = new Set(), seenIbls = new Set()
+    const seen = new Set(), seenIbls = new Set(), seenModels = new Set()
     const visit = primitive => {
       if (!alive(primitive)) return
       if ((C.Cesium3DTileset && primitive instanceof C.Cesium3DTileset) ||
@@ -376,12 +380,15 @@ export default class EnvironmentLighting143 {
             refreshNightIbl(ibl, record, o)
           }
         }
-        const manager = primitive.environmentMapManager
+        let manager = primitive.environmentMapManager
         if (!this.supported || !alive(manager) || manager.enabled === false) return
+        // 独立 Model 改用共享管理器：重建开销从 N 份降到 1 份。Tileset 内部本来就共享。
+        const shared = C.Model && primitive instanceof C.Model && this.sharedEnvironment.adopt(primitive)
+        if (shared) { manager = this.sharedEnvironment.manager; seenModels.add(primitive) }
         seen.add(manager)
         let record = this.managers.get(manager)
         if (!record) {
-          record = { primitive, changes: [] }
+          record = { primitive: shared ? this.sharedEnvironment.proxy : primitive, changes: [] }
           this.managers.set(manager, record)
         }
         let changed = write(record.changes, manager, 'atmosphereScatteringIntensity', o.skyIntensity)
@@ -395,6 +402,7 @@ export default class EnvironmentLighting143 {
       }
     }
     visit(scene.primitives)
+    this.sharedEnvironment.retain(seenModels)
     for (const [ibl, record] of this.nightIbls) {
       if (seenIbls.has(ibl)) continue
       restore(record.changes)
@@ -412,6 +420,7 @@ export default class EnvironmentLighting143 {
 
   getDiagnostics() {
     return { supported: this.supported, enabled: this.enabled, managerCount: this.managers.size,
+      sharedEnvironmentModels: this.sharedEnvironment.size,
       ownsLight: this.scene.light === this.sun || !!this.moon && this.scene.light === this.moon,
       activeLight: this.scene.light === this.sun ? 'sun' : this.moon && this.scene.light === this.moon ? 'moon' : 'external',
       nightIblCount: [...this.nightIbls.values()].filter(record => record.changes[0].owned).length,
@@ -425,6 +434,7 @@ export default class EnvironmentLighting143 {
     this.restoreReflections()
     this.reflectionIncludes = new WeakSet()
     this.restore()
+    this.sharedEnvironment.destroy()
     if (this.removeReflectionUpdate) this.removeReflectionUpdate()
     this.collectionRemovers.splice(0).forEach(remove => { if (typeof remove === 'function') remove() })
     this.watchedCollections = new WeakSet()

@@ -74,6 +74,7 @@ export default class VisualPipeline {
     this.enabled = false
     this.destroyed = false
     this.suspensions = new Set()
+    this.dynamicShadowCasters = new WeakSet()
     this.changes = []
     this.renderGraph = new RenderGraph143({ label: 'CCR/VisualPipeline' })
     this.rhi = viewer.scene.context ? new WebGLDevice143(Cesium, viewer.scene) : null
@@ -164,8 +165,12 @@ export default class VisualPipeline {
     if (s.globe) this.write(s.globe, 'enableLighting', true)
     if (o.shadowMode === 'custom') {
       this.write(v.shadowMap, 'enabled', false)
-      if (!this.customShadow) this.customShadow = new DirectionalShadowPass(C, v, () => this.options,
-        () => !!this.transparentForward?.enabled && !this.transparentForward.scopeReason())
+      if (!this.customShadow) {
+        this.customShadow = new DirectionalShadowPass(C, v, () => this.options,
+          () => !!this.transparentForward?.enabled && !this.transparentForward.scopeReason())
+        // 阴影 pass 懒创建，先于它登记的动态投影体也要生效。
+        this.customShadow.dynamicOwners = this.dynamicShadowCasters
+      }
       this.customShadow.setEnabled(o.shadows)
     } else {
       if (!this.shadowMap) this.shadowMap = createCampusShadowMap(C, v, o)
@@ -921,6 +926,18 @@ export default class VisualPipeline {
    */
   invalidateShadows(options) {
     if (this.customShadow && !this.destroyed) this.customShadow.invalidate(options)
+  }
+
+  /**
+   * 把一个会移动的投影体（Model，按 DrawCommand.owner 匹配）登记为动态。`shadowStatic: true` 时，
+   * 静态投影体缓存成单独的深度层，动态投影体每次阴影刷新叠加在它的拷贝上；登记后，
+   * 移动这些对象不需要再调用 invalidateShadows。生成/显隐变化用 `{ dynamicOnly: true }` 通知即可。
+   * 未开启静态缓存时登记无副作用。
+   */
+  setShadowCasterDynamic(primitive, dynamic = true) {
+    if (!primitive || this.destroyed) return
+    if (dynamic) this.dynamicShadowCasters.add(primitive)
+    else this.dynamicShadowCasters.delete(primitive)
   }
 
   /**

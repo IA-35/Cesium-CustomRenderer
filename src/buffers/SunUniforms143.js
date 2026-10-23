@@ -22,7 +22,9 @@ export function acquireSunUniforms(C,scene){
     owner={references:0,token,previous,data:new Float32Array(12),buffer:new UniformBuffer143(context._gl,48),programs:new WeakMap(),revision:0}
     owner.update=()=>{
       const us=context.uniformState
-      for(const [offset,value]of [[0,us.lightDirectionEC],[4,us.lightColorHdr],[8,us.lightDirectionWC]])owner.data.set([value.x,value.y,value.z,0],offset)
+      // 每次带 UBO 的 draw 都会调用：直接写入，不分配临时数组。
+      const data=owner.data,write=(offset,value)=>{data[offset]=value.x;data[offset+1]=value.y;data[offset+2]=value.z;data[offset+3]=0}
+      write(0,us.lightDirectionEC);write(4,us.lightColorHdr);write(8,us.lightDirectionWC)
       const bytes=owner.buffer.update(owner.data);if(bytes)owner.revision++;return bytes
     }
     owner.hook=function(command,passState,...args){
@@ -38,9 +40,14 @@ export function acquireSunUniforms(C,scene){
          if(dispatcher){
        owner.dispatcherDispose=dispatcher.addHandler(event=>{
          const command=event.command,program=event.overrides[0]||command?.shaderProgram
-         if(!token.active||!program?.fragmentShaderSource?.defines?.includes('CCR_SUN_UBO'))return 'continue'
+         if(!token.active||!program)return 'continue'
+         // 每个 program 只判定一次（含 defines 扫描），之后每次 draw 只查 WeakMap。
          let active=owner.programs.get(program)
-         if(active===undefined){void program.allUniforms;const index=context._gl.getUniformBlockIndex(program._program,'CCRSunFrame');active=index!==0xffffffff;owner.programs.set(program,active)}
+         if(active===undefined){
+           active=!!program.fragmentShaderSource?.defines?.includes('CCR_SUN_UBO')
+           if(active){void program.allUniforms;active=context._gl.getUniformBlockIndex(program._program,'CCRSunFrame')!==0xffffffff}
+           owner.programs.set(program,active)
+         }
          if(!active)return 'continue'
          owner.update()
          if(!owner.scopedPrograms?.has(program))event.aroundDraw(invoke=>withUniformBlocks(context._gl,[program],[{name:'CCRSunFrame',buffer:owner.buffer}],invoke))
