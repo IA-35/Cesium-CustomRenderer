@@ -175,6 +175,8 @@ export default class VisualPipeline {
           () => !!this.transparentForward?.enabled && !this.transparentForward.scopeReason())
         // 阴影 pass 懒创建，先于它登记的动态投影体也要生效。
         this.customShadow.dynamicOwners = this.dynamicShadowCasters
+        // 投影程序后台预热，避免首批投影体在阴影 pass 里同步编译（冷缓存时每批约 1 秒）。
+        this.customShadow.shaderWarmup = this.rhi?.shaderWarmup ?? null
       }
       this.customShadow.setEnabled(o.shadows)
     } else {

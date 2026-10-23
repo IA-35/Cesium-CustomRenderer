@@ -1,7 +1,8 @@
 import { frustumBinsOf, globeTranslucent } from '../scene/cesiumPrivate143.js'
 import { registerHdrEffect } from './HdrCoordinator143.js'
 import {withUniformBlocks} from '../buffers/UniformBuffer143.js'
-import CloudTemporal143 from './CloudTemporal143.js'
+import CloudTemporal143, { CLOUD_TEMPORAL_SHADERS } from './CloudTemporal143.js'
+import { ATMOSPHERE_LUT_SHADERS } from './AtmosphereLut143.js'
 
 // Cesium 1.143 adapter: execute independent float stages before native tone mapping.
 export default class HdrEnvironmentPass143 {
@@ -25,6 +26,9 @@ export default class HdrEnvironmentPass143 {
     // B08：介质遮挡数据的独立 collection。它复用同一批 uniforms，
     // 但**不参与颜色合成**——其输出是供 B09 读取的中间数据。
     this.occlusionCollection = undefined
+    // 着色器后台预热（RHI 提供，可为空）。预热完成前环境走原生天空，避免首帧同步编译卡住数秒。
+    this.shaderWarmup = null
+    this.warmKeys = []
   }
 
   _sceneDestroyed() {
@@ -88,6 +92,7 @@ export default class HdrEnvironmentPass143 {
           {key:'atmosphere.transmission',stage:this.composite.get(1)},
           {key:'environment.composite',stage:this.composite.get(2)}])
       }
+      this.warmKeys = this._warmShaders()
       this._detachHdr = registerHdrEffect(this.scene, 20,
         (context, color, depth, id) => this._execute(context, color, depth, id))
       this.enabled = true
@@ -96,6 +101,16 @@ export default class HdrEnvironmentPass143 {
       this._fail(error)
     }
     this._requestRender()
+  }
+
+  // 门控之后才会执行的所有程序：环境 stage 树，以及直接画全屏四边形的云时域与大气 LUT。
+  _warmShaders() {
+    const warmup = this.shaderWarmup, context = this.scene.context
+    if (!warmup) return []
+    const stages = warmup.warmPostProcessStages([this.composite, this._cloudComposite, this._occlusionStage].filter(Boolean),
+      { useLogDepth: !!this.scene.frameState?.useLogDepth, context })
+    const quads = warmup.warmViewportShaders([...CLOUD_TEMPORAL_SHADERS, ...(this.prepareAtmosphere ? ATMOSPHERE_LUT_SHADERS : [])], { context })
+    return [...stages, ...quads]
   }
 
   _execute(context, color, depth, id) {
@@ -107,6 +122,15 @@ export default class HdrEnvironmentPass143 {
       this.reason = reason
       this.stats.bypasses++
       return color
+    }
+    if (this.warmKeys.length) {
+      if (!this.shaderWarmup.isReady(this.warmKeys)) {
+        this.reason = 'shaders warming'
+        this.stats.bypasses++
+        this._requestRender()
+        return color
+      }
+      this.warmKeys = []
     }
     // PostProcessStage.execute can change automatic viewport uniforms at half resolution.
     // Snapshot values: Cesium's viewport getter returns a mutable internal Rectangle.
@@ -251,6 +275,7 @@ export default class HdrEnvironmentPass143 {
   _release() {
     this.enabled = false
     this._valid = false
+    this.warmKeys = []
     const detachHdr = this._detachHdr
     this._detachHdr = undefined
     if (detachHdr) detachHdr()

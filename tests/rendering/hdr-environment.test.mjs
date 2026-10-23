@@ -291,3 +291,47 @@ test('shell permits an empty sky frame but still rejects multiple depth frusta',
   f.pass.allowEmptyFrustum = () => false
   assert.match(f.pass._scopeReason(), /single frustum/)
 })
+
+test('environment stays on the native sky until its shaders finish warming in the background', () => {
+  const f = fixture(), requests = []
+  let ready = false
+  const warmed = []
+  f.pass.shaderWarmup = {
+    warmPostProcessStages(stages, options) { warmed.push({ stages, options }); return ['clouds', 'atmosphere'] },
+    warmViewportShaders(shaders, options) { quads.push({ shaders, options }); return ['quads'] },
+    isReady(keys) { assert.deepEqual(keys, ['clouds', 'atmosphere', 'quads']); return ready }
+  }
+  const quads = []
+  f.scene.requestRender = () => requests.push(1)
+  f.pass._occlusionStage = { name: 'occlusion' }
+  f.pass.setEnabled(true)
+  assert.equal(warmed.length, 1)
+  assert.deepEqual(warmed[0].stages, [f.composites[0], f.pass._occlusionStage])
+  assert.equal(warmed[0].options.useLogDepth, true)
+  assert.equal(warmed[0].options.context, f.context)
+  assert.ok(quads[0].shaders.length >= 2, 'cloud temporal resolve and depth copy run behind the gate too')
+  assert.ok(quads[0].shaders.every(shader => typeof shader === 'string'))
+  const color = { linearValue: 5 }
+  requests.length = 0
+  f.execute(color)
+  assert.equal(f.events.some(e => e[0] === 'environment' || e[0] === 'update'), false, 'no stage runs, so nothing compiles on the main thread')
+  assert.equal(f.events.at(-1)[2], color, 'native HDR passes through unchanged')
+  assert.equal(f.pass.getDiagnostics().reason, 'shaders warming')
+  assert.ok(requests.length > 0, 'keeps rendering so the gate is checked again')
+  ready = true
+  f.execute(color)
+  assert.equal(f.events.some(e => e[0] === 'environment'), true)
+  assert.equal(f.pass.getDiagnostics().valid, true)
+  f.pass.setEnabled(false)
+  f.pass.setEnabled(true)
+  assert.equal(warmed.length, 2, 're-enabling warms the newly created stages again')
+  f.pass.destroy()
+})
+
+test('without a shader warm-up the environment runs on its first enabled frame as before', () => {
+  const f = fixture()
+  f.pass.setEnabled(true)
+  f.execute({ linearValue: 4 })
+  assert.equal(f.events.some(e => e[0] === 'environment'), true)
+  f.pass.destroy()
+})

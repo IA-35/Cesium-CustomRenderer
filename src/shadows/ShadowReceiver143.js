@@ -83,18 +83,24 @@ export default class ShadowReceiver143 {
     command.shaderProgram = program
     command.uniformMap = merged
   }
+  // 投影程序按源程序缓存。cast() 与着色器预热共用这一入口，保证预热的正是将来绘制用的同一份文本。
+  // fromCache 只拼接文本、创建未编译的程序；编译发生在第一次绑定。
+  castProgram(source) {
+    let program = this.castPrograms.get(source.id)
+    if (!program) {
+      program = this.C.ShaderProgram.fromCache({ context: this.scene.context,
+        ...casterSources(this.C, source), attributeLocations: source._attributeLocations })
+      this.castPrograms.set(source.id, program)
+    }
+    this.castUsed.set(source.id, this.scene.frameState.frameNumber)
+    return program
+  }
   cast(command, framebuffer, lightCamera, mainCamera) {
     const C = this.C
     const source = this.raw(command)
     const frame = this.scene.frameState.frameNumber
-    this.castUsed.set(source.id, frame)
     this.stateUsed.set(command.renderState.id, frame)
-    let program = this.castPrograms.get(source.id)
-    if (!program) {
-      program = C.ShaderProgram.fromCache({ context: this.scene.context,
-        ...casterSources(C, source), attributeLocations: source._attributeLocations })
-      this.castPrograms.set(source.id, program)
-    }
+    const program = this.castProgram(source)
     let state = this.castStates.get(command.renderState.id)
     if (!state) {
       const options = C.RenderState.getState(command.renderState)

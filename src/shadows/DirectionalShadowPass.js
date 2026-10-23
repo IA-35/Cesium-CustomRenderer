@@ -15,6 +15,9 @@ import {keepPrimitiveLast} from '../pipeline/PrimitiveOrder143.js'
 // Applications with static campus casters can raise this to 3 or 4 to reduce the
 // shadow pass GPU duty cycle while keeping the camera path responsive.
 const DEFAULT_SHADOW_UPDATE_INTERVAL=2
+// 预热只让编译命中浏览器程序缓存，Cesium 首次绑定仍在主线程重编（实测中位 16 ms、p90 21 ms）。
+// 每次阴影重画最多放行这么多个新投影程序，避免几十个同时就绪的投影体叠成一个长帧。
+export const MAX_CASTER_LINKS_PER_FRAME=3
 
 // Each level selects its own light-space casters. Native ShadowMap is never a fallback.
 export default class DirectionalShadowPass {
@@ -38,6 +41,12 @@ export default class DirectionalShadowPass {
     // 登记为动态的投影体（按 DrawCommand.owner 匹配，即 Model）在静态缓存模式下单独成层。
     // VisualPipeline 会换成它自己持有的集合，使阴影 pass 创建前的登记也生效。
     this.dynamicOwners=new WeakSet()
+    // 投影程序后台预热（RHI 提供，可为空）。编译未完成的投影体先不画，避免阴影 pass 里同步编译卡帧。
+    this.shaderWarmup=null
+    this.warmedSources=new WeakSet()
+    this.casterKeys=new WeakMap()
+    this.deferredCasters=0
+    this.linkedThisFrame=new Set()
     this.configureReceivers(getOptions().shadowCascades!==1)
     this.proxy={update:state=>this.update(state),isDestroyed:()=>this.dead,destroy(){}}
     this.scene.primitives.add(this.proxy)
@@ -101,7 +110,9 @@ export default class DirectionalShadowPass {
     }
     return index===this.lastCommandRefs.length
   }
-  isDynamicCaster(command){return this.dynamicOwners.has(command.owner)||!ShadowCache.cacheable(command)}
+  // 静态层按投影程序判定与签名：command.shaderProgram 在增强模式下是从不绑定的接收程序。
+  casterProgramOf(command){return this.adapter.castProgram(this.adapter.raw(command))}
+  isDynamicCaster(command){return this.dynamicOwners.has(command.owner)||!ShadowCache.cacheable(command,this.casterProgramOf(command))}
   isShadowCaster(command){return !!command.castShadows&&!!command.shaderProgram&&command.pass!==this.C.Pass.TRANSLUCENT&&command.pass!==this.C.Pass.COMPUTE}
   shadowSizesMatch(options){
     const count=options.shadowCascades===1?1:3
@@ -109,6 +120,8 @@ export default class DirectionalShadowPass {
     return this.levels.length===count&&this.levels.every((level,i)=>level.target.size===sizes[i])
   }
   shouldReuseShadowFrame(state,camera,commandList,toLight,options){
+    // 有投影体还在后台编译：不复用上一帧，就绪后尽快补画。
+    if(this.deferredCasters)return false
     if(!this.ready||this.forceShadowUpdate||!this.lastCameraView||!this.lastLightDirection)return false
     if(!this.commandListMatch(commandList)||this.lastPrimitiveCount!==this.scene.primitives?.length||!this.rootPrimitivesMatch())return false
     if(this.lastShadowOptionsKey!==this.shadowOptionsKey(options)||this.lastFrustumKey!==this.cameraFrustumKey(camera)||!this.shadowSizesMatch(options))return false
@@ -168,7 +181,51 @@ export default class DirectionalShadowPass {
   update(state){
     if(!this.enabled||!state.passes.render)return
     if(this.scene.mode!==this.C.SceneMode.SCENE3D){this.ready=false;return}
+    this.prewarmCasters(state.commandList)
     state.commandList.push({pass:this.C.Pass.COMPUTE,execute:()=>this.render(state)})
+  }
+  // 模型就绪后命令就进入 commandList，通常早于进入光源视锥：这时就把投影程序交给后台预热。
+  // 每个源程序只看一次；本 pass 被保持在 primitives 末尾，此时 commandList 已含全部模型命令。
+  prewarmCasters(commandList){
+    if(!this.shaderWarmup?.parallel)return
+    for(const command of commandList){
+      if(!this.isShadowCaster(command))continue
+      const source=this.adapter.raw(command)
+      if(this.warmedSources.has(source))continue
+      this.warmedSources.add(source)
+      this.warmCaster(this.adapter.castProgram(source))
+    }
+  }
+  warmCaster(program){
+    // _program 是 Cesium ShaderProgram 编译后才有的 GL 句柄：已编译就无需预热。
+    if(program._program!==undefined||this.casterKeys.has(program))return
+    const key=this.shaderWarmup.warm({vertexShaderText:program._vertexShaderText,fragmentShaderText:program._fragmentShaderText,
+      attributeLocations:program._attributeLocations})
+    if(key)this.casterKeys.set(program,key)
+  }
+  // 返回本次可以绘制的投影体。程序仍在后台编译、或本次新程序名额已满的先跳过（阴影晚几帧出现），并请求下一帧；
+  // 静态缓存签名含投影体数量，补上后会自动重画静态层。没有并行编译能力时原样返回。
+  readyCasters(commands){
+    const warmup=this.shaderWarmup
+    if(!warmup?.parallel)return commands
+    const ready=[];let deferred=0
+    for(const command of commands){
+      const program=this.adapter.castProgram(this.adapter.raw(command))
+      if(program._program===undefined){
+        this.warmCaster(program)
+        const key=this.casterKeys.get(program)
+        if(key&&!warmup.isReady([key])){deferred++;continue}
+        // 同一次重画的后续级联再画已放行的程序不重复计数（第一次绑定后它就编译好了）。
+        if(!this.linkedThisFrame.has(program)){
+          if(this.linkedThisFrame.size>=MAX_CASTER_LINKS_PER_FRAME){deferred++;continue}
+          this.linkedThisFrame.add(program)
+        }
+      }
+      ready.push(command)
+    }
+    this.deferredCasters+=deferred
+    if(deferred)this.scene.requestRender?.()
+    return ready
   }
   sphere(bound){
     if(Number.isFinite(bound?.radius))return bound
@@ -191,7 +248,7 @@ export default class DirectionalShadowPass {
   renderLayered(level,commands,size,ctx,us,camera){
     const staticCommands=[],dynamicCommands=[]
     for(const c of commands)(this.isDynamicCaster(c)?dynamicCommands:staticCommands).push(c)
-    const reuse=level.cache.matches(level.light.viewProjection,size,staticCommands)&&level.staticReady
+    const reuse=level.cache.matches(level.light.viewProjection,size,staticCommands,command=>this.casterProgramOf(command))&&level.staticReady
     if(reuse){level.cacheHits++;this.stats.cacheHits++}
     else{
       level.staticTarget??=new ShadowTarget(this.C,ctx,size)
@@ -236,6 +293,7 @@ export default class DirectionalShadowPass {
     const viewport=C.BoundingRectangle.clone(us.viewport),previousPass=us.pass
     const gl=ctx._gl,read=gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),draw=gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING),cached=ctx._currentFramebuffer
     try{
+      this.deferredCasters=0;this.linkedThisFrame.clear()
       const count=options.shadowCascades===1?1:3
       const direction=C.Cartesian3.normalize(toLight,new C.Cartesian3()),visible=[],main=count>1?new Set():null
       let terrainMin=Infinity,terrainMax=-Infinity
@@ -273,7 +331,7 @@ export default class DirectionalShadowPass {
         const candidates=[...new Set([...commandList,...lightCommands])].filter(c=>c.castShadows&&c.shaderProgram&&c.pass!==C.Pass.TRANSLUCENT&&
           (!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE))
         if(count>1)level.light.update(region.center,direction,region.extent,sizes[i],true,this.depthBounds(region,direction,candidates.map(c=>this.sphere(c.boundingVolume)).filter(Boolean)),camera.positionWC)
-        const casters=candidates.filter(c=>!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE)
+        const casters=this.readyCasters(candidates.filter(c=>!c.boundingVolume||level.light.cullingVolume.computeVisibility(c.boundingVolume)!==C.Intersect.OUTSIDE))
         if(options.shadowStatic)this.renderLayered(level,casters,sizes[i],ctx,us,camera)
         else{
           if(level.staticTarget){this.releaseStaticLayer(level);level.cache.invalidate()}
@@ -284,7 +342,7 @@ export default class DirectionalShadowPass {
           depthSpan:level.light.depthSpan,casters:casters.length,selectedOffscreen:main ? candidates.filter(c=>!main.has(c)).length : 0,updates:level.updates,cacheHits:level.cacheHits})
       }
       this.version++;this.ready=true;this.debugStage.enabled=options.shadowDebug===true
-      Object.assign(this.stats,{updates:this.stats.updates+1,casters:results.reduce((n,r)=>n+r.casters,0),receivers:this.adapter.commands.size,
+      Object.assign(this.stats,{updates:this.stats.updates+1,casters:results.reduce((n,r)=>n+r.casters,0),deferredCasters:this.deferredCasters,receivers:this.adapter.commands.size,
         selectedOffscreen:results.reduce((n,r)=>n+r.selectedOffscreen,0),cascades:results,error:null,bytes:this.levels.reduce((n,l)=>n+l.target.size*l.target.size*4*(l.staticTarget?2:1),0),
         coverage:{mode:'camera',count,near:regions.near,far:regions.far,extent:regions.cascades.at(-1).extent,center:C.Cartesian3.clone(regions.cascades.at(-1).center),texelWorld:results[0].texelWorld}})
       this.rememberShadowFrame(state,camera,commandList,toLight,options)
@@ -298,6 +356,12 @@ export default class DirectionalShadowPass {
   }
   getReceiverData(camera){
     if(!this.enabled||!this.ready||!this.levels.length)return null
+    // 每条接收 draw 的每个阴影 uniform 都会调到这里（校园约 2000 次/帧）。同一帧、同一阴影版本、
+    // 同一相机直接复用，不再每次读 camera.inverseViewMatrix 并比较 16 个分量。
+    // 前提：一帧的命令执行期间相机不动（Cesium 在 render 之前的 initializeFrame 里更新相机）。
+    const frame=this.scene.frameState?.frameNumber
+    if(frame!==undefined&&frame===this.receiverFrame&&camera===this.receiverCamera&&this.receiverVersion===this.version)return this.receiverData
+    this.receiverFrame=frame;this.receiverCamera=camera
     if(this.receiverVersion!==this.version||!this.receiverView||!this.C.Matrix4.equals(this.receiverView,camera.inverseViewMatrix)){
       const C=this.C
       this.receiverView=C.Matrix4.clone(camera.inverseViewMatrix,this.receiverView);this.receiverVersion=this.version

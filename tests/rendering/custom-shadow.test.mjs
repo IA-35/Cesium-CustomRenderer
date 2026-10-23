@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { receiverSource, casterSources, pcf } from '../../src/shadows/shaderAdapter143.js'
-import ShadowCache from '../../src/shadows/ShadowCache.js'
+import ShadowCache, { UNIFORM_CHECK_ROUNDS } from '../../src/shadows/ShadowCache.js'
 import LightFrustum from '../../src/shadows/LightFrustum.js'
 import { createRequire } from 'node:module'
 import selectLightTiles from '../../src/shadows/CasterCommands143.js'
@@ -139,6 +139,65 @@ test('reordering identical depth casters is cacheable but changing their render 
   assert.equal(cache.matches([], 1024, [b,a]), false)
 })
 
+// 校园 521 个静态投影体每次重画都读约 4500 个 uniform 值并排序比较（约 1.8 ms）。命令对象与顺序
+// 不变时走快速比对：只比固定字段（几何、程序、状态、绘制范围、模型矩阵），uniform 值按轮转抽查。
+function staticCasters(count) {
+  const values = Array.from({ length: count }, () => 1), reads = { n: 0 }
+  const commands = values.map((_, i) => ({ vertexArray: {}, renderState: { id: 1 }, count: 3, pass: 1,
+    modelMatrix: Array.from({ length: 16 }, (_, k) => k % 5 === 0 ? 1 : 0),
+    shaderProgram: { id: 100 + i, vertexShaderSource: { defines: [] }, _manualUniforms: [{ name: 'u' }] },
+    uniformMap: { u: () => { reads.n++; return values[i] } } }))
+  const cache = new ShadowCache(), matrix = Array.from({ length: 16 }, (_, i) => i)
+  const matches = (list = commands) => cache.matches(matrix, 1024, list)
+  const settle = () => { matches(); cache.commit(); matches(); cache.commit() }
+  return { values, reads, commands, cache, matches, settle }
+}
+
+test('an unchanged static caster list hits through the identity fast path and samples only a slice of uniforms', () => {
+  const f = staticCasters(UNIFORM_CHECK_ROUNDS * 4)
+  f.settle()
+  for (let round = 0; round < UNIFORM_CHECK_ROUNDS * 2; round++) {
+    f.reads.n = 0
+    assert.equal(f.matches(), true)
+    f.cache.commit()
+    assert.equal(f.reads.n, 4, 'each refresh re-reads the uniforms of one slice, not every caster')
+  }
+})
+
+test('a uniform change on a static caster is caught within one full rotation', () => {
+  const f = staticCasters(UNIFORM_CHECK_ROUNDS * 4)
+  f.settle()
+  f.values[f.values.length - 1] = 0.5
+  let missed = 0
+  for (let round = 0; round < UNIFORM_CHECK_ROUNDS; round++) { if (!f.matches()) missed++; f.cache.commit() }
+  assert.equal(missed, 1, 'the changed caster is found once its slice comes up, and the redraw records the new state')
+  assert.equal(f.matches(), true)
+})
+
+test('a reordered list that hits the full signature becomes the new fast-path snapshot without a commit', () => {
+  // renderLayered 命中时不调 commit：重排后的顺序必须在命中时就被采用，否则此后每次都走完整签名。
+  const f = staticCasters(UNIFORM_CHECK_ROUNDS * 4)
+  f.settle()
+  f.commands.reverse()
+  assert.equal(f.matches(), true)
+  f.reads.n = 0
+  assert.equal(f.matches(), true)
+  assert.equal(f.reads.n, 4, 'the next refresh is back on the fast path')
+})
+
+test('fixed-field changes miss immediately and identical replacements or reorders fall back to the full signature', () => {
+  const f = staticCasters(UNIFORM_CHECK_ROUNDS * 4)
+  const check = (mutate, expected, message) => { f.settle(); mutate(); assert.equal(f.matches(), expected, message); f.cache.commit() }
+  check(() => { f.commands[5].modelMatrix[12] = 3 }, false, 'a moved caster')
+  check(() => { f.commands[6].vertexArray = {} }, false, 'new geometry')
+  check(() => { f.commands[7].renderState = { id: 2 } }, false, 'a new render state')
+  check(() => { f.commands[8].count = 6 }, false, 'a new draw range')
+  check(() => { f.commands[9] = { ...f.commands[9] } }, true, 'a new command object with identical content still hits')
+  check(() => { f.commands.reverse() }, true, 'the same casters in another order still hit')
+  f.settle(); f.cache.invalidate()
+  assert.equal(f.matches(), false, 'invalidate still forces a redraw')
+})
+
 test('static mode keeps buildings in a cached layer and redraws only dynamic casters', () => {
   const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
   const pass = Object.create(DirectionalShadowPass.prototype)
@@ -148,6 +207,7 @@ test('static mode keeps buildings in a cached layer and redraws only dynamic cas
   const building = { owner: {}, vertexArray: {}, shaderProgram: program, renderState: { id: 1 }, count: 3, uniformMap: {} }
   const car = { owner: {}, vertexArray: {}, shaderProgram: program, renderState: { id: 1 }, count: 3, uniformMap: {} }
   Object.assign(pass, { C: engine, dynamicOwners: new WeakSet([car.owner]), stats: { cacheHits: 0 },
+    adapter: { raw: command => command.shaderProgram, castProgram: source => source }, // 未替换程序：投影程序即源程序
     drawDepth(level, to, commands, ctx, us, camera, clear = true) { draws.push([to.name, commands.length, clear]) } })
   const level = { light: { viewProjection: Array.from({ length: 16 }, (_, i) => i) }, target: target('live'), cache: new ShadowCache(),
     staticTarget: target('static'), staticReady: false, staticVersion: 0, composedVersion: -1, composedDynamic: false, updates: 0, cacheHits: 0 }
@@ -164,6 +224,38 @@ test('static mode keeps buildings in a cached layer and redraws only dynamic cas
   assert.deepEqual(copies, [['static', 'live']])
   frame([building])
   assert.deepEqual([draws, copies], [[], []], 'nothing changed: no draw and no copy')
+})
+
+// 增强模式下 ShadowReceiver143.receive 把 command.shaderProgram 换成接收程序；Cesium 实际画的是由它
+// 派生的 logDepth 程序，接收程序本身从不绑定，_manualUniforms 永远为空。静态层的判定与签名
+// 若读它，所有投影体都会被当成不可缓存（校园实测 521/521 进动态层，静态层形同虚设）。
+test('static mode judges and signs casters by their compiled caster program, not the swapped receiver program', () => {
+  const engine = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  const pass = Object.create(DirectionalShadowPass.prototype)
+  const draws = []
+  const target = name => ({ name, framebuffer: { name }, passState: {}, size: 1024, copyTo() {} })
+  const receiver = { id: 10, vertexShaderSource: { defines: [] } }           // 从未绑定：没有 _manualUniforms
+  const source = { id: 11, vertexShaderSource: { defines: [] } }
+  const caster = { id: 12, vertexShaderSource: { defines: [] }, _manualUniforms: [{ name: 'u_color' }] }
+  let color = 1
+  const building = { owner: {}, vertexArray: {}, shaderProgram: receiver, renderState: { id: 1 }, count: 3, uniformMap: { u_color: () => color } }
+  Object.assign(pass, { C: engine, dynamicOwners: new WeakSet(), stats: { cacheHits: 0 },
+    adapter: { raw: command => command === building ? source : command.shaderProgram, castProgram: program => program === source ? caster : null },
+    drawDepth(level, to, commands) { draws.push([to.name, commands.length]) } })
+  assert.equal(pass.isDynamicCaster(building), false, 'a static building is judged by its caster program')
+  const level = { light: { viewProjection: Array.from({ length: 16 }, (_, i) => i) }, target: target('live'), cache: new ShadowCache(),
+    staticTarget: target('static'), staticReady: false, staticVersion: 0, composedVersion: -1, composedDynamic: false, updates: 0, cacheHits: 0 }
+  const frame = () => { draws.length = 0; pass.renderLayered(level, [building], 1024, {}, {}, {}) }
+  frame(); frame()
+  assert.deepEqual(draws, [['static', 1]], 'detail is recorded on the first stable refresh')
+  frame()
+  assert.deepEqual(draws, [], 'the cached static layer is reused')
+  assert.equal(level.cacheHits, 1)
+  color = 0.5
+  frame()
+  assert.deepEqual(draws, [['static', 1]], "a change to the caster program's uniforms still redraws")
+  caster._manualUniforms = undefined
+  assert.equal(pass.isDynamicCaster(building), true, 'a caster program not yet compiled stays dynamic')
 })
 
 test('light frustum remains finite at the pole and independent of view-camera changes', () => {
@@ -469,4 +561,27 @@ test('light traversal respects hidden tilesets and hidden parent collections', (
   selectLightTiles(collection([tile('visible'), tile('hidden', false),
     collection([tile('hidden ancestor')], false), collection([tile('nested')])]), {}, {})
   assert.deepEqual(calls, ['visible', 'nested'])
+})
+
+// 每条接收 draw 的每个阴影 uniform 都会调 getReceiverData；同一帧只应读一次相机、算一次级联矩阵。
+test('receiver data is reused within a frame and refreshed on a new frame, shadow version or camera', () => {
+  const Cesium = createRequire(import.meta.url)('cesium/Build/Cesium/index.cjs')
+  let matrices = 0, reads = 0
+  const camera = view => ({ get inverseViewMatrix() { reads++; return view } })
+  const pass = Object.assign(Object.create(DirectionalShadowPass.prototype), { C: Cesium, enabled: true, ready: true, version: 1,
+    scene: { frameState: { frameNumber: 1 } }, regions: { splits: [0, 10, 20, 30] },
+    levels: [{ target: { depth: 'depth', size: 1024 }, light: { texelWorld: 1, depthSpan: 2, receiverMatrix: () => { matrices++; return Cesium.Matrix4.IDENTITY } } }] })
+  const still = camera(Cesium.Matrix4.IDENTITY)
+  const first = pass.getReceiverData(still)
+  for (let i = 0; i < 100; i++) assert.equal(pass.getReceiverData(still), first)
+  assert.deepEqual([matrices, reads], [1, 1], 'one frame reads the camera and builds the cascades once')
+  pass.scene.frameState.frameNumber = 2
+  assert.equal(pass.getReceiverData(still), first)
+  assert.deepEqual([matrices, reads], [1, 2], 'a new frame re-checks the camera but an unchanged view keeps the data')
+  pass.version = 2
+  assert.notEqual(pass.getReceiverData(still), first, 'a shadow re-render within the frame refreshes the data')
+  assert.equal(matrices, 2)
+  const moved = camera(Cesium.Matrix4.fromTranslation(new Cesium.Cartesian3(5, 0, 0)))
+  pass.getReceiverData(moved)
+  assert.equal(matrices, 3, 'another camera within the same frame is checked, not served stale data')
 })

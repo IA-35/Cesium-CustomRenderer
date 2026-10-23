@@ -1,4 +1,8 @@
 import { getRenderTargetPool } from '../pipeline/RenderTargetPool143.js'
+import { checkFramebufferComplete143 } from './framebufferState143.js'
+import ShaderWarmup143 from './ShaderWarmup143.js'
+
+export { checkFramebufferComplete143 }
 
 export function resolveTransientPixelFormat143(C, value) {
   const format = C?.PixelFormat || {}
@@ -79,11 +83,16 @@ export default class WebGLDevice143 {
       destroy: () => { if (this.transientOwners.delete(owner)) this.pool.detach(owner) },
     }
   }
+  // 着色器后台预热，每个设备一份，按需创建。
+  get shaderWarmup() { return this._shaderWarmup ??= new ShaderWarmup143(this.C, this.context) }
+  // 不经 Framebuffer.status 直接检查，避免让 Cesium 的绑定缓存与实际 GL 绑定脱节。
+  checkComplete(framebuffer) { return checkFramebufferComplete143(this.context, framebuffer) }
   getDiagnostics() { return { live: [...this.resources].filter(resource => !resource.released).length, pool: this.pool.getDiagnostics(), destroyed: this.destroyed } }
   destroy() {
     if (this.destroyed) return
     for (const resource of [...this.resources]) resource.release()
     for (const owner of [...this.transientOwners]) { this.pool.detach(owner); this.transientOwners.delete(owner) }
+    this._shaderWarmup?.destroy()
     this.resources.clear(); this.pool.detach(this.owner); this.destroyed = true
   }
 }

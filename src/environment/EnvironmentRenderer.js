@@ -49,6 +49,7 @@ export default class EnvironmentRenderer {
         this.atmosphereLut=new AtmosphereLut143(C,this.scene,{rhi:integrations.rhi,
           runPass:(key,draw)=>this.environmentGraph.run(key,draw)})
         this.hdr.environmentGraph=this.environmentGraph
+        this.hdr.shaderWarmup=integrations.rhi?.shaderWarmup??null
         this.hdr.prepareAtmosphere=context=>{
           this.updateAtmosphereCamera()
           return this.atmosphereLut.update(context,{atmoOrigin:this.atmosphereOrigin,sunLocal:this.sunLocal,
