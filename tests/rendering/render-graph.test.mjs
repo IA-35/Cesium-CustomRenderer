@@ -86,3 +86,73 @@ test('wraps graph pass execution in optional asynchronous GPU scopes', () => {
   assert.deepEqual(events, ['begin:graph:present', 'pass', 'end:graph:present'])
   assert.equal(graph.setGpuTimer(null), graph)
 })
+
+test('steady frames neither serialise the graph nor build diagnostics', () => {
+  const graph = new RenderGraph143()
+  const screen = graph.importResource('screen', { keepAlive: true })
+  const gbuffer = graph.createResource('gbuffer', { width: 8, height: 8, format: 'rgba16f' })
+  graph.addPass('geometry', p => p.write(gbuffer))
+  graph.addPass('lighting', p => { p.read(gbuffer); p.write(screen) })
+  const calls = { hash: 0, diagnostics: 0, aliases: 0 }
+  for (const [name, key] of [['_hash', 'hash'], ['_diagnostics', 'diagnostics'], ['_assignAliases', 'aliases']]) {
+    const original = graph[name].bind(graph)
+    graph[name] = (...args) => { calls[key]++; return original(...args) }
+  }
+  for (let i = 0; i < 20; i++) {
+    const summary = graph.beginFrame({})
+    assert.deepEqual(summary.passes, ['geometry', 'lighting'])
+    graph.executePass('geometry'); graph.executePass('lighting'); graph.endFrame()
+  }
+  assert.deepEqual(calls, { hash: 0, diagnostics: 0, aliases: 1 }, 'compile once, then only a version compare per frame')
+  const report = graph.describe()
+  assert.equal(typeof report.hash, 'string', 'diagnostics are still complete when read')
+  assert.equal(report.version, graph.version)
+  assert.equal(calls.aliases, 1)
+})
+
+test('every structural change recompiles; rebinding the same external does not', () => {
+  const graph = new RenderGraph143()
+  const out = graph.importResource('out')
+  const scaled = graph.createResource('scaled', { scale: 0.5, format: 'rgba8' })
+  graph.addPass('producer', p => { p.write(scaled); p.write(out) })
+  let compiles = 0
+  const assign = graph._assignAliases.bind(graph)
+  graph._assignAliases = order => { compiles++; return assign(order) }
+  const passes = () => { const names = graph.beginFrame({ drawingBuffer: { width: 16, height: 8 } }).passes; graph.endFrame(); return names }
+  assert.deepEqual(passes(), [], 'a pass writing an unbound, non-keepAlive external is culled')
+  graph.bindExternal(out, { width: 16 })
+  assert.deepEqual(passes(), ['producer'], 'binding the external keeps its writer alive')
+  const before = compiles
+  graph.bindExternal(out, { width: 16 }); passes()
+  assert.equal(compiles, before, 'replacing a bound value does not change the binding set')
+  assert.equal(graph.describe().aliasGroups[0].descriptor.width, 8)
+  graph.beginFrame({ drawingBuffer: { width: 32, height: 8 } }); graph.endFrame()
+  assert.equal(graph.describe().aliasGroups[0].descriptor.width, 16, 'a canvas resize recompiles scaled transients')
+  graph.addPass('present', p => p.read(out), null, { sideEffect: true })
+  assert.deepEqual(passes(), ['producer', 'present'])
+  graph.bindExternal(out, null)
+  assert.deepEqual(passes(), ['producer', 'present'], 'the side-effect reader keeps the producer alive after unbinding')
+  graph.reset()
+  assert.deepEqual(passes(), [])
+})
+
+test('binding and unbinding within a frame does not recompile the next frame', () => {
+  const graph = new RenderGraph143()
+  const input = graph.importResource('input'), out = graph.createResource('out', { width: 4, height: 4 })
+  graph.addPass('stage', p => { p.read(input); p.write(out); p.sideEffect() })
+  let compiles = 0
+  const assign = graph._assignAliases.bind(graph)
+  graph._assignAliases = order => { compiles++; return assign(order) }
+  for (let i = 0; i < 10; i++) {
+    graph.beginFrame({})
+    // 环境图在帧内反复绑定/解绑外部纹理。
+    for (let j = 0; j < 50; j++) { graph.bindExternal(input, { id: j }); graph.bindExternal(input, null) }
+    graph.executePass('stage'); graph.endFrame()
+  }
+  assert.equal(compiles, 1)
+  graph.bindExternal(input, { id: 'kept' })
+  graph.beginFrame({}); graph.endFrame()
+  assert.equal(compiles, 2, 'a different net binding set at frame start recompiles once')
+  graph.beginFrame({}); graph.endFrame()
+  assert.equal(compiles, 2)
+})

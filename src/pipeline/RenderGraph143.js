@@ -22,7 +22,7 @@ export default class RenderGraph143 {
   }
   executePass(name, context = this.activeFrame?.context) {
     if (!this.activeFrame) return false
-    const pass = this.compiled?.find(candidate => candidate.name === name); if (!pass) return false
+    const pass = this.compiledByName?.get(name); if (!pass) return false
     const executed = this.activeFrame.executed || (this.activeFrame.executed = new Set()); if (executed.has(name)) return true
     const run=()=>pass.execute?.(context, pass)
     if(this.gpuTimer) this.gpuTimer.measure(`graph:${name}`,run); else run()
@@ -30,7 +30,7 @@ export default class RenderGraph143 {
   }
   completePass(name) {
     if (!this.activeFrame || !this.compiled) return false
-    if (!this.compiled.some(candidate => candidate.name === name)) return false
+    if (!this.compiledByName?.has(name)) return false
     for (const group of this.aliasGroups) {
       if (group.lastPass !== name) continue
       // Outputs borrowed by native HDR/B09 consumers outlive the final declared
@@ -96,7 +96,7 @@ export default class RenderGraph143 {
     for (const [index, lease] of [...frame.groupLeases.entries()].reverse()) { try { this.transientAllocator ? this.transientAllocator.release(lease, this.aliasGroups[index]) : lease.release() } catch {} frame.groupLeases.delete(index) }
     frame.resourceValues.clear()
   }
-  reset() { if (this.activeFrame) throw new Error('RenderGraph143 cannot reset during an active frame'); this.resources = []; this.passes = []; this.compiled = null; this.lastHash = null; this.aliases = []; this.aliasGroups = []; this.culled = []; this.externalBindings = new Map(); this.activeFrame = null }
+  reset() { if (this.activeFrame) throw new Error('RenderGraph143 cannot reset during an active frame'); this.resources = []; this.passes = []; this.compiled = null; this.compiledByName = null; this.compiledNames = []; this.compiledVersion = -1; this.compiledBindings = null; this.version = (this.version || 0) + 1; this.aliases = []; this.aliasGroups = []; this.culled = []; this.externalBindings = new Map(); this.activeFrame = null }
   _refreshTransientDescriptors(drawingBuffer) {
     if (!Number.isInteger(drawingBuffer?.width) || !Number.isInteger(drawingBuffer?.height)) return false
     let changed = false
@@ -106,48 +106,66 @@ export default class RenderGraph143 {
       const width = Math.max(1, Math.ceil(drawingBuffer.width * scale)), height = Math.max(1, Math.ceil(drawingBuffer.height * scale))
       if (resource.descriptor.width !== width || resource.descriptor.height !== height) { resource.descriptor.width = width; resource.descriptor.height = height; changed = true }
     }
+    if (changed) this.version++
     return changed
   }
   registerPassLifecycle(name, lifecycle = {}) { const pass = this.passes.find(candidate => candidate.name === name); if (!pass) throw new Error(`RenderGraph143 unknown pass: ${name}`); pass.lifecycle = { begin: lifecycle.begin, end: lifecycle.end }; return () => { if (pass.lifecycle) pass.lifecycle = undefined } }
+  // 每帧路径只做「结构版本号比较」，不再序列化整张图、也不构建诊断对象。
+  // 诊断只在有人读取时（describe / toJSON / toMermaid / getRenderGraphDiagnostics）构建。
+  // 返回值是轻量帧摘要；完整诊断请调用 describe()。
   beginFrame(context = {}) {
-    if (this.activeFrame) return this._diagnostics(this.lastHash)
+    if (this.activeFrame) return this._frameSummary()
     const drawingBuffer = context?.drawingBuffer || context?.scene && {
       width: context.scene.drawingBufferWidth, height: context.scene.drawingBufferHeight
     }
     this._refreshTransientDescriptors(drawingBuffer)
-    const diagnostics = this.describe(); const frame = this.activeFrame = { number: ++this.frame, context, started: diagnostics.passes.slice(), executed: new Set(), groupLeases: new Map(), resourceValues: new Map() }
+    this._ensureCompiled(); this.activeFrame = { number: ++this.frame, context, started: this.compiledNames, executed: new Set(), groupLeases: new Map(), resourceValues: new Map() }
     try {
       if (this.transientAllocator?.resize && Number.isInteger(drawingBuffer?.width) && Number.isInteger(drawingBuffer?.height)) this.transientAllocator.resize(drawingBuffer.width, drawingBuffer.height)
       for (const pass of this.compiled) pass.lifecycle?.begin?.(context, pass)
     } catch (error) { this._releaseFrameLeases(); this.activeFrame = null; throw error }
-    return this._diagnostics(this.lastHash)
+    return this._frameSummary()
   }
   endFrame(context = this.activeFrame?.context) {
     if (!this.activeFrame) return null
-    let error; for (const pass of [...this.compiled].reverse()) try { pass.lifecycle?.end?.(context, pass) } catch (current) { error ||= current }
-    this._releaseFrameLeases(); const completed = this.activeFrame; this.activeFrame = null; if (error) throw error; return { ...this._diagnostics(this.lastHash), frame: completed.number }
+    let error; for (let index = this.compiled.length - 1; index >= 0; index--) try { const pass = this.compiled[index]; pass.lifecycle?.end?.(context, pass) } catch (current) { error ||= current }
+    this._releaseFrameLeases(); const completed = this.activeFrame; this.activeFrame = null; if (error) throw error; return { ...this._frameSummary(), frame: completed.number }
   }
-  importResource(name, descriptor = {}) { assertName(name, 'resource'); const handle = { id: this.resources.length, name, kind: 'external', descriptor: { ...descriptor } }; this.resources.push(handle); return handle }
-  createResource(name, descriptor = {}) { assertName(name, 'resource'); const handle = { id: this.resources.length, name, kind: 'transient', descriptor: { ...descriptor } }; this.resources.push(handle); return handle }
-  addPass(name, setup, execute = null, { sideEffect = false, phase = 'external' } = {}) { assertName(name, 'pass'); if (this.passes.some(pass => pass.name === name)) throw new Error(`RenderGraph143 duplicate pass: ${name}`); const node = { name, index: this.passes.length, phase, reads: new Set(), writes: new Set(), sideEffect, execute }; const builder = { read: resource => this._use(node, resource, 'read'), write: resource => this._use(node, resource, 'write'), sideEffect: () => { node.sideEffect = true } }; setup?.(builder); this.passes.push(node); this.compiled = null; return node }
-  _use(node, resource, type) { if (!resource || this.resources[resource.id] !== resource) throw new Error(`RenderGraph143 invalid resource in ${node.name}`); node[type === 'read' ? 'reads' : 'writes'].add(resource.id); return resource }
-  compile() {
-    const hash = this._hash(); if (this.compiled && this.lastHash === hash) return this._diagnostics(hash)
+  _frameSummary() { return { label: this.label, frame: this.frame, version: this.compiledVersion, passes: this.compiledNames } }
+  importResource(name, descriptor = {}) { assertName(name, 'resource'); this.version++; const handle = { id: this.resources.length, name, kind: 'external', descriptor: { ...descriptor } }; this.resources.push(handle); return handle }
+  createResource(name, descriptor = {}) { assertName(name, 'resource'); this.version++; const handle = { id: this.resources.length, name, kind: 'transient', descriptor: { ...descriptor } }; this.resources.push(handle); return handle }
+  addPass(name, setup, execute = null, { sideEffect = false, phase = 'external' } = {}) { assertName(name, 'pass'); if (this.passes.some(pass => pass.name === name)) throw new Error(`RenderGraph143 duplicate pass: ${name}`); const node = { name, index: this.passes.length, phase, reads: new Set(), writes: new Set(), sideEffect, execute }; const builder = { read: resource => this._use(node, resource, 'read'), write: resource => this._use(node, resource, 'write'), sideEffect: () => { node.sideEffect = true; this.version++ } }; setup?.(builder); this.passes.push(node); this.compiled = null; this.version++; return node }
+  _use(node, resource, type) { if (!resource || this.resources[resource.id] !== resource) throw new Error(`RenderGraph143 invalid resource in ${node.name}`); node[type === 'read' ? 'reads' : 'writes'].add(resource.id); this.version++; return resource }
+  // 结构版本号未变、外部绑定集合也与编译时相同，就沿用上次编译结果。版本号由结构变更点递增：
+  // 增删资源/pass、读写声明、sideEffect、瞬态描述符随画布尺寸变化、reset。
+  // 外部绑定不计入版本号：环境图每帧绑定/解绑上百次，只有帧开始时的净集合影响裁剪，
+  // 所以在这里按集合比较，不逐次计数。
+  _bindingsMatchCompiled() {
+    const compiled = this.compiledBindings, current = this.externalBindings
+    if (!compiled || compiled.size !== current.size) return false
+    for (const id of current.keys()) if (!compiled.has(id)) return false
+    return true
+  }
+  _ensureCompiled() {
+    if (this.compiled && this.compiledVersion === this.version && this._bindingsMatchCompiled()) return this.compiled
+    const version = this.version, bindings = new Set(this.externalBindings.keys())
     const externalRoots = this.resources.filter(resource => resource.kind === 'external' && resource.descriptor.keepAlive === true).map(resource => resource.id)
     const needed = new Set([...externalRoots, ...this.externalBindings.keys()]), alive = new Set(); let changed = true
     while (changed) { changed = false; for (let index = this.passes.length - 1; index >= 0; index--) { const pass = this.passes[index]; if (alive.has(pass)) continue; if (pass.sideEffect || [...pass.writes].some(id => needed.has(id))) { alive.add(pass); changed = true; for (const id of pass.reads) needed.add(id) } } }
     const nodes = this.passes.filter(pass => alive.has(pass)), edges = new Map(nodes.map(pass => [pass, new Set()])), indegree = new Map(nodes.map(pass => [pass, 0])); const addEdge = (from, to) => { if (!from || from === to || edges.get(from).has(to)) return; edges.get(from).add(to); indegree.set(to, indegree.get(to) + 1) }
     const writers = new Map(); for (const pass of nodes) for (const id of pass.writes) { const list = writers.get(id) || []; list.push(pass); writers.set(id, list) }; for (const list of writers.values()) for (let i = 1; i < list.length; i++) addEdge(list[i - 1], list[i]); for (const reader of nodes) for (const id of reader.reads) { const list = writers.get(id) || []; if (!list.length) continue; const previous = list.filter(writer => writer.index < reader.index); addEdge(previous.length ? previous[previous.length - 1] : list[list.length - 1], reader) }
     const ready = nodes.filter(pass => indegree.get(pass) === 0), order = []; while (ready.length) { ready.sort((a, b) => a.index - b.index); const pass = ready.shift(); order.push(pass); for (const next of edges.get(pass)) { indegree.set(next, indegree.get(next) - 1); if (indegree.get(next) === 0) ready.push(next) } }; if (order.length !== nodes.length) throw new Error(`RenderGraph143 cyclic dependency: ${nodes.filter(pass => !order.includes(pass)).map(pass => pass.name).join(', ')}`)
-    this.compiled = order; this.culled = this.passes.filter(pass => !alive.has(pass)).map(pass => pass.name); ({ aliases: this.aliases, groups: this.aliasGroups } = this._assignAliases(order)); this.lastHash = hash; return this._diagnostics(hash)
+    this.compiled = order; this.compiledByName = new Map(order.map(pass => [pass.name, pass])); this.compiledNames = Object.freeze(order.map(pass => pass.name))
+    this.culled = this.passes.filter(pass => !alive.has(pass)).map(pass => pass.name); ({ aliases: this.aliases, groups: this.aliasGroups } = this._assignAliases(order)); this.compiledVersion = version; this.compiledBindings = bindings; return order
   }
+  compile() { this._ensureCompiled(); return this._diagnostics() }
   _assignAliases(order) {
     const ranges = new Map(); order.forEach((pass, index) => { for (const id of [...pass.reads, ...pass.writes]) { if (this.resources[id].kind !== 'transient') continue; const resource = this.resources[id], range = ranges.get(id) || { first: index, last: index }; range.last = index; if (resource.descriptor.keepAlive === true) range.last = order.length - 1; ranges.set(id, range) } }); const slots = [], groups = [], aliases = []
     for (const [id, range] of ranges) { const resource = this.resources[id], key = keyOf(resource.descriptor); let slot = slots.find(candidate => candidate.key === key && candidate.last < range.first); if (!slot) { slot = { key, index: slots.length, last: range.last, resources: [] }; slots.push(slot) } else slot.last = range.last; slot.resources.push(resource); const group = { index: groups.length, aliasSlot: `${key}#${slot.index}`, descriptor: { ...resource.descriptor }, resources: slot.resources.slice(), firstPass: order[range.first].name, lastPass: order[range.last].name, first: range.first, last: range.last }; groups.push(group); aliases.push({ resource: resource.name, aliasSlot: group.aliasSlot, firstPass: group.firstPass, lastPass: group.lastPass }) }
     const merged = []; for (const group of groups) { const target = merged.find(item => item.aliasSlot === group.aliasSlot); if (target) { target.resources.push(...group.resources); target.first = Math.min(target.first, group.first); target.last = Math.max(target.last, group.last); target.firstPass = order[target.first].name; target.lastPass = order[target.last].name } else merged.push({ ...group, resources: [...group.resources] }) }; merged.forEach((group, index) => { group.index = index }); const byName = new Map(merged.flatMap(group => group.resources.map(resource => [resource.name, group]))); for (const alias of aliases) { const group = byName.get(alias.resource); alias.aliasSlot = group.aliasSlot; alias.firstPass = group.firstPass; alias.lastPass = group.lastPass }; return { aliases, groups: merged }
   }
   _hash() { return JSON.stringify({ resources: this.resources.map(resource => [resource.kind, resource.name, resource.descriptor]), passes: this.passes.map(pass => [pass.name, [...pass.reads], [...pass.writes], pass.sideEffect, pass.phase]), bindings: [...this.externalBindings.keys()] }) }
-  _diagnostics(hash) { return { label: this.label, frame: this.frame, activeFrame: this.activeFrame ? { number: this.activeFrame.number, started: [...this.activeFrame.started], executed: [...(this.activeFrame.executed || [])] } : null, hash, passes: this.compiled?.map(pass => pass.name) || [], culled: [...this.culled], aliases: [...this.aliases], aliasGroups: this.aliasGroups.map(group => ({ aliasSlot: group.aliasSlot, descriptor: { ...group.descriptor }, resources: group.resources.map(resource => resource.name), firstPass: group.firstPass, lastPass: group.lastPass })), logicalSlots: new Set(this.aliasGroups.map(group => group.aliasSlot)).size, physicalSlots: this.activeFrame ? new Set([...this.activeFrame.groupLeases?.keys() || []]).size : 0, feedbackConflicts: [], gpuTiming: this.gpuTimer ? { supported: this.gpuTimer.supported !== false, pending: this.gpuTimer.pending?.length || 0, samples: this.gpuTimer.samples?.slice(-64) || [], skipped: this.gpuTimer.skipped || 0, discarded: this.gpuTimer.discarded || 0 } : null, graphTransientActive: !!this.transientAllocator, allocatorMode: this.transientAllocator ? 'graph' : 'pool-fallback', resources: this.resources.map(resource => ({ name: resource.name, kind: resource.kind, bound: resource.kind === 'external' ? this.externalBindings.has(resource.id) : undefined, descriptor: { ...resource.descriptor } })) } }
+  _diagnostics() { return { label: this.label, frame: this.frame, version: this.compiledVersion, activeFrame: this.activeFrame ? { number: this.activeFrame.number, started: [...this.activeFrame.started], executed: [...(this.activeFrame.executed || [])] } : null, hash: this._hash(), passes: this.compiled?.map(pass => pass.name) || [], culled: [...this.culled], aliases: [...this.aliases], aliasGroups: this.aliasGroups.map(group => ({ aliasSlot: group.aliasSlot, descriptor: { ...group.descriptor }, resources: group.resources.map(resource => resource.name), firstPass: group.firstPass, lastPass: group.lastPass })), logicalSlots: new Set(this.aliasGroups.map(group => group.aliasSlot)).size, physicalSlots: this.activeFrame ? new Set([...this.activeFrame.groupLeases?.keys() || []]).size : 0, feedbackConflicts: [], gpuTiming: this.gpuTimer ? { supported: this.gpuTimer.supported !== false, pending: this.gpuTimer.pending?.length || 0, samples: this.gpuTimer.samples?.slice(-64) || [], skipped: this.gpuTimer.skipped || 0, discarded: this.gpuTimer.discarded || 0 } : null, graphTransientActive: !!this.transientAllocator, allocatorMode: this.transientAllocator ? 'graph' : 'pool-fallback', resources: this.resources.map(resource => ({ name: resource.name, kind: resource.kind, bound: resource.kind === 'external' ? this.externalBindings.has(resource.id) : undefined, descriptor: { ...resource.descriptor } })) } }
   execute(context) { const diagnostics = this.beginFrame(context); try { if (this.executeExternal) for (const pass of this.compiled) this.executePass(pass.name, context) } finally { this.endFrame(context); this.reset() } return diagnostics }
   describe() { return this.compile() }
   toJSON() { return this.describe() }
