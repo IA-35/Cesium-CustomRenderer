@@ -154,6 +154,10 @@ GrassCollection uses host assets `grass-10.glb` and `grass-17.glb`, groups insta
 
 This remains a forward vegetation shader, not the full Cesium Model PBR material pipeline. Native/CCR appearance, frame time, model/resource counts and actual tree/shadow pixel evidence must be verified before claiming integration success.
 
+2026-10-21 texture ownership:
+- Identical embedded images now share GPU textures across independent tree collections in the same WebGL context. The existing content hash is verified by full byte equality; MIME type and premultiplied-alpha policy remain part of the identity. This path uses the existing fixed sampler and RGBA upload contract.
+- Each uploaded image record owns one reference. Destroying one collection releases only its references; the last release destroys the texture and removes the cache entry. Contexts remain isolated, and late image decoding cannot resurrect a destroyed record.
+
 2026-09-20 lightweight campus revision:
 - Official dgreenheck/ez-tree geometry is prepared offline from the pinned source in `vendor/ez-tree-generator`; no Three.js browser runtime is added. Existing GLB loading, instancing and spatial LOD are reused.
 - Per-material `extras.roundedLeafNormals` is forwarded for official needle geometry. Asset colors use linear lighting and convert back to sRGB only for SDR output.
