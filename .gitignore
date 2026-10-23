@@ -39,3 +39,9 @@ tmp-terr-opt/
 # 单文件最大 12 MB，可由 check-*.cjs 重新生成。顶层四份报告与汇总 json 入库，
 # 逐变体明细与下方各子目录的 README 之外的结果不入库（README 记录结论，需要保留）。
 docs/verification/rendering-performance/traa-r186-2026-10-16/*/*.json
+
+# 交付物与本地临时文件：PPT 成品（约 47 MB/个，WPS 里开着时会被锁），
+# 抓取下来的目录清单、脚本备份。都不属于源码。
+*.pptx
+tmp-smnh.html
+*.bak
