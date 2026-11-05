@@ -14,7 +14,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "3122a26f09747573cc7e244192b0331bc84b3119",
+  "sourceCommit": "c1c3110c8b3ed0af4ab617a5061cf505aa2fb40e",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "d939e16b13e06d54a481dc99af7a63d3d9d030b6a40088c948da31b79ae99cf4",
@@ -31,7 +31,7 @@
     "src/antialiasing/smaaShaders.js": "d9177a264976f7ab50c6850f7fcfb0a03770a076071a0095d4bb230b92bb226e",
     "src/antialiasing/SpatialAaPass143.js": "068f9114647cccd2e8a3b86fe669152fc97e2e559667c95b3a8d48838b3ae709",
     "src/antialiasing/TaaJitter143.js": "cdb4e657095f24ce61d3490b52ca9fe08cb6e0fbef0ce4873d0539ca54307b27",
-    "src/antialiasing/TaaMotion143.js": "ca95dcc5164bd4c78558b7619027a714651cdf3751a732694345f4d5b0a89d22",
+    "src/antialiasing/TaaMotion143.js": "1f83139d0bd44cd9aea98e31a7888247876f4022a3be1c9bfad85e899cddc7d2",
     "src/antialiasing/TaaOverlay143.js": "afc140a341ba73a0c1f622ae459995c293c951ba6b22a9fa29645e16401d1e29",
     "src/antialiasing/TaaPass143.js": "36fec96e13098f0d5a902a135e9fcfe67e3ea112ea4309a0e36e7d36d33984bf",
     "src/antialiasing/taaR186Math143.js": "02afd13e843abc5d68cd51e353852bb1c9a0a94cc4c03b451df554623845480c",
@@ -132,7 +132,7 @@
     "src/shadows/CascadedShadowCoverage.js": "3737ea7cb3e23bd086e6b65d2e10fbb04a3a6fad91aac0408f1d4bf2ab9aef89",
     "src/shadows/CasterCommands143.js": "6dc558cdb0bf56f0a0187a3ef118d289df2f07fc34d98ce2386364bc408dfd4a",
     "src/shadows/DirectionalShadowPass.js": "2f64868becd6e016c396707af05fcb15337ea00aa1c5c093049d280639b8e0d1",
-    "src/shadows/LightFrustum.js": "d2d81bd2967f642b68385fb6a6d71ac923d393ca376075c0d1820394615738d7",
+    "src/shadows/LightFrustum.js": "e83fd831dddc9f0905f99caf98f68b69a2e5d54ec6ffa3fb50aa0f65bdb46677",
     "src/shadows/shaderAdapter143.js": "60fe28583162c6582fb104e311264c5dfe7d7fd57cb077f4ac98a07a5a7aab5e",
     "src/shadows/ShadowCache.js": "ed88569d844ae58c3db75f158ee012f4dc09ff8f0c1c251ea5f174ff93632700",
     "src/shadows/ShadowReceiver143.js": "2c2570ab5ac5e008f7cd0a537cd97e621ef933ee3abe601e25f831d74ac2c2ae",
@@ -177,7 +177,7 @@
     "vendor/cesium-ez-tree/src/workers/createEzTreeInstanceAttributes.js": "8d70973ebdb73e5f0f956a97e6b4cd169e593d7380bcf4f10106c8aca4b437ff",
     "vendor/cesium-ez-tree/src/workers/createEzTreeVegetationInstances.js": "bd9ad5b04011d70f8251013a79dd14c4326fba54371ccf8b1413a107062fe194"
   },
-  "bytes": 2325970,
-  "gzipBytes": 1227449,
-  "sha256": "4839ff7327fd7524e959d01e16e0ced75c7f5d577a8a14eecb1cfb385d249ba9"
+  "bytes": 2328452,
+  "gzipBytes": 1228016,
+  "sha256": "3560485e71fd16a94c65feabfa437ef4efaf471b3b5bdd0fe7e2bbe9bd4a6a0e"
 }

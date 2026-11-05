@@ -94,13 +94,22 @@ export default class LightFrustum {
         anchor=next
         if(gridReference)this.gridAnchor=anchor
       }
+      // 对齐后的中心 = 锚点 + 整数步长 + 沿光照方向的量化偏移，全部由整数与固定量算出，
+      // 焦点在末位抖动（相机旋转时射线与椭球的交点）时结果逐位不变，静态阴影缓存才能命中。
+      // 旧写法「原点 + 修正量」在 k 不变时仍保留原点沿光线方向的残差，矩阵随之差 1e-13 量级。
       const relative=C.Cartesian3.subtract(origin,anchor,new C.Cartesian3())
+      const residual=C.Cartesian3.clone(relative,new C.Cartesian3())
+      C.Cartesian3.clone(anchor,center)
       for (let i=0;i<2;i++) {
         const axis=axes[i],step=steps[i]
         const coordinate = C.Cartesian3.dot(relative, axis)
-        C.Cartesian3.add(center, C.Cartesian3.multiplyByScalar(adjust[i],
-          Math.round(coordinate / step) * step - coordinate, new C.Cartesian3()), center)
+        C.Cartesian3.subtract(residual,C.Cartesian3.multiplyByScalar(adjust[i],coordinate,new C.Cartesian3()),residual)
+        C.Cartesian3.add(center, C.Cartesian3.multiplyByScalar(adjust[i], Math.round(coordinate / step) * step, new C.Cartesian3()), center)
       }
+      // 残差在数学上平行于光照方向（光线上各点的 UV 相同），只影响深度原点。按深度网格量化：
+      // 最多偏移半格，top/bottom 各留了一格余量。
+      const depthStep=Math.max(16,extent/8)
+      C.Cartesian3.add(center,C.Cartesian3.multiplyByScalar(direction,Math.round(C.Cartesian3.dot(residual,direction)/depthStep)*depthStep,new C.Cartesian3()),center)
     }
     const grid=Math.max(16,extent/8)
     const top=depthBounds?Math.ceil(depthBounds.max/grid)*grid+grid:extent*2

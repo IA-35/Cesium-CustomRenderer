@@ -74,6 +74,41 @@ test('moving and rebasing the camera preserves a fixed-sun world grid',()=>{
  assert.ok(maxPhase<1e-6,`rebase shifted the fixed-sun raster phase: ${maxPhase}`)
 })
 
+// 业务页环绕实测：区域中心不动、投影体不变，光源矩阵却在 83/100 次重画中相差约 4.5e-13，
+// 静态阴影缓存的精确比较因此几乎从不命中。焦点（相机射线与椭球交点）随相机旋转只在末位抖动，
+// 对齐后的中心与光源矩阵必须逐位不变。
+test('float-level jitter of the focus point leaves a stabilized light matrix bit-identical',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const focus=C.Cartesian3.fromDegrees(123.42,41.77,0),frame=C.Transforms.eastNorthUpToFixedFrame(focus)
+ const sun=C.Cartesian3.normalize(C.Matrix4.multiplyByPointAsVector(frame,new C.Cartesian3(-.4,-.3,1),new C.Cartesian3()),new C.Cartesian3())
+ for(const surface of [true,false]){
+  const light=new LightFrustum(C,scene)
+  let first
+  for(let i=0;i<120;i++){
+   // 相机绕焦点环绕：gridReference 是相机位置；焦点每次在 1e-6 m 量级抖动
+   const angle=i*.05,eye=C.Matrix4.multiplyByPoint(frame,new C.Cartesian3(700*Math.cos(angle),700*Math.sin(angle),400),new C.Cartesian3())
+   const noise=k=>Math.sin(i*12.9898+k*78.233)*1e-6
+   const origin=new C.Cartesian3(focus.x+noise(1),focus.y+noise(2),focus.z+noise(3))
+   light.update(origin,sun,2048,2048,true,null,surface?eye:null)
+   const vp=Array.from(light.viewProjection)
+   if(!first)first=vp
+   else assert.deepEqual(vp,first,(surface?'surface':'orthographic')+' grid: frame '+i+' changed the light matrix')
+  }
+ }
+})
+
+test('a real move of the focus still moves the stabilized light matrix',()=>{
+ const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
+ const focus=C.Cartesian3.fromDegrees(123.42,41.77,0),frame=C.Transforms.eastNorthUpToFixedFrame(focus)
+ const sun=C.Cartesian3.normalize(C.Matrix4.multiplyByPointAsVector(frame,new C.Cartesian3(-.4,-.3,1),new C.Cartesian3()),new C.Cartesian3())
+ const eye=C.Matrix4.multiplyByPoint(frame,new C.Cartesian3(0,-700,400),new C.Cartesian3())
+ const light=new LightFrustum(C,scene)
+ light.update(focus,sun,2048,2048,true,null,eye)
+ const before=Array.from(light.viewProjection)
+ light.update(C.Matrix4.multiplyByPoint(frame,new C.Cartesian3(50,0,0),new C.Cartesian3()),sun,2048,2048,true,null,eye)
+ assert.notDeepEqual(Array.from(light.viewProjection),before)
+})
+
 test('small solar rotations do not move the local raster phase at Earth-radius speed',()=>{
  const scene={mapProjection:new C.GeographicProjection(),drawingBufferWidth:800,drawingBufferHeight:600,mode:C.SceneMode.SCENE3D}
  const light=new LightFrustum(C,scene),origin=C.Cartesian3.fromDegrees(123.42,41.77,100)
