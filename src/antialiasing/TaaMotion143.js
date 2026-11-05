@@ -17,9 +17,12 @@ export default class TaaMotion143 {
     this.executor = new RenderItemExecutor143(C, { label: 'TRAA r186 motion' })
     this.submitted = new Set()
     this.previousSubmitted = new Set()
+    // Translucent/classification presence by owner: { bounds, unbounded, size }
+    this.coverage = new Map()
+    this.previousCoverage = new Map()
     this.pendingMasks = []
     this.pendingDraws = []
-    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0 }
+    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0 }
   }
   primitiveKey(command) {
     let key = this.primitiveKeys.get(command)
@@ -70,7 +73,25 @@ export default class TaaMotion143 {
   attach() {
     const dispatcher = this.scene.context._ccrDrawDispatcher
     if (!dispatcher) { this.reason = 'No draw dispatcher'; return }
-    this.detach = dispatcher.addHandler(event => {
+    const C = this.C
+    // Translucent and ground-classification surfaces have no object velocity, but
+    // their appearance/disappearance still changes the image under a still camera.
+    // Only their submission is recorded here (no extra draw); finish() rejects the
+    // history inside the screen bounds of any surface that came or went, so a
+    // removed wall or ground polygon does not linger in stable-coverage history.
+    const coveragePasses = [C.Pass?.TRANSLUCENT, C.Pass?.TERRAIN_CLASSIFICATION,
+      C.Pass?.CESIUM_3D_TILE_CLASSIFICATION, C.Pass?.CESIUM_3D_TILE_CLASSIFICATION_IGNORE_SHOW]
+      .filter(pass => Number.isInteger(pass))
+    const detachCoverage = coveragePasses.length ? dispatcher.addHandler(event => {
+      if (this.active) {
+        try { this.trackCoverage(event.command) } catch (error) {
+          this.failed = true; this.active = false; this.reason = error.message; this.stats.errors++; this.releaseTarget()
+        }
+      }
+      return 'continue'
+    }, { name: 'traa-r186-coverage', priority: -30, passes: coveragePasses,
+      targets: ['sceneColor', 'globeColor', 'oitTranslucent', 'oitAlpha'], frame: { render: true, pick: false, depth: false } }) : null
+    const detachMotion = dispatcher.addHandler(event => {
       if (!this.active || !this.isSceneColor(event.command, event.passState, event.target)) return 'continue'
       event.aroundDraw(invoke => {
         const result = invoke()
@@ -82,6 +103,50 @@ export default class TaaMotion143 {
       return 'continue'
     }, { name: 'traa-r186-motion', priority: -30, passes: [this.C.Pass?.OPAQUE], targets: ['sceneColor', 'globeColor'],
       frame: { render: true, pick: false, depth: false } })
+    this.detach = () => { detachMotion(); detachCoverage?.() }
+  }
+  // Presence-only tracking for surfaces the motion pass cannot draw velocity for.
+  // Keyed by the owning primitive/collection, not the command: Cesium rebuilds
+  // some translucent commands (e.g. BillboardCollection) every frame. Each frame
+  // keeps the owner's union bounds plus a draw-size signature; finish() compares
+  // it with the previous frame and rejects history only where an owner came,
+  // went, moved or changed its geometry.
+  trackCoverage(command) {
+    if (!command || this.seen.has(command)) return
+    this.seen.add(command)
+    const C = this.C, key = command.owner || command
+    const volume = command.boundingVolume
+    const bounds = volume instanceof C.OrientedBoundingBox ? C.BoundingSphere.fromOrientedBoundingBox(volume)
+      : volume instanceof C.BoundingSphere ? C.BoundingSphere.clone(volume) : null
+    let entry = this.coverage.get(key)
+    if (!entry) {
+      entry = { bounds, unbounded: !bounds, size: 0 }
+      this.coverage.set(key, entry)
+    } else if (bounds) {
+      entry.bounds = entry.bounds ? C.BoundingSphere.union(entry.bounds, bounds, entry.bounds) : bounds
+    } else entry.unbounded = true
+    entry.size += 1 + (command.count || 0) * Math.max(1, command.instanceCount || 1)
+    this.stats.coverageCommands++
+  }
+  coverageMoved(previous, current) {
+    if (previous.size !== current.size || previous.unbounded !== current.unbounded) return true
+    if (!previous.bounds || !current.bounds) return previous.bounds !== current.bounds
+    const tolerance = 1e-3 * Math.max(1, current.bounds.radius)
+    return this.C.Cartesian3.distance(previous.bounds.center, current.bounds.center) > tolerance ||
+      Math.abs(previous.bounds.radius - current.bounds.radius) > tolerance
+  }
+  rejectCoverage(entry) {
+    this.stats.coverageChanges++
+    if (entry.bounds && !entry.unbounded) this.pendingMasks.push(entry.bounds)
+    else this.unsupportedChanged = true
+  }
+  finishCoverage() {
+    for (const [key, previous] of this.previousCoverage) {
+      const current = this.coverage.get(key)
+      if (!current) this.rejectCoverage(previous)
+      else if (this.coverageMoved(previous, current)) { this.rejectCoverage(previous); this.rejectCoverage(current) }
+    }
+    for (const [key, current] of this.coverage) if (!this.previousCoverage.has(key)) this.rejectCoverage(current)
   }
   // kind 是调度器按本次调用快照给出的目标种类；没有快照时退回逐级读取 scene._view。
   isSceneColor(command, passState, kind) {
@@ -94,7 +159,7 @@ export default class TaaMotion143 {
   begin(active, currentView, currentProjection, previousView, previousProjection, historyValid) {
     this.active = !!active && !!this.detach && !this.failed
     this.frame = this.scene.frameState.frameNumber; this.historyValid = historyValid; this.seen = new WeakSet()
-    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0 }
+    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0 }
     // Public picks are not colour frames. Only explicit history invalidation
     // drops snapshots; the sequence advances when a colour capture is prepared.
     if (!this.active) return
@@ -103,6 +168,10 @@ export default class TaaMotion143 {
     this.previousSubmitted = this.submitted
     this.submitted = reusable
     this.submitted.clear()
+    const reusableCoverage = this.previousCoverage
+    this.previousCoverage = this.coverage
+    this.coverage = reusableCoverage
+    this.coverage.clear()
     this.changed = false
     this.unsupportedChanged = false
     this.pendingMasks.length = 0
@@ -233,6 +302,7 @@ export default class TaaMotion143 {
       } finally { this.pendingDraws.length = 0; us.updatePass(previousPass) }
     }
     if (!this.historyValid) { this.pendingMasks.length = 0; return }
+    this.finishCoverage()
     for (const key of this.previousSubmitted) if (!this.submitted.has(key)) {
       const record = this.records.get(key)
       if (record?.motionMasked) continue
@@ -272,7 +342,7 @@ export default class TaaMotion143 {
   get coverageStable() {
     return this.active && !this.unsupportedChanged
   }
-  reset() { this.records = new WeakMap(); this.primitiveKeys = new WeakMap(); this.colorFrame = 0; this.finishedFrame = undefined; this.historyValid = false; this.pendingMasks.length = 0; this.pendingDraws.length = 0; this.submitted.clear(); this.previousSubmitted.clear(); this.releaseTarget() }
+  reset() { this.records = new WeakMap(); this.primitiveKeys = new WeakMap(); this.colorFrame = 0; this.finishedFrame = undefined; this.historyValid = false; this.pendingMasks.length = 0; this.pendingDraws.length = 0; this.submitted.clear(); this.previousSubmitted.clear(); this.coverage.clear(); this.previousCoverage.clear(); this.releaseTarget() }
   releaseTarget() {
     for (const alias of this.aliases.values()) alias.destroy()
     this.aliases.clear()

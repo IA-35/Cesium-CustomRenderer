@@ -342,3 +342,44 @@ test('a picking frame keeps motion snapshots and colour frames keep counting', (
   motion.reset()
   assert.equal(motion.colorFrame, 0, 'an explicit reset restarts the colour sequence')
 })
+
+test('translucent and ground-classification surfaces reject history where they appear or vanish under a still camera', () => {
+  const scene = { context: {}, frameState: { frameNumber: 1 }, drawingBufferWidth: 16, drawingBufferHeight: 16 }
+  scene.context.uniformState = { pass: 9, updatePass(value) { this.pass = value } }
+  const motion = new TaaMotion143(C, scene), matrix = translated()
+  motion.detach = () => {}
+  motion.allocate = () => {}; motion.preserveTarget = fn => fn()
+  motion.clear = { execute() {} }
+  const rejected = []
+  motion.rejectPreviousFootprint = bounds => { rejected.push(bounds.radius); motion.stats.draws++; motion.stats.previousFootprints++ }
+  const wallOwner = {}, groundOwner = {}, labelOwner = {}
+  const wall = { owner: wallOwner, pass: C.Pass.TRANSLUCENT, count: 36, boundingVolume: new C.BoundingSphere(new C.Cartesian3(0, 0, -10), 2) }
+  const ground = { owner: groundOwner, pass: C.Pass.TERRAIN_CLASSIFICATION, count: 12, boundingVolume: new C.BoundingSphere(new C.Cartesian3(3, 0, -10), 1) }
+  // BillboardCollection hands Cesium a new command object every frame for the same labels.
+  let labelInstances = 5
+  const label = () => ({ owner: labelOwner, pass: C.Pass.TRANSLUCENT, count: 6, instanceCount: labelInstances,
+    boundingVolume: new C.BoundingSphere(new C.Cartesian3(-3, 0, -10), 3) })
+  const frame = commands => {
+    scene.frameState.frameNumber++
+    motion.begin(true, matrix, matrix, matrix, matrix, true)
+    commands.forEach(command => motion.trackCoverage(command))
+    motion.finish()
+  }
+  frame([wall, ground, label()]); frame([wall, ground, label()]); rejected.length = 0
+  frame([wall, ground, label()])
+  assert.equal(rejected.length, 0, 'unchanged owners, even with rebuilt commands, must keep their accumulated history')
+  assert.equal(motion.stats.coverageChanges, 0)
+  frame([ground, label()])
+  assert.deepEqual(rejected, [2], 'a removed wall must reject history inside its own bounds')
+  rejected.length = 0
+  frame([ground, wall, label()])
+  assert.deepEqual(rejected, [2], 'a wall shown again must restart acquisition inside its bounds')
+  rejected.length = 0
+  labelInstances = 4
+  frame([ground, wall, label()])
+  assert.deepEqual(rejected, [3, 3], 'a removed label changes its collection and rejects the old and new bounds')
+  rejected.length = 0
+  frame([ground, wall, label()])
+  assert.equal(rejected.length, 0)
+  assert.equal(motion.coverageStable, true, 'presence tracking must not disable still-camera accumulation elsewhere')
+})
