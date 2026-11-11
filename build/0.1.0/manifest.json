@@ -14,7 +14,7 @@
   ],
   "bundledEngine": false,
   "bundledBusinessUI": false,
-  "sourceCommit": "c1c3110c8b3ed0af4ab617a5061cf505aa2fb40e",
+  "sourceCommit": "e77cf027cc8186ec4be3dbf6320e6eeafbefdcaa",
   "sourceState": "working-tree snapshot; source hashes are authoritative",
   "sourceHashes": {
     "src/antialiasing/FrustumJitterBridge143.js": "d939e16b13e06d54a481dc99af7a63d3d9d030b6a40088c948da31b79ae99cf4",
@@ -31,12 +31,12 @@
     "src/antialiasing/smaaShaders.js": "d9177a264976f7ab50c6850f7fcfb0a03770a076071a0095d4bb230b92bb226e",
     "src/antialiasing/SpatialAaPass143.js": "068f9114647cccd2e8a3b86fe669152fc97e2e559667c95b3a8d48838b3ae709",
     "src/antialiasing/TaaJitter143.js": "cdb4e657095f24ce61d3490b52ca9fe08cb6e0fbef0ce4873d0539ca54307b27",
-    "src/antialiasing/TaaMotion143.js": "1f83139d0bd44cd9aea98e31a7888247876f4022a3be1c9bfad85e899cddc7d2",
+    "src/antialiasing/TaaMotion143.js": "68273106484d8e7b7374455d52b25d2ddeb199acdebdbed78f4df339901d3326",
     "src/antialiasing/TaaOverlay143.js": "afc140a341ba73a0c1f622ae459995c293c951ba6b22a9fa29645e16401d1e29",
-    "src/antialiasing/TaaPass143.js": "36fec96e13098f0d5a902a135e9fcfe67e3ea112ea4309a0e36e7d36d33984bf",
+    "src/antialiasing/TaaPass143.js": "09d026dfead609d033e8dcd1752564e7174244b107e168133b0917cbec461995",
     "src/antialiasing/taaR186Math143.js": "02afd13e843abc5d68cd51e353852bb1c9a0a94cc4c03b451df554623845480c",
     "src/antialiasing/TaaSelectionDepth143.js": "2a3784ffde452ea828ea25957e2751f0474b414640dc26590b1da22c256e8eb8",
-    "src/antialiasing/taaShaders143.js": "a115b02fcf62c6212cd40d7f446d2a8bd983317f957514dd0981369fad9ec2b4",
+    "src/antialiasing/taaShaders143.js": "a8cb3e620d6ed715ca5e46463017c2959cb04d1ff1769dfe5568f9ef326d9509",
     "src/ao/aoShaders143.js": "76cf0592f59bc4aa665f7ea32bb145c64d66892fd521e951c2ced4e61fde22ba",
     "src/ao/hbaoShader143.js": "d633470b347fe050a5152e663b934723446645553fd93e533fa54b34c5ae172e",
     "src/ao/ScreenSpaceAo143.js": "189ecc2aebf588e873f50cdc12d38c918287a065f5834015ca8273bc22181390",
@@ -177,7 +177,7 @@
     "vendor/cesium-ez-tree/src/workers/createEzTreeInstanceAttributes.js": "8d70973ebdb73e5f0f956a97e6b4cd169e593d7380bcf4f10106c8aca4b437ff",
     "vendor/cesium-ez-tree/src/workers/createEzTreeVegetationInstances.js": "bd9ad5b04011d70f8251013a79dd14c4326fba54371ccf8b1413a107062fe194"
   },
-  "bytes": 2328452,
-  "gzipBytes": 1228016,
-  "sha256": "3560485e71fd16a94c65feabfa437ef4efaf471b3b5bdd0fe7e2bbe9bd4a6a0e"
+  "bytes": 2331977,
+  "gzipBytes": 1228848,
+  "sha256": "3cb85e3fbfea479efe00b9037a7fc21087ffcb6d2497d969d7bb536c9fcd2724"
 }

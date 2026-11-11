@@ -4,6 +4,19 @@ import RenderItemExecutor143 from '../renderer/RenderItemExecutor143.js'
 import { motionSources143 } from './motionShaders143.js'
 import { projectOcclusionBounds } from '../visibility/OcclusionCulling143.js'
 
+// Animated translucent surfaces (Cesium Water material, custom shaders driven by
+// frame time) change every frame without moving. A still camera would otherwise
+// average them into a frozen picture, so their visible pixels are flagged
+// "reactive" in the motion texture: B < 0 (opaque motion always writes B > 0).
+const ANIMATED_SHADER_PATTERN = /\bczm_frame(?:Number|Time)\b/
+const REACTIVE_FRAGMENT_SHADER = 'void main() { out_FragColor = vec4(0.0, 0.0, -1.0, 0.0); }'
+
+function shaderText(source) {
+  if (!source) return ''
+  if (typeof source === 'string') return source
+  return Array.isArray(source.sources) ? source.sources.join('\n') : ''
+}
+
 export function motionTransform143(C, currentView, currentModel, previousView, previousModel) {
   return { currentModelView: C.Matrix4.multiply(currentView, currentModel, new C.Matrix4()),
     previousModelView: C.Matrix4.multiply(previousView, previousModel, new C.Matrix4()) }
@@ -22,7 +35,11 @@ export default class TaaMotion143 {
     this.previousCoverage = new Map()
     this.pendingMasks = []
     this.pendingDraws = []
-    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0 }
+    // Animated translucent draws to flag as reactive this frame.
+    this.pendingReactive = []
+    this.animatedPrograms = new WeakMap()
+    this.reactivePrograms = new Map()
+    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0, reactiveCommands: 0, reactiveDraws: 0 }
   }
   primitiveKey(command) {
     let key = this.primitiveKeys.get(command)
@@ -84,7 +101,7 @@ export default class TaaMotion143 {
       .filter(pass => Number.isInteger(pass))
     const detachCoverage = coveragePasses.length ? dispatcher.addHandler(event => {
       if (this.active) {
-        try { this.trackCoverage(event.command) } catch (error) {
+        try { this.trackCoverage(event.command); this.trackReactive(event) } catch (error) {
           this.failed = true; this.active = false; this.reason = error.message; this.stats.errors++; this.releaseTarget()
         }
       }
@@ -128,6 +145,59 @@ export default class TaaMotion143 {
     entry.size += 1 + (command.count || 0) * Math.max(1, command.instanceCount || 1)
     this.stats.coverageCommands++
   }
+  // A shader that reads frame time animates in place (water waves, flowing
+  // materials). Cached per program; both the submitted override and the command's
+  // own program are checked because OIT may wrap the original fragment shader.
+  isAnimatedProgram(program) {
+    if (!program) return false
+    let animated = this.animatedPrograms.get(program)
+    if (animated === undefined) {
+      animated = ANIMATED_SHADER_PATTERN.test(shaderText(program.fragmentShaderSource)) ||
+        ANIMATED_SHADER_PATTERN.test(program._fragmentShaderText || '')
+      this.animatedPrograms.set(program, animated)
+    }
+    return animated
+  }
+  // Queue an animated translucent draw; finish() redraws its geometry into the
+  // motion texture (depth-tested against opaque depth) as the reactive flag.
+  trackReactive(event) {
+    const command = event?.command
+    if (!command || command.pass !== this.C.Pass.TRANSLUCENT || this.reactiveSeen.has(command)) return
+    this.reactiveSeen.add(command)
+    const program = event.overrides?.[0] ?? command.shaderProgram
+    if (!this.isAnimatedProgram(command.shaderProgram) && !this.isAnimatedProgram(program)) return
+    if (!program?.vertexShaderSource) return
+    const passState = event.passState
+    this.pendingReactive.push({ command, program, uniformMap: event.overrides?.[1] ?? command.uniformMap,
+      passState: { ...passState, viewport: passState?.viewport ? this.C.BoundingRectangle.clone(passState.viewport) : undefined } })
+    this.stats.reactiveCommands++
+  }
+  reactiveProgram(program) {
+    const C = this.C, source = program.vertexShaderSource
+    let record = this.reactivePrograms.get(source)
+    if (!record) {
+      record = { program: C.ShaderProgram.fromCache({ context: this.scene.context, vertexShaderSource: source,
+        fragmentShaderSource: REACTIVE_FRAGMENT_SHADER, attributeLocations: program._attributeLocations }) }
+      this.reactivePrograms.set(source, record)
+    }
+    record.frame = this.frame
+    return record.program
+  }
+  drawReactive(item) {
+    const C = this.C, context = this.scene.context
+    if (!this.reactiveState) {
+      // Only B is written: velocity/eye depth of opaque surfaces below stay intact
+      // for the history fetch, and occluded water is rejected by the depth test.
+      this.reactiveStateOptions = { depthTest: { enabled: true, func: C.DepthFunction.LESS_OR_EQUAL }, depthMask: false,
+        blending: { enabled: false }, colorMask: { red: false, green: false, blue: true, alpha: false } }
+      this.reactiveState = C.RenderState.fromCache(this.reactiveStateOptions)
+    }
+    const native = sceneColorFramebufferOf(this.scene)
+    if (!native) return
+    this.executor.execute(item.command, context, item.passState, { shaderProgram: this.reactiveProgram(item.program),
+      uniformMap: item.uniformMap, renderState: this.reactiveState, framebuffer: this.alias(native) })
+    this.stats.draws++; this.stats.reactiveDraws++
+  }
   coverageMoved(previous, current) {
     if (previous.size !== current.size || previous.unbounded !== current.unbounded) return true
     if (!previous.bounds || !current.bounds) return previous.bounds !== current.bounds
@@ -158,8 +228,8 @@ export default class TaaMotion143 {
   }
   begin(active, currentView, currentProjection, previousView, previousProjection, historyValid) {
     this.active = !!active && !!this.detach && !this.failed
-    this.frame = this.scene.frameState.frameNumber; this.historyValid = historyValid; this.seen = new WeakSet()
-    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0 }
+    this.frame = this.scene.frameState.frameNumber; this.historyValid = historyValid; this.seen = new WeakSet(); this.reactiveSeen = new WeakSet()
+    this.stats = { supported: 0, unsupported: 0, draws: 0, errors: 0, newSurfaces: 0, appearanceChanges: 0, previousFootprints: 0, coverageCommands: 0, coverageChanges: 0, reactiveCommands: 0, reactiveDraws: 0 }
     // Public picks are not colour frames. Only explicit history invalidation
     // drops snapshots; the sequence advances when a colour capture is prepared.
     if (!this.active) return
@@ -176,7 +246,9 @@ export default class TaaMotion143 {
     this.unsupportedChanged = false
     this.pendingMasks.length = 0
     this.pendingDraws.length = 0
+    this.pendingReactive.length = 0
     const C = this.C
+    for (const [source, record] of this.reactivePrograms) if (record.frame < this.frame - 120) { record.program?.destroy(); this.reactivePrograms.delete(source) }
     this.currentView = C.Matrix4.clone(currentView, this.currentView); this.currentProjection = C.Matrix4.clone(currentProjection, this.currentProjection)
     this.previousView = C.Matrix4.clone(previousView, this.previousView); this.previousProjection = C.Matrix4.clone(previousProjection, this.previousProjection)
     if (this.texture && (this.texture.width !== this.scene.drawingBufferWidth || this.texture.height !== this.scene.drawingBufferHeight)) this.releaseTarget()
@@ -291,15 +363,18 @@ export default class TaaMotion143 {
   finish() {
     if (!this.active || this.finishedFrame === this.colorFrame) return
     this.finishedFrame = this.colorFrame
-    if (this.pendingDraws.length) {
+    if (this.pendingDraws.length || this.pendingReactive.length) {
       const us = this.scene.context.uniformState, previousPass = us.pass
       try {
         this.preserveTarget(() => {
           this.allocate(); this.clear.execute(this.scene.context)
           us.updatePass(this.C.Pass.OPAQUE)
           for (const draw of this.pendingDraws) draw()
+          // After opaque velocity: reactive flags overwrite only B of covered pixels.
+          us.updatePass(this.C.Pass.TRANSLUCENT)
+          for (const item of this.pendingReactive) this.drawReactive(item)
         })
-      } finally { this.pendingDraws.length = 0; us.updatePass(previousPass) }
+      } finally { this.pendingDraws.length = 0; this.pendingReactive.length = 0; us.updatePass(previousPass) }
     }
     if (!this.historyValid) { this.pendingMasks.length = 0; return }
     this.finishCoverage()
@@ -342,7 +417,7 @@ export default class TaaMotion143 {
   get coverageStable() {
     return this.active && !this.unsupportedChanged
   }
-  reset() { this.records = new WeakMap(); this.primitiveKeys = new WeakMap(); this.colorFrame = 0; this.finishedFrame = undefined; this.historyValid = false; this.pendingMasks.length = 0; this.pendingDraws.length = 0; this.submitted.clear(); this.previousSubmitted.clear(); this.coverage.clear(); this.previousCoverage.clear(); this.releaseTarget() }
+  reset() { this.records = new WeakMap(); this.primitiveKeys = new WeakMap(); this.colorFrame = 0; this.finishedFrame = undefined; this.historyValid = false; this.pendingMasks.length = 0; this.pendingDraws.length = 0; this.pendingReactive.length = 0; this.submitted.clear(); this.previousSubmitted.clear(); this.coverage.clear(); this.previousCoverage.clear(); this.releaseTarget() }
   releaseTarget() {
     for (const alias of this.aliases.values()) alias.destroy()
     this.aliases.clear()
@@ -351,12 +426,16 @@ export default class TaaMotion143 {
     this.fbResource = this.colorResource = this.framebuffer = this.texture = this.clear = undefined
   }
   getDiagnostics() { return { active: this.active, failed: !!this.failed, reason: this.reason || null, ...this.stats, bytes: this.texture?.sizeInBytes || 0,
-    encoding: 'RGBA32F currentNDC-previousNDC, currentEyeDepth, previousEyeDepth; w<0=new surface',
+    encoding: 'RGBA32F currentNDC-previousNDC, currentEyeDepth, previousEyeDepth; w<0=new surface; z<0=reactive (animated translucent)',
     scope: 'standalone opaque rigid GLTF primitive matrices; deforming/instanced/transparent content has no object velocity' } }
   destroy() {
     this.active = false; this.detach?.(); this.detach = undefined; this.reset()
     for (const record of this.programs.values()) record.program?.destroy()
     this.programs.clear()
+    for (const record of this.reactivePrograms.values()) record.program?.destroy()
+    this.reactivePrograms.clear()
+    if (this.reactiveStateOptions) this.C.RenderState.removeFromCache(this.reactiveStateOptions)
+    this.reactiveState = this.reactiveStateOptions = undefined
     for (const record of this.states.values()) {
       this.C.RenderState.removeFromCache(record.options)
       if (record.previousOptions) this.C.RenderState.removeFromCache(record.previousOptions)

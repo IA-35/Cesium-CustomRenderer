@@ -132,6 +132,7 @@ export default class TaaPass143 {
       u_motionTexture: () => this.motion?.textureForResolve || fallback(),
       u_hasMotionTexture: () => !!this.motion?.textureForResolve,
       u_hasPreviousFootprint: () => (this.motion?.stats.previousFootprints || 0) > 0,
+      u_hasReactive: () => (this.motion?.stats.reactiveDraws || 0) > 0,
       u_depthThreshold: () => this.getOptions().taaDepthThreshold ?? 0.0005,
       u_edgeDepthDiff: () => this.getOptions().taaEdgeDepthDiff ?? 0.001,
       u_maxVelocityLength: () => this.getOptions().taaMaxVelocityLength ?? 128,

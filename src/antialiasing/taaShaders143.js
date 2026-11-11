@@ -101,6 +101,8 @@ uniform vec2 u_previousJitterUv;
 uniform highp sampler2D u_motionTexture;
 uniform bool u_hasMotionTexture;
 uniform bool u_hasPreviousFootprint;
+// B<0: animated translucent surface (water etc.) — see TaaMotion143 reactive flags.
+uniform bool u_hasReactive;
 uniform vec2 u_cameraNearFar;
 uniform mat4 u_currentInverseRasterProjection;
 uniform mat4 u_previousInverseRasterProjection;
@@ -264,7 +266,10 @@ void main() {
     // Negative private alpha identifies a moving/new surface in the previous
     // reconstruction footprint. Its magnitude remains the acquisition age.
     float historyMetadata = texelFetch(u_historyColor, clamp(ivec2(historyUV * vec2(size)), ivec2(0), size-1), 0).a;
-    bool stableCoverage = u_stableCoverage && !movingSurface && historyMetadata >= 0.0;
+    // Animated translucent pixels change every frame in place: never treat them as
+    // stable coverage (keep variance clipping) and give the current frame real weight.
+    bool reactiveSurface = u_hasReactive && texelFetch(u_motionTexture, pixel, 0).z < 0.0;
+    bool stableCoverage = u_stableCoverage && !movingSurface && !reactiveSurface && historyMetadata >= 0.0;
     bool inBounds = all(greaterThanEqual(historyUV, vec2(0.0))) && all(lessThanEqual(historyUV, vec2(1.0)));
     bool edge = farthestDepth - closestDepth > u_edgeDepthDiff;
     bool disocclusion = closestDepth - taaPreviousDepth(historyUV) > u_depthThreshold;
@@ -310,6 +315,9 @@ void main() {
         ? baseWeight / (1.0 - pow(1.0 - baseWeight, acquisitionAge + 1.0)) : baseWeight;
     if (u_useSubpixelCorrection) currentWeight += taaSubpixelCorrection(offsetUV, vec2(size)) * 0.25;
     currentWeight = clamp(currentWeight + motionFactor, 0.0, 1.0);
+    // Half current / half clipped history: waves stay live, jitter stays smoothed.
+    const float reactiveCurrentWeight = 0.5;
+    if (reactiveSurface) currentWeight = max(currentWeight, reactiveCurrentWeight);
     float varianceGamma = mix(0.5, coherentHistory || farthestDepth == 1.0 ? 2.0 : 1.0,
         (1.0 - motionFactor) * (1.0 - motionFactor));
     vec4 clippedHistoryColor = taaVarianceClipping(pixel, size, currentColor, historyColor, varianceGamma);

@@ -383,3 +383,63 @@ test('translucent and ground-classification surfaces reject history where they a
   assert.equal(rejected.length, 0)
   assert.equal(motion.coverageStable, true, 'presence tracking must not disable still-camera accumulation elsewhere')
 })
+
+test('animated translucent surfaces are flagged reactive per pixel; static translucent and opaque draws are not', () => {
+  const native = { depthStencilTexture: {} }
+  const scene = { context: { uniformState: { pass: 9, updatePass(value) { this.pass = value } } },
+    frameState: { frameNumber: 1 }, drawingBufferWidth: 16, drawingBufferHeight: 16, _view: { sceneFramebuffer: { framebuffer: native } } }
+  const motion = new TaaMotion143(C, scene), matrix = translated()
+  motion.detach = () => {}
+  motion.allocate = () => {}; motion.preserveTarget = fn => fn()
+  let clears = 0
+  motion.clear = { execute() { clears++ } }
+  const aliasTarget = {}
+  motion.alias = target => { assert.equal(target, native, 'reactive flags are depth-tested against the scene colour depth'); return aliasTarget }
+  const draws = []
+  motion.executor.execute = (command, _, pass, options) => draws.push({ command, pass, options, scenePass: scene.context.uniformState.pass })
+  const created = []
+  const fromCache = C.ShaderProgram.fromCache
+  C.ShaderProgram.fromCache = options => { created.push(options); return { destroy() {} } }
+  try {
+    const waterVs = { sources: ['void main(){}'] }
+    const water = { pass: C.Pass.TRANSLUCENT, owner: {}, uniformMap: { u: 1 },
+      shaderProgram: { vertexShaderSource: waterVs, fragmentShaderSource: { sources: ['float t = czm_frameNumber * 0.01;'] }, _attributeLocations: { position: 0 } } }
+    const glass = { pass: C.Pass.TRANSLUCENT, owner: {},
+      shaderProgram: { vertexShaderSource: { sources: [''] }, fragmentShaderSource: { sources: ['vec4 c = u_color;'] } } }
+    const opaqueAnimated = { pass: C.Pass.OPAQUE, owner: {}, shaderProgram: water.shaderProgram }
+    const viewport = new C.BoundingRectangle(0, 0, 16, 16)
+    const frame = () => {
+      scene.frameState.frameNumber++
+      motion.begin(true, matrix, matrix, matrix, matrix, true)
+      for (const command of [water, water, glass, opaqueAnimated]) motion.trackReactive({ command, overrides: [], passState: { viewport } })
+      motion.finish()
+    }
+    frame()
+    assert.equal(motion.stats.reactiveCommands, 1, 'only the animated translucent draw, once per frame')
+    assert.equal(draws.length, 1)
+    assert.equal(draws[0].command, water)
+    assert.equal(draws[0].options.framebuffer, aliasTarget)
+    assert.deepEqual(draws[0].options.renderState.colorMask, { red: false, green: false, blue: true, alpha: false },
+      'only B is written so opaque velocity and eye depth stay intact')
+    assert.equal(draws[0].options.renderState.depthMask, false)
+    assert.equal(draws[0].options.uniformMap, water.uniformMap)
+    assert.equal(draws[0].scenePass, C.Pass.TRANSLUCENT)
+    assert.equal(scene.context.uniformState.pass, 9, 'the scene pass is restored after the flags are drawn')
+    assert.equal(created.length, 1)
+    assert.equal(created[0].vertexShaderSource, waterVs)
+    assert.match(created[0].fragmentShaderSource, /-1\.0/)
+    assert.equal(clears, 1)
+    assert.equal(motion.stats.reactiveDraws, 1)
+    frame()
+    assert.equal(created.length, 1, 'the reactive program is cached per vertex shader')
+    assert.equal(draws.length, 2)
+    // OIT wraps the original program: the submitted override still carries the animation.
+    const wrapped = { pass: C.Pass.TRANSLUCENT, owner: {}, shaderProgram: glass.shaderProgram }
+    scene.frameState.frameNumber++
+    motion.begin(true, matrix, matrix, matrix, matrix, true)
+    motion.trackReactive({ command: wrapped, overrides: [water.shaderProgram], passState: { viewport } })
+    assert.equal(motion.stats.reactiveCommands, 1)
+    motion.finish()
+    motion.destroy()
+  } finally { C.ShaderProgram.fromCache = fromCache }
+})
