@@ -27,3 +27,7 @@ This remains a forward vegetation shader, not the full Cesium Model PBR material
 - Per-material `extras.roundedLeafNormals` is forwarded for official needle geometry. Asset colors use linear lighting and convert back to sRGB only for SDR output.
 - Grass definitions distinguish alpha-channel cutout from the legacy RGB-derived mask. The six-triangle grayscale grass uses alpha and an explicit green tint.
 - The campus uses short grass with per-polygon height samples, close-range density LOD, and no additional green ground plane. Legacy assets remain selectable with `?vegetation=legacy`.
+
+2026-11-12 texture wrap:
+- Texture wrap now follows the glTF sampler when it explicitly declares REPEAT, MIRRORED_REPEAT or CLAMP_TO_EDGE (campus bark UVs span about -2.6..10 and must repeat along the trunk). Samplers without an explicit wrap keep the previous CLAMP_TO_EDGE, so existing grass and leaf assets are unchanged.
+- Wrap mode is part of the shared-texture identity, so the same image used with clamp and repeat never shares one GPU texture.

@@ -319,7 +319,9 @@ export default class EnvironmentLighting143 {
     const moonDirection = o.moonDirectionWC, moonRadiance = o.moonRadiance || [0, 0, 0]
     const nightSky = o.nightSkyRadiance || [0, 0, 0]
     const moonActive = o.nightWeight > 0 && this.moon && moonDirection
-    const key = [o.skyIntensity, o.sunIntensity, o.rayleighScale, o.mieScale,
+    // 暗面补光倍率：缺省为 Cesium 默认亮度 1
+    const ambientIntensity = Number.isFinite(o.ambientIntensity) ? o.ambientIntensity : 1
+    const key = [o.skyIntensity, o.sunIntensity, ambientIntensity, o.rayleighScale, o.mieScale,
       o.atmosphereIntensity, o.skyAtmosphereIntensity, o.daylight,
       color?.red, color?.green, color?.blue, color?.alpha, o.nightWeight,
       moonDirection?.x, moonDirection?.y, moonDirection?.z, ...moonRadiance, ...nightSky].join('|')
@@ -393,6 +395,9 @@ export default class EnvironmentLighting143 {
         }
         let changed = write(record.changes, manager, 'atmosphereScatteringIntensity', o.skyIntensity)
         changed = write(record.changes, manager, 'maximumSecondsDifference', 60) || changed
+        // brightness 同时缩放动态环境图与其球谐系数，即背光面的漫反射环境光；
+        // Cesium 改 brightness 不会自动重建，依赖下面作废 position 触发重算。
+        changed = write(record.changes, manager, 'brightness', ambientIntensity) || changed
         // Public position accepts undefined. The owner refills its real bounding
         // sphere center before update; the setter invalidates the environment.
         // Do this only on changes, since repeated invalidation cancels GPU work.

@@ -46,3 +46,10 @@ test('explicit fog and cloud heights override presets while retaining positive l
   assert.equal(state.cloudTop, 600)
   assert.equal(resolveEnvironmentState({ cloudThickness: -20 }, 0.5, 0).cloudTop, 1700)
 })
+
+test('ambientIntensity 默认 1，限制在 0..4 并随状态透传给光照', () => {
+  assert.equal(normalizeEnvironmentOptions({}).ambientIntensity, 1)
+  assert.equal(normalizeEnvironmentOptions({ ambientIntensity: 9 }).ambientIntensity, 4)
+  assert.equal(normalizeEnvironmentOptions({ ambientIntensity: -1 }).ambientIntensity, 0)
+  assert.equal(resolveEnvironmentState({ ambientIntensity: 1.6 }, 0.7, 0).ambientIntensity, 1.6)
+})

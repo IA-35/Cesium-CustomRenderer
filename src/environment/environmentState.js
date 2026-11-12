@@ -1,6 +1,7 @@
 export const environmentDefaults = Object.freeze({
   environment: true, environmentPreset: 'clear', environmentQuality: 'balanced',
-  skyLightIntensity: 3.2, sunIntensity: 2.2, clouds: true, cloudCoverage: null,
+  // ambientIntensity：模型漫反射环境光（暗面补光）倍率，只作用于模型 IBL，不改变天空/云/雾
+  skyLightIntensity: 3.2, sunIntensity: 2.2, ambientIntensity: 1, clouds: true, cloudCoverage: null,
   cloudModel: 'auto', cloudGeometry: 'shell', volumetricFog: true, sunScattering: true, environmentAnimation: true,
   fogBaseHeight: 20, fogHeightFalloff: null, cloudBaseHeight: null, cloudThickness: null
 })
@@ -29,7 +30,7 @@ export function normalizeEnvironmentOptions(input = {}, current = environmentDef
     environmentQuality: ['performance', 'balanced', 'high'], cloudModel: ['auto', 'cumulus', 'stratus'], cloudGeometry: ['local', 'shell'] })) {
     if (values.includes(input[key])) result[key] = input[key]
   }
-  for (const [key, min, max] of [['skyLightIntensity', 0, 5], ['sunIntensity', 0, 5], ['cloudCoverage', 0, 0.95],
+  for (const [key, min, max] of [['skyLightIntensity', 0, 5], ['sunIntensity', 0, 5], ['ambientIntensity', 0, 4], ['cloudCoverage', 0, 0.95],
     ['fogBaseHeight', -1000, 10000], ['fogHeightFalloff', 10, 3000], ['cloudBaseHeight', 50, 12000], ['cloudThickness', 100, 6000]]) {
     if (Number.isFinite(input[key])) result[key] = Math.max(min, Math.min(max, input[key]))
   }

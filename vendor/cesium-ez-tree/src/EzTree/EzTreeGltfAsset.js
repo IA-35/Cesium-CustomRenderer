@@ -42,36 +42,57 @@ const GLTF_ATTRIBUTE_COMPONENTS = Object.freeze({
   VEC4: 4,
 });
 
-const mipmapSampler = Object.freeze(
-  new Sampler({
-    wrapS: TextureWrap.CLAMP_TO_EDGE,
-    wrapT: TextureWrap.CLAMP_TO_EDGE,
-    minificationFilter: TextureMinificationFilter.LINEAR_MIPMAP_LINEAR,
-    magnificationFilter: TextureMagnificationFilter.LINEAR,
-  }),
-);
+// CCR：平铺方式取自 glTF 采样器（树皮 UV 超出 0..1，需 REPEAT 沿树干重复）。
+// 只认显式声明的 REPEAT / MIRRORED_REPEAT / CLAMP_TO_EDGE；未声明时保持原有钳边，不改变既有草地/树叶资产。
+const GLTF_WRAP_MODES = new Set([
+  TextureWrap.REPEAT,
+  TextureWrap.MIRRORED_REPEAT,
+  TextureWrap.CLAMP_TO_EDGE,
+]);
+const CLAMP_WRAP = Object.freeze({
+  wrapS: TextureWrap.CLAMP_TO_EDGE,
+  wrapT: TextureWrap.CLAMP_TO_EDGE,
+});
 
-const linearSampler = Object.freeze(
-  new Sampler({
-    wrapS: TextureWrap.CLAMP_TO_EDGE,
-    wrapT: TextureWrap.CLAMP_TO_EDGE,
-    minificationFilter: TextureMinificationFilter.LINEAR,
-    magnificationFilter: TextureMagnificationFilter.LINEAR,
-  }),
-);
+function getTextureWrap(gltf, textureId) {
+  const sampler = gltf.samplers?.[gltf.textures?.[textureId]?.sampler];
+  return {
+    wrapS: GLTF_WRAP_MODES.has(sampler?.wrapS) ? sampler.wrapS : CLAMP_WRAP.wrapS,
+    wrapT: GLTF_WRAP_MODES.has(sampler?.wrapT) ? sampler.wrapT : CLAMP_WRAP.wrapT,
+  };
+}
+
+const wrapKey = wrap => `${wrap?.wrapS ?? CLAMP_WRAP.wrapS}/${wrap?.wrapT ?? CLAMP_WRAP.wrapT}`;
+
+// 采样器按 平铺方式 + 是否 mipmap 复用
+const samplers = new Map();
+function getSampler(wrap, canMipmap) {
+  const key = `${wrapKey(wrap)}:${canMipmap}`;
+  if (!samplers.has(key)) {
+    samplers.set(key, Object.freeze(new Sampler({
+      wrapS: wrap?.wrapS ?? CLAMP_WRAP.wrapS,
+      wrapT: wrap?.wrapT ?? CLAMP_WRAP.wrapT,
+      minificationFilter: canMipmap
+        ? TextureMinificationFilter.LINEAR_MIPMAP_LINEAR
+        : TextureMinificationFilter.LINEAR,
+      magnificationFilter: TextureMagnificationFilter.LINEAR,
+    })));
+  }
+  return samplers.get(key);
+}
 
 function isPowerOfTwo(value) {
   return value > 0 && (value & (value - 1)) === 0;
 }
 
-function createTexture(context, image, preMultiplyAlpha) {
+function createTexture(context, image, preMultiplyAlpha, wrap = CLAMP_WRAP) {
   const canMipmap = isPowerOfTwo(image.width) && isPowerOfTwo(image.height);
   const texture = new Texture({
     context: context,
     source: image,
     pixelFormat: PixelFormat.RGBA,
     pixelDatatype: PixelDatatype.UNSIGNED_BYTE,
-    sampler: canMipmap ? mipmapSampler : linearSampler,
+    sampler: getSampler(wrap, canMipmap),
     flipY: false,
     preMultiplyAlpha: preMultiplyAlpha === true,
   });
@@ -484,6 +505,9 @@ function createMaterial(record, materialId) {
   if (defined(imageId) && material?.alphaMode === "MASK") {
     record.imageRecords[imageId].preMultiplyAlpha = true;
   }
+  if (defined(imageId)) {
+    record.imageRecords[imageId].wrap = getTextureWrap(gltf, textureId);
+  }
 
   return {
     baseColorFactor: baseColorFactor,
@@ -520,16 +544,16 @@ function imageRecordKey(record) {
     hash ^= record.bytes[i];
     hash = Math.imul(hash, 0x01000193);
   }
-  return `${record.preMultiplyAlpha === true}:${record.mimeType}:${record.bytes.length}:${hash >>> 0}`;
+  return `${record.preMultiplyAlpha === true}:${wrapKey(record.wrap)}:${record.mimeType}:${record.bytes.length}:${hash >>> 0}`;
 }
 
 function imageBytesEqual(left, right) {
-  if ((left.preMultiplyAlpha === true) !== (right.preMultiplyAlpha === true) || left.mimeType !== right.mimeType || left.bytes.length !== right.bytes.length) return false;
+  if ((left.preMultiplyAlpha === true) !== (right.preMultiplyAlpha === true) || wrapKey(left.wrap) !== wrapKey(right.wrap) || left.mimeType !== right.mimeType || left.bytes.length !== right.bytes.length) return false;
   for (let i = 0; i < left.bytes.length; i++) if (left.bytes[i] !== right.bytes[i]) return false;
   return true;
 }
 
-// Both tree collections use the same fixed samplers/format. Content and alpha policy
+// Both tree collections use the same format. Content, alpha policy and wrap mode
 // must match, and each WebGL context owns a separate reference-counted GPU cache.
 const sharedImageTextures = new WeakMap();
 function acquireSharedImageTexture(record, context, create = createTexture) {
@@ -541,7 +565,7 @@ function acquireSharedImageTexture(record, context, create = createTexture) {
   let entry = bucket?.find(candidate => imageBytesEqual(candidate.record, record));
   if (!entry) {
     if (!record.image) return undefined;
-    const texture = create(context, record.image, record.preMultiplyAlpha);
+    const texture = create(context, record.image, record.preMultiplyAlpha, record.wrap);
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
     entry = { texture, record, references: 0, bucket, buckets, key };
     bucket.push(entry);
@@ -859,6 +883,7 @@ const EzTreeGltfAsset = Object.freeze({
 
 export {
   acquireSharedImageTexture,
+  getTextureWrap,
   releaseSharedImageTexture,
   canonicalizeImageRecords,
   createEzTreeGltfAssetRecord,

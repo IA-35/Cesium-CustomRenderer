@@ -377,3 +377,23 @@ test('dead assets and missing capabilities are safe and unsupported status is ex
   minimal.destroy()
   assert.equal(lighting.getDiagnostics().supported, true)
 })
+
+test('ambientIntensity 写入环境图亮度作为暗面补光，变化时重建、销毁时恢复', () => {
+  const { scene, lighting } = fixture()
+  const model = scene.primitives.add(tileset()), manager = model.environmentMapManager
+  lighting.setEnabled(true)
+  // 未配置时保持 Cesium 默认亮度
+  lighting.apply(settings)
+  assert.equal(manager.brightness, 1)
+  manager.position = new C.Cartesian3(6378137, 0, 0)
+  lighting.apply({ ...settings, ambientIntensity: 1.8 })
+  assert.equal(manager.brightness, 1.8)
+  // 亮度不会自动触发 Cesium 重建，必须作废位置让环境图与球谐重新计算
+  assert.equal(manager.position, undefined)
+  manager.position = new C.Cartesian3(6378137, 0, 0)
+  lighting.apply({ ...settings, ambientIntensity: 1.8 })
+  assert.notEqual(manager.position, undefined)
+  lighting.destroy()
+  assert.equal(manager.brightness, 1)
+  model.destroy()
+})
