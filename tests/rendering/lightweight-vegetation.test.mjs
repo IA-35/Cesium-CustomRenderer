@@ -68,7 +68,7 @@ test('official tree prototypes preserve all points with bounded, decreasing geom
   }
 })
 
-test('lightweight grass uses textured short clumps above ground without adding a green ground plane', async () => {
+test('lightweight card mode uses textured short clumps above ground without adding a green ground plane', async () => {
   const added = [], removed = [], listeners = []
   const scene = {
     primitives: { add(p) { added.push(p); return p }, remove(p) { removed.push(p); return true } },
@@ -87,7 +87,7 @@ test('lightweight grass uses textured short clumps above ground without adding a
       constructor(o) { Object.assign(this, o); this._resources = { gltfRecordsBuilt: true, gltfAssetRecords: [], records: [], meshResources: [], pendingTextureCount: 0 } }
     },
   }
-  const collection = createGrassCollection({ Cesium: C, viewer: { scene }, profile: 'lightweight', maxInstances: 200,
+  const collection = createGrassCollection({ Cesium: C, viewer: { scene }, profile: 'lightweight', assetMode: 'cards', maxInstances: 200,
     polygonsUrl: 'https://example.test/grass/polygons.json', ezTreeRuntime: runtime,
     fetchJson: async () => ({ schemaVersion: 1, coordinateSystem: { origin: { longitude: 123, latitude: 41 } },
       summary: { areaHectares: 0.01 }, polygons: [{ id: 1, area: 100, outer: [[123,41],[123.001,41],[123.001,41.001],[123,41.001]],
@@ -102,7 +102,13 @@ test('lightweight grass uses textured short clumps above ground without adding a
   assert.ok(collection.primitive.instances.every(instance => instance.color.green > instance.color.red && instance.color.green > instance.color.blue), 'Grayscale grass texture needs a green tint')
   const root = C.Matrix4.multiplyByPoint(collection._modelMatrix, collection.primitive.instances[0].translation, new C.Cartesian3())
   assert.ok(Math.abs(C.Cartographic.fromCartesian(root).height - 1.82) < 0.001, 'Short grass must sit above the sampled surface')
-  assert.equal(collection.getDiagnostics().groundSamples, 1)
+  // Roots follow a grid of ground samples (one polygon cell here -> 4 corners).
+  assert.equal(collection.getDiagnostics().groundSamples, 4)
+  assert.equal(collection.getDiagnostics().heightMode, 'grid-sampled')
+  assert.equal(collection.primitive.grassReceiveShadows, true, 'Lightweight grass receives tree/building shadows')
+  assert.equal(collection.primitive.castShadows, false, 'Grass must never enter the light pass')
+  assert.ok(collection.primitive.grassShading.x > 0 && collection.primitive.grassShading.y < 1, 'Lightweight grass uses bent normals and darker roots')
+  assert.ok(collection.primitive.grassLodNearDistance >= 50 && collection.primitive.grassMinimumLodRatio >= 0.05)
   assert.ok(collection.primitive.maximumGrassDistance <= 250)
   assert.equal(added.length, 1, 'Only grass geometry is allowed; do not add a ground plane')
   collection.setVisible(false)

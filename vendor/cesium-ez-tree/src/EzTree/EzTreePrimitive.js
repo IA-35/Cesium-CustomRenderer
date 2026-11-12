@@ -1,6 +1,7 @@
 import BoundingSphere from "@cesium/engine/Source/Core/BoundingSphere.js";
 import Cartesian2 from "@cesium/engine/Source/Core/Cartesian2.js";
 import Cartesian3 from "@cesium/engine/Source/Core/Cartesian3.js";
+import Cartesian4 from "@cesium/engine/Source/Core/Cartesian4.js";
 import Color from "@cesium/engine/Source/Core/Color.js";
 import ComponentDatatype from "@cesium/engine/Source/Core/ComponentDatatype.js";
 import FeatureDetection from "@cesium/engine/Source/Core/FeatureDetection.js";
@@ -69,6 +70,8 @@ const attributeLocations = Object.freeze({
 const CUTOUT_NONE = 0.0;
 const CUTOUT_LEAF = 1.0;
 const CUTOUT_GRASS = 2.0;
+// x normal bend, y root brightness, z tip tint, w back-light; neutral = upstream look.
+const neutralGrassShading = Object.freeze(new Cartesian4(0.0, 1.0, 0.0, 0.0));
 const WHITE_INTEGER = 0xffffff;
 const DEFAULT_MAXIMUM_CACHED_COMMANDS = 256;
 const DEFAULT_GPU_RESOURCE_CACHE_FRAMES = 90;
@@ -531,6 +534,9 @@ function createCommand(options) {
     u_alphaFromColor: function () {
       return options.alphaFromColor === true;
     },
+    u_grassShading: function () {
+      return cutoutType === CUTOUT_GRASS ? primitive.grassShading : neutralGrassShading;
+    },
     u_roundedLeafNormals: function () {
       return roundedLeafNormals ? 1 : 0;
     },
@@ -548,7 +554,7 @@ function createCommand(options) {
     },
   };
 
-  const shadowFlags = shadowFlagsForCutout(cutoutType, primitive.castShadows);
+  const shadowFlags = shadowFlagsForCutout(cutoutType, primitive.castShadows, primitive.grassReceiveShadows);
   const command = new DrawCommand({
     boundingVolume: boundingSphere ?? primitive._boundingSphere,
     modelMatrix: primitive.modelMatrix,
@@ -580,8 +586,10 @@ function createCommand(options) {
   };
 }
 
-function shadowFlagsForCutout(cutoutType, enabled) {
-  if (cutoutType === CUTOUT_GRASS) return { castShadows: false, receiveShadows: false };
+// CCR: grass never casts (hundreds of thousands of cards in the light pass), but it
+// may receive tree/building shadows, which costs only the receiver lookup.
+function shadowFlagsForCutout(cutoutType, enabled, grassReceiveShadows) {
+  if (cutoutType === CUTOUT_GRASS) return { castShadows: false, receiveShadows: grassReceiveShadows === true };
   return { castShadows: enabled === true, receiveShadows: enabled === true };
 }
 
@@ -1832,6 +1840,9 @@ function EzTreePrimitive(options) {
   this.grassAssets = options.grassAssets ?? [];
   this.treePresets = options.treePresets ?? {};
   this.castShadows = options.castShadows ?? false;
+  // CCR grass realism; both are read when commands are built.
+  this.grassReceiveShadows = options.grassReceiveShadows ?? false;
+  this.grassShading = Cartesian4.clone(options.grassShading ?? neutralGrassShading);
   this._externalLodGroups = new Map();
   this._externalThresholds = options.geometryLodThresholds ?? [180, 80, 12];
   this.show = options.show ?? true;

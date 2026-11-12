@@ -15,6 +15,8 @@ uniform sampler2D u_assetColorTexture;
 uniform bool u_useAssetColorTexture;
 uniform bool u_assetColorPremultiplied;
 uniform bool u_roundedLeafNormals;
+// CCR grass realism: x normal bend toward ground, y root brightness, z tip tint, w back-light.
+uniform vec4 u_grassShading;
 
 float ezTree_leafMask(vec2 st)
 {
@@ -90,6 +92,18 @@ void main()
             ? v_normalEC
             : (gl_FrontFacing ? v_normalEC : -v_normalEC)
     );
+    // CCR grass: thin cards facing random directions light up as speckles, and an
+    // evenly lit blade reads as a sticker. Bend normals toward the ground normal,
+    // darken roots (self-occlusion inside the clump) and warm the tips.
+    // v_windWeight is the normalised blade height (0 root, 1 tip) for grass assets.
+    bool ccr_isGrass = u_cutoutType > 1.5 && u_cutoutType < 2.5;
+    float ccr_bladeHeight = clamp(v_windWeight, 0.0, 1.0);
+    if (ccr_isGrass) {
+        vec3 groundNormalEC = normalize(czm_normal * vec3(0.0, 0.0, 1.0));
+        normalEC = normalize(mix(normalEC, groundNormalEC, u_grassShading.x));
+        albedo *= mix(u_grassShading.y, 1.0, smoothstep(0.0, 0.75, ccr_bladeHeight));
+        albedo = mix(albedo, albedo * vec3(1.18, 1.12, 0.78), smoothstep(0.55, 1.0, ccr_bladeHeight) * u_grassShading.z);
+    }
     float diffuse = max(dot(normalEC, normalize(czm_lightDirectionEC)), 0.0);
     // This marker is adapted by CCR's shadow receiver; ambient stays unshadowed.
     float ccr_ezTreeVisibility = 1.0;
@@ -99,6 +113,11 @@ void main()
         color = vec3(0.22, 0.48, 0.18) * wrap;
     }
     color += albedo * 0.08 * v_windWeight;
+    if (ccr_isGrass) {
+        // Back-light transmission: looking toward the sun, thin tips glow.
+        float ccr_backLight = pow(max(dot(normalize(v_positionEC), normalize(czm_lightDirectionEC)), 0.0), 3.0);
+        color += albedo * czm_lightColor * ccr_backLight * u_grassShading.w * ccr_bladeHeight * ccr_ezTreeVisibility;
+    }
 
     // Match Cesium Model: HDR targets store linear light; SDR targets store sRGB.
 #ifndef HDR
